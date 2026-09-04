@@ -193,12 +193,12 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <h1>Four-Sleeve Allocation Desk</h1>
     <p class="sub">Macro-weighted portfolio construction across SGOV · QQQ · IEMG · BMNR</p>
     <div class="stamp">
-      <span>As of 4 Sep 2026</span><span>10-yr horizon</span><span>Fed 3.50–3.75%</span><span>VIX 14.32</span>
+      <span>As of 4 Sep 2026</span><span>10-yr horizon</span><span>Fed 3.50–3.75%</span><span>VIX 14.32</span><span>Rev. 2 · re-verified</span>
     </div>
   </header>
 
 <!-- ============ MACRO ============ -->
-<section class="pane on" id="p-macro">
+<section class="pane on" id="p-macro" role="tabpanel" aria-labelledby="t-macro">
   <h2>Macro drivers</h2>
   <p class="lede">One composite reading of the six forces that set the return and risk of this four-sleeve book, then how each transmits into the holdings.</p>
 
@@ -206,8 +206,8 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <svg viewBox="0 0 212 152" role="img" aria-label="Composite macro driver sentiment gauge reading 4.8 out of 10">
       <path d="M 26 116 A 80 80 0 0 1 186 116" fill="none" stroke="#EDF0F4" stroke-width="15" stroke-linecap="round"/>
       <path d="M 26 116 A 80 80 0 0 1 186 116" fill="none" stroke="#B7791F" stroke-width="15" stroke-linecap="round"
-            stroke-dasharray="120.6 251.4"/>
-      <line x1="106" y1="116" x2="102.1" y2="54.1" stroke="#10161F" stroke-width="2.4" stroke-linecap="round"/>
+            stroke-dasharray="120.1 251.4"/>
+      <line x1="106" y1="116" x2="101.7" y2="54.2" stroke="#10161F" stroke-width="2.4" stroke-linecap="round"/>
       <circle cx="106" cy="116" r="5" fill="#10161F"/>
       <circle cx="106" cy="116" r="1.9" fill="#FFFFFF"/>
       <text x="26" y="136" fill="#8A94A6" font-family="IBM Plex Mono, monospace" font-size="9.5" text-anchor="middle">1</text>
@@ -226,7 +226,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <div class="drv">
       <div class="drv-n">Growth momentum <span class="wt">w 25%</span></div><div class="drv-s" style="color:var(--pos)">7.0</div>
       <div class="drv-bar"><i style="width:70%;background:var(--pos)"></i></div>
-      <div class="drv-d">US activity expanding at a solid pace; the FOMC explicitly flags strong productivity growth and capital investment. Emerging markets supply roughly two-thirds of global growth.</div>
+      <div class="drv-d">US activity expanding at a solid pace; the FOMC explicitly flags strong productivity growth and capital investment. The IMF puts global growth at 3.1% for 2026, with Asia-Pacific supplying close to 60% of it and the US and EU together just 16%.</div>
     </div>
     <div class="drv">
       <div class="drv-n">Inflation trajectory <span class="wt">w 15%</span></div><div class="drv-s" style="color:var(--warn)">4.0</div>
@@ -234,9 +234,9 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       <div class="drv-d">US headline CPI 3.4% y/y (July), core 2.5% and easing — but energy-led supply shocks are re-accelerating the headline. Euro-area inflation projected at 3.0% for 2026.</div>
     </div>
     <div class="drv">
-      <div class="drv-n">Monetary policy <span class="wt">w 20%</span></div><div class="drv-s" style="color:var(--warn)">4.0</div>
-      <div class="drv-bar"><i style="width:40%;background:var(--warn)"></i></div>
-      <div class="drv-d">Fed held at 3.50–3.75% in July on a 9–3 vote — and all three dissents wanted to <em>hike</em>. The ECB has already hiked once, its first in three years. The global policy bias is tightening, not easing.</div>
+      <div class="drv-n">Monetary policy <span class="wt">w 20%</span></div><div class="drv-s" style="color:var(--neg)">3.5</div>
+      <div class="drv-bar"><i style="width:35%;background:var(--neg)"></i></div>
+      <div class="drv-d">A fifth consecutive hold at 3.50–3.75% on a 9–3 vote — with Logan, Hammack and Kashkari all dissenting <em>for a hike</em>, and Schmid and Musalem saying they would have joined had they held votes. Five officials favouring tightening is the most hawkish FOMC configuration in close to a decade. The ECB has already hiked to a 2.25% deposit rate and meets again on 10 September.</div>
     </div>
     <div class="drv">
       <div class="drv-n">Liquidity &amp; credit <span class="wt">w 15%</span></div><div class="drv-s" style="color:var(--pos)">6.0</div>
@@ -244,9 +244,9 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       <div class="drv-d">Credit conditions calm and orderly, but the 10-year Treasury at 4.78% is the highest since October 2023 — financial conditions are tightening through the long end, not the policy rate.</div>
     </div>
     <div class="drv">
-      <div class="drv-n">Valuation &amp; positioning <span class="wt">w 15%</span></div><div class="drv-s" style="color:var(--neg)">3.0</div>
-      <div class="drv-bar"><i style="width:30%;background:var(--neg)"></i></div>
-      <div class="drv-d">QQQ has returned 34.4% over twelve months into a VIX printing 2026 lows near 14. Rich multiples plus cheap volatility is the weakest entry-point combination in the panel.</div>
+      <div class="drv-n">Valuation &amp; positioning <span class="wt">w 15%</span></div><div class="drv-s" style="color:var(--neg)">3.5</div>
+      <div class="drv-bar"><i style="width:35%;background:var(--neg)"></i></div>
+      <div class="drv-d">The Nasdaq-100 trades at 25.2× forward earnings against emerging markets at 11.6× — a 54% spread, near its widest since 2003. QQQ's 26.0% twelve-month total return into a VIX near 14 is a stretched entry point, though the pullback from June's highs makes it less extreme than mid-year.</div>
     </div>
     <div class="drv">
       <div class="drv-n">Geopolitical risk <span class="wt">w 10%</span></div><div class="drv-s" style="color:var(--neg)">3.0</div>
@@ -261,7 +261,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <div class="corr-row">
       <div class="tick" style="background:var(--sgov)">SGOV</div>
       <div class="corr-b"><span class="sig up">Tailwind</span><br>
-        A tightening-biased Fed is the one regime where a 0–3 month bill sleeve is <b>paid to wait</b>. Yielding 3.66% against 3.4% headline CPI, it roughly holds real value with near-zero duration — and every hawkish surprise that hurts the other three sleeves raises its reinvestment rate.</div>
+        A tightening-biased Fed is the one regime where a 0–3 month bill sleeve is <b>paid to wait</b>. Its 3.63% SEC yield against 3.4% headline CPI roughly holds real value at near-zero duration — and every hawkish surprise that hurts the other three sleeves raises its reinvestment rate.</div>
     </div>
     <div class="corr-row">
       <div class="tick" style="background:var(--qqq)">QQQ</div>
@@ -271,20 +271,20 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <div class="corr-row">
       <div class="tick" style="background:var(--iemg)">IEMG</div>
       <div class="corr-b"><span class="sig up">Tailwind</span><br>
-        Captures the fastest-growing bloc — China near 5%, India near 6.4% — at a valuation discount to US large-cap growth. A Fed on <b>hold rather than hiking</b> caps dollar strength, historically the single biggest swing factor for EM equity returns.</div>
+        Captures the fastest-growing bloc — the IMF has China at 4.4% and India at 6.3% for 2026, together 43.6% of all global growth — at 11.6× forward earnings against the Nasdaq-100&#8217;s 25.2×. A Fed on <b>hold rather than hiking</b> caps dollar strength, historically the single biggest swing factor for EM returns in dollar terms.</div>
     </div>
     <div class="corr-row">
       <div class="tick" style="background:var(--bmnr)">BMNR</div>
       <div class="corr-b"><span class="sig dn">Headwind</span><br>
-        A levered ETH proxy at the wrong end of every driver: tightening policy drains the liquidity crypto beta feeds on, and its correlation to QQQ means it <b>fails precisely when the equity sleeve fails</b>. Convexity, not diversification.</div>
+        A levered ETH proxy at the wrong end of every driver: tightening policy drains the liquidity crypto beta feeds on, and a 0.65 correlation to QQQ means it <b>fails precisely when the equity sleeve fails</b>. Convexity, not diversification.</div>
     </div>
   </div>
 
-  <div class="call" style="margin-top:16px"><b>The core tension.</b> Growth is genuine and broad, but it is being met by tightening policy, a rising long end and record-cheap volatility. That argues for staying invested at a full 10-year horizon while shifting the equity mix toward the cheaper, faster-growing bloc — and holding a real cash reserve to buy the repricing rather than to avoid it.</div>
+  <div class="call" style="margin-top:16px"><b>The core tension.</b> Growth is genuine and broad, but it is being met by tightening policy, a rising long end and record-cheap volatility. That argues for staying invested at a full 10-year horizon while shifting the equity mix toward the cheaper, faster-growing bloc — and holding a real cash reserve to buy the repricing rather than to avoid it. Re-scoring every driver against primary sources moved two of the six, and left the composite unchanged at 4.8.</div>
 </section>
 
 <!-- ============ REGIONS ============ -->
-<section class="pane" id="p-regions">
+<section class="pane" id="p-regions" role="tabpanel" aria-labelledby="t-regions">
   <h2>Regional rankings</h2>
   <p class="lede">Macro-driver sentiment scored 1–10 for each bloc across three tactical horizons and the strategic 10-year anchor. Asia/EM leads at every horizon; Europe trails at every horizon.</p>
 
@@ -294,7 +294,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <div class="hz"><span class="hz-l">6 mo</span><span class="hz-t"><i style="width:70%;background:var(--iemg)"></i></span><span class="hz-v">7.0</span></div>
     <div class="hz"><span class="hz-l">12 mo</span><span class="hz-t"><i style="width:75%;background:var(--iemg)"></i></span><span class="hz-v">7.5</span></div>
     <div class="hz"><span class="hz-l">10 yr</span><span class="hz-t"><i style="width:75%;background:var(--iemg)"></i></span><span class="hz-v">7.5</span></div>
-    <p class="reg-note">Nearly two-thirds of global growth, expanding close to three times faster than developed markets. China contributes 26.6% of global real GDP growth despite a property drag; India moderates to ~6.4% and still ranks among the fastest large economies. Chief risk: a further rise in US long yields pulling capital back to dollar assets.</p>
+    <p class="reg-note">Asia-Pacific supplies close to 60% of all global GDP growth. The IMF has China contributing 26.6% of global real growth in 2026 on 4.4% GDP growth, and India 17% on 6.3% — together 43.6% of world growth, against 16% for the US and EU combined. Equities trade at 11.6× forward earnings, a 40% discount to developed markets versus a long-run average nearer 25%. Chief risk: a further rise in US long yields pulling capital back to dollar assets.</p>
   </div>
 
   <div class="reg">
@@ -303,7 +303,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <div class="hz"><span class="hz-l">6 mo</span><span class="hz-t"><i style="width:55%;background:var(--qqq)"></i></span><span class="hz-v">5.5</span></div>
     <div class="hz"><span class="hz-l">12 mo</span><span class="hz-t"><i style="width:65%;background:var(--qqq)"></i></span><span class="hz-v">6.5</span></div>
     <div class="hz"><span class="hz-l">10 yr</span><span class="hz-t"><i style="width:70%;background:var(--qqq)"></i></span><span class="hz-v">7.0</span></div>
-    <p class="reg-note">Scores lowest near-term and climbs with horizon — the inverse of Asia's flat profile. Near term it carries the rate spike, hike-dissent risk and the richest starting valuation; over ten years the productivity and capital-investment cycle the FOMC is describing is the strongest structural engine in the panel.</p>
+    <p class="reg-note">Scores lowest near-term and climbs with horizon — the inverse of Asia&#8217;s flat profile. Near term it carries the 10-year at 4.78%, five FOMC officials leaning toward a hike, and the richest starting multiple in the panel at 25.2× forward. Over ten years the productivity and capital-investment cycle the FOMC is describing is the strongest structural engine here, which is why the gap closes to half a point.</p>
   </div>
 
   <div class="reg">
@@ -312,7 +312,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <div class="hz"><span class="hz-l">6 mo</span><span class="hz-t"><i style="width:40%;background:var(--neg)"></i></span><span class="hz-v">4.0</span></div>
     <div class="hz"><span class="hz-l">12 mo</span><span class="hz-t"><i style="width:45%;background:var(--neg)"></i></span><span class="hz-v">4.5</span></div>
     <div class="hz"><span class="hz-l">10 yr</span><span class="hz-t"><i style="width:50%;background:var(--neg)"></i></span><span class="hz-v">5.0</span></div>
-    <p class="reg-note">The only bloc actively <em>hiking</em> into weakness: the ECB raised in June for the first time in three years and is likely to reach 2.50% in September, against baseline growth of just 0.8% for 2026. Energy import exposure makes the Middle East shock a direct terms-of-trade hit rather than a headline risk.</p>
+    <p class="reg-note">The only bloc actively <em>hiking</em> into weakness: the ECB raised in June for the first time in three years, taking the deposit rate to 2.25%, and is widely expected to reach 2.50% at its 10 September meeting — against Eurosystem baseline growth of just 0.8% for 2026 and inflation of 3.0%. Energy import exposure makes the Middle East shock a direct terms-of-trade hit rather than a headline risk.</p>
   </div>
 
   <h3>Score matrix</h3>
@@ -326,11 +326,11 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="call" style="margin-top:14px"><b>Allocation consequence.</b> Asia/EM outranks the US by 1.5 points at 3 months and still leads by 0.5 at 10 years, while the gap narrows as the US productivity cycle compounds. A permanent EM overweight is not warranted — an equal-weight equity core with the tilt expressed through sizing is. The mandated four sleeves carry no direct Europe exposure, which the rankings independently support.</div>
+  <div class="call" style="margin-top:14px"><b>Allocation consequence.</b> Asia/EM outranks the US by 1.5 points at 3 months and still leads by 0.5 at 10 years, the gap narrowing as the US productivity cycle compounds. That shape — a wide near-term lead decaying to a narrow structural one — argues for a real EM overweight rather than a permanent one, and for expressing it through sizing that rebalancing will naturally decay. The mandated four sleeves carry no direct Europe exposure, which the rankings independently support.</div>
 </section>
 
 <!-- ============ VOLATILITY ============ -->
-<section class="pane" id="p-vol">
+<section class="pane" id="p-vol" role="tabpanel" aria-labelledby="t-vol">
   <h2>Volatility analysis</h2>
   <p class="lede">Term-structure mathematics across 3, 6 and 12 months, then extended to the 10-year holding period. Everything below scales from a single spot input.</p>
 
@@ -340,7 +340,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       <div><div class="k">VIX spot</div><div class="v">14.32</div></div>
       <div><div class="k">2026 low</div><div class="v">14.13</div></div>
     </div>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin:12px 0 0;line-height:1.5">The VIX closed at 14.32 on 3 September, having printed 14.13 — its lowest level of 2026 — days earlier. It sits near its 10-year average yet <b style="color:var(--ink)">14.7% higher than twelve months ago</b>, meaning the calm is recent and shallow rather than structural.</p>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:12px 0 0;line-height:1.5">The VIX closed at 14.32 on 3 September, having printed 14.13 — its lowest level of 2026 — days earlier. Annual average closes ran 15.83 (2016), 11.09 (2017), 16.64 (2018), 15.39 (2019), 29.25 (2020), 19.66 (2021), 25.64 (2022) and 17.83 (2023), a mean of <b style="color:var(--ink)">18.9</b>. Today&#8217;s spot sits roughly 24% below that — yet is still 14.7% higher than twelve months ago, so the calm is recent and shallow rather than structural.</p>
   </div>
 
   <h3>Term structure math</h3>
@@ -356,7 +356,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="warnbox" style="margin-top:12px"><b>Where this understates risk.</b> Square-root scaling assumes constant volatility and normal returns. Both fail in stress: volatility clusters, and equity tails are fatter than lognormal. At VIX 14 the market is pricing a 12-month band of ±23.6% while the 10-year average VIX sits near 19 — implied volatility is roughly <b>25–30% cheap to its own history</b> heading into a September FOMC where three members already want to hike.</div>
+  <div class="warnbox" style="margin-top:12px"><b>Where this understates risk.</b> Square-root scaling assumes constant volatility and normal returns. Both fail in stress: volatility clusters, and equity tails are fatter than lognormal. At VIX 14.32 the market is pricing a 12-month band of ±23.6% against a 2016–2023 average of 18.9 — implied volatility is roughly <b>24% cheap to its own history</b> heading into a 15–16 September FOMC where three voters already dissented for a hike and two more said they would have.</div>
 
   <h3>Portfolio-level volatility</h3>
   <p class="lede" style="margin-bottom:12px">Sleeve inputs — QQQ 21%, IEMG 18%, SGOV 0.5%, BMNR 95% annualised — combined through a correlation matrix (QQQ·IEMG 0.72, QQQ·BMNR 0.65, IEMG·BMNR 0.55, SGOV uncorrelated).</p>
@@ -365,32 +365,32 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       <thead><tr><th>Horizon</th><th colspan="2">Baseline</th><th colspan="2">Optimized</th></tr>
       <tr><th></th><th>σ</th><th>95% VaR</th><th>σ</th><th>95% VaR</th></tr></thead>
       <tbody>
-        <tr><td>3 months</td><td class="n">8.30%</td><td class="n neg">−11.8%</td><td class="n">8.08%</td><td class="n neg">−11.5%</td></tr>
-        <tr><td>6 months</td><td class="n">11.73%</td><td class="n neg">−15.7%</td><td class="n">11.43%</td><td class="n neg">−15.2%</td></tr>
-        <tr><td>12 months</td><td class="n">16.59%</td><td class="n neg">−20.1%</td><td class="n">16.16%</td><td class="n neg">−19.3%</td></tr>
-        <tr class="hl"><td>10 yr max DD</td><td class="n" colspan="2">−28.3%</td><td class="n" colspan="2">−26.7%</td></tr>
+        <tr><td>3 months</td><td class="n">8.30%</td><td class="n neg">−11.8%</td><td class="n">8.00%</td><td class="n neg">−11.3%</td></tr>
+        <tr><td>6 months</td><td class="n">11.73%</td><td class="n neg">−15.7%</td><td class="n">11.31%</td><td class="n neg">−14.9%</td></tr>
+        <tr><td>12 months</td><td class="n">16.59%</td><td class="n neg">−20.1%</td><td class="n">16.00%</td><td class="n neg">−19.0%</td></tr>
+        <tr class="hl"><td>10 yr max DD</td><td class="n" colspan="2">−27.4 to −29.0%</td><td class="n" colspan="2">−26.4 to −28.0%</td></tr>
       </tbody>
     </table>
   </div>
-  <p style="font-size:11.5px;color:var(--ink-faint);margin-top:8px;line-height:1.5">VaR is drift-adjusted at the 5th percentile. Ten-year expected maximum drawdown uses the standard <span style="font-family:var(--f-mono)">≈1.65–1.75 × σ<sub>ann</sub></span> approximation for a positively-drifting portfolio, cross-checked against correlation-weighted sleeve drawdowns.</p>
+  <p style="font-size:11.5px;color:var(--ink-faint);margin-top:8px;line-height:1.5">VaR is drift-adjusted at the 5th percentile. Ten-year maximum drawdown is reported as the full <span style="font-family:var(--f-mono)">1.65–1.75 × σ<sub>ann</sub></span> band rather than a single figure, since that approximation carries more uncertainty than a point estimate implies; the mid-band values (−28.2% and −27.2%) are what the comparison table uses.</p>
 
   <h3>Risk contribution</h3>
   <p class="lede" style="margin-bottom:12px">Weight is not risk. Decomposing each sleeve's share of total portfolio variance exposes the single most important sizing constraint in this mandate:</p>
   <div class="card">
     <div class="drv">
-      <div class="drv-n">BMNR <span class="wt">5% weight</span></div><div class="drv-s" style="color:var(--neg)">23.6%</div>
-      <div class="drv-bar"><i style="width:23.6%;background:var(--bmnr)"></i></div>
-      <div class="drv-d">A twentieth of the capital carrying nearly a quarter of the risk — a <b>4.7× risk-to-weight ratio</b>. This is why 5% is the correct size, not a timid one.</div>
+      <div class="drv-n">BMNR <span class="wt">5% weight</span></div><div class="drv-s" style="color:var(--neg)">23.8%</div>
+      <div class="drv-bar"><i style="width:23.8%;background:var(--bmnr)"></i></div>
+      <div class="drv-d">A twentieth of the capital carrying nearly a quarter of the risk — a <b>4.8× risk-to-weight ratio</b>. This is why 5% is the correct size, not a timid one.</div>
     </div>
     <div class="drv">
-      <div class="drv-n">QQQ <span class="wt">35% weight</span></div><div class="drv-s">42.1%</div>
-      <div class="drv-bar"><i style="width:42.1%;background:var(--qqq)"></i></div>
-      <div class="drv-d">Down from 54.2% of risk in the baseline. The single largest source of concentration the optimization addresses.</div>
+      <div class="drv-n">QQQ <span class="wt">30% weight</span></div><div class="drv-s">35.9%</div>
+      <div class="drv-bar"><i style="width:35.9%;background:var(--qqq)"></i></div>
+      <div class="drv-d">Down from 54.2% of risk in the baseline — the single largest concentration the optimization addresses, and the reason portfolio σ falls even as expected return rises.</div>
     </div>
     <div class="drv">
-      <div class="drv-n">IEMG <span class="wt">35% weight</span></div><div class="drv-s">34.3%</div>
-      <div class="drv-bar"><i style="width:34.3%;background:var(--iemg)"></i></div>
-      <div class="drv-d">Risk contribution below its weight — lower volatility and imperfect correlation to QQQ make it the efficient place to add equity beta.</div>
+      <div class="drv-n">IEMG <span class="wt">40% weight</span></div><div class="drv-s">40.4%</div>
+      <div class="drv-bar"><i style="width:40.4%;background:var(--iemg)"></i></div>
+      <div class="drv-d">Risk contribution almost exactly equal to its weight — lower volatility and imperfect correlation to QQQ make it the efficient place to carry equity beta.</div>
     </div>
     <div class="drv">
       <div class="drv-n">SGOV <span class="wt">25% weight</span></div><div class="drv-s" style="color:var(--pos)">0.0%</div>
@@ -402,17 +402,18 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
   <h3>Ten-year regime view</h3>
   <div class="card">
     <p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px;line-height:1.55">Over a decade a portfolio of this composition should expect to live through <b style="color:var(--ink)">two to three volatility regime shifts</b>. QQQ's own history sets the honest bound on what the equity sleeve can do:</p>
-    <div class="kv"><span class="k">2000–02 dot-com</span><span class="v" style="color:var(--neg)">−83.0%</span></div>
-    <div class="kv"><span class="k">2007–09 financial crisis</span><span class="v" style="color:var(--neg)">−53.5%</span></div>
-    <div class="kv"><span class="k">2022 rate-hiking cycle</span><span class="v" style="color:var(--neg)">−37.0%</span></div>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin:11px 0 0;line-height:1.55">The 2022 episode is the closest analogue to the present configuration — a rate-driven de-rating rather than a credit event — and is what the −40% QQQ drawdown assumption is anchored to. The dot-com figure is the reminder that concentration risk in this index has no theoretical floor, and the reason the equity core is split across two blocs rather than held in one.</p>
+    <div class="kv"><span class="k">2000–02 dot-com</span><span class="v" style="color:var(--neg)">≈−83%</span></div>
+    <div class="kv"><span class="k">2007–09 financial crisis</span><span class="v" style="color:var(--neg)">−50 to −53%</span></div>
+    <div class="kv"><span class="k">2020 COVID crash</span><span class="v" style="color:var(--neg)">≈−27%</span></div>
+    <div class="kv"><span class="k">2022 rate-hiking cycle</span><span class="v" style="color:var(--neg)">−33 to −37%</span></div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:11px 0 0;line-height:1.55">Published figures vary by a few points depending on price versus total-return basis and intraday versus closing marks, so these are ranges rather than points. The 2022 episode is the closest analogue to the present configuration — a rate-driven de-rating rather than a credit event — and the −40% QQQ assumption deliberately sits <em>beyond</em> its worst reading, since the starting multiple today is higher. The dot-com figure is the reminder that concentration risk in this index has no theoretical floor, and the reason the equity core is split across two blocs rather than held in one.</p>
   </div>
 </section>
 
 <!-- ============ ASSETS ============ -->
-<section class="pane" id="p-assets">
+<section class="pane" id="p-assets" role="tabpanel" aria-labelledby="t-assets">
   <h2>The four sleeves</h2>
-  <p class="lede">Every mandated holding, with its forecast 10-year CAGR net of fund fees and its expected maximum drawdown.</p>
+  <p class="lede">Every mandated holding, with its forecast 10-year CAGR net of fund fees and its expected maximum drawdown. Forecasts are built from observable inputs — see the method on the Portfolios tab.</p>
   <p class="swipe">← swipe to compare →</p>
   <div class="deck" id="deck">
 
@@ -424,16 +425,16 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       </div>
       <div class="sl-body">
         <div class="hero2">
-          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--pos)">3.10%</div></div>
+          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--pos)">3.16%</div></div>
           <div><div class="k">Expected max DD</div><div class="v">−0.3%</div></div>
         </div>
-        <div class="kv"><span class="k">Gross forecast</span><span class="v">3.19%</span></div>
+        <div class="kv"><span class="k">Gross forecast</span><span class="v">3.25%</span></div>
         <div class="kv"><span class="k">Expense ratio</span><span class="v">0.09%</span></div>
-        <div class="kv"><span class="k">Current yield</span><span class="v">3.66%</span></div>
-        <div class="kv"><span class="k">Price</span><span class="v">$100.47</span></div>
+        <div class="kv"><span class="k">30-day SEC yield</span><span class="v">3.63%</span></div>
+        <div class="kv"><span class="k">Fwd dividend yield</span><span class="v">3.67%</span></div>
         <div class="kv"><span class="k">Annualised σ</span><span class="v">0.5%</span></div>
-        <div class="kv"><span class="k">$10,000 → 10 yr</span><span class="v">$13,570</span></div>
-        <p class="sl-role"><b>Role — drawdown control and dry powder.</b> Forecast assumes the funds rate averages ~3.2% over the decade as policy normalises from today's 3.50–3.75%. Near-zero duration means it is the one defensive sleeve that <em>cannot</em> be hurt by the 10-year at 4.78% — unlike long bonds. Its real job is to be the asset you spend into a drawdown.</p>
+        <div class="kv"><span class="k">$10,000 → 10 yr</span><span class="v">$13,649</span></div>
+        <p class="sl-role"><b>Role — drawdown control and dry powder.</b> The forecast assumes bill yields average 3.25% over the decade as policy normalises from today&#8217;s 3.50–3.75%, so it sits <em>below</em> the current 3.63% rather than extrapolating it. Near-zero duration means this is the one defensive sleeve that cannot be hurt by the 10-year at 4.78% — unlike long bonds. Its real job is to be the asset you spend into a drawdown.</p>
         <div class="wts"><div><div class="k">Baseline</div><div class="v">25%</div></div><div><div class="k">Optimized</div><div class="v">25%</div></div></div>
       </div>
     </article>
@@ -446,17 +447,20 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       </div>
       <div class="sl-body">
         <div class="hero2">
-          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--pos)">8.30%</div></div>
+          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--pos)">8.18%</div></div>
           <div><div class="k">Expected max DD</div><div class="v" style="color:var(--neg)">−40%</div></div>
         </div>
-        <div class="kv"><span class="k">Gross forecast</span><span class="v">8.48%</span></div>
+        <div class="kv"><span class="k">Gross forecast</span><span class="v">8.36%</span></div>
         <div class="kv"><span class="k">Expense ratio</span><span class="v">0.18%</span></div>
-        <div class="kv"><span class="k">Trailing 1 yr</span><span class="v" style="color:var(--pos)">+34.38%</span></div>
-        <div class="kv"><span class="k">YTD (30 Jun)</span><span class="v" style="color:var(--pos)">+20.31%</span></div>
+        <div class="kv"><span class="k">Price (4 Sep)</span><span class="v">$717.67</span></div>
+        <div class="kv"><span class="k">1-yr total return</span><span class="v" style="color:var(--pos)">+26.0%</span></div>
+        <div class="kv"><span class="k">YTD (2 Sep)</span><span class="v" style="color:var(--pos)">+15.7%</span></div>
+        <div class="kv"><span class="k">Forward P/E</span><span class="v">25.2×</span></div>
+        <div class="kv"><span class="k">Dividend yield</span><span class="v">0.65%</span></div>
         <div class="kv"><span class="k">Annualised σ</span><span class="v">21%</span></div>
-        <div class="kv"><span class="k">$10,000 → 10 yr</span><span class="v">$22,197</span></div>
-        <p class="sl-role"><b>Role — primary growth engine.</b> The fee fell from 0.20% to 0.18% after shareholders approved converting the 1999-vintage unit investment trust into an open-end ETF in December 2025, which also lets the fund reinvest dividends and lend securities. The forecast deliberately sits <em>well below</em> the trailing 34% — that return pulled forward future gains and raised the starting multiple against a rising discount rate.</p>
-        <div class="wts"><div><div class="k">Baseline</div><div class="v">45%</div></div><div><div class="k">Optimized</div><div class="v" style="color:var(--neg)">35%</div></div></div>
+        <div class="kv"><span class="k">$10,000 → 10 yr</span><span class="v">$21,952</span></div>
+        <p class="sl-role"><b>Role — primary US growth engine.</b> The fee fell from 0.20% to 0.18% after shareholders approved converting the 1999-vintage unit investment trust into an open-end ETF in December 2025, which also lets the fund reinvest dividends and lend securities — worth about $41 per $10,000 over ten years. The forecast sits well below the trailing 26% because 9.5% assumed earnings growth is partly offset by <b>−1.8%/yr of multiple compression</b> from 25.2× toward 21×.</p>
+        <div class="wts"><div><div class="k">Baseline</div><div class="v">45%</div></div><div><div class="k">Optimized</div><div class="v" style="color:var(--neg)">30%</div></div></div>
       </div>
     </article>
 
@@ -468,17 +472,19 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       </div>
       <div class="sl-body">
         <div class="hero2">
-          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--pos)">8.60%</div></div>
+          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--pos)">8.94%</div></div>
           <div><div class="k">Expected max DD</div><div class="v" style="color:var(--neg)">−33%</div></div>
         </div>
-        <div class="kv"><span class="k">Gross forecast</span><span class="v">8.69%</span></div>
+        <div class="kv"><span class="k">Gross forecast</span><span class="v">9.03%</span></div>
         <div class="kv"><span class="k">Expense ratio</span><span class="v">0.09%</span></div>
         <div class="kv"><span class="k">2025 return (NAV)</span><span class="v" style="color:var(--pos)">+32.12%</span></div>
         <div class="kv"><span class="k">YTD 2026</span><span class="v" style="color:var(--pos)">+22.5%</span></div>
+        <div class="kv"><span class="k">Forward P/E</span><span class="v">11.6×</span></div>
+        <div class="kv"><span class="k">Dividend yield</span><span class="v">2.29%</span></div>
         <div class="kv"><span class="k">Fund assets</span><span class="v">$69.0B</span></div>
-        <div class="kv"><span class="k">$10,000 → 10 yr</span><span class="v">$22,819</span></div>
-        <p class="sl-role"><b>Role — the highest-conviction overweight.</b> The only sleeve forecast to out-earn QQQ net of fees <em>while</em> drawing down less, on a starting valuation discount to US large-cap growth and half the fee. Large-, mid- and small-cap coverage means genuine breadth across the bloc supplying two-thirds of global growth, not a China proxy.</p>
-        <div class="wts"><div><div class="k">Baseline</div><div class="v">25%</div></div><div><div class="k">Optimized</div><div class="v" style="color:var(--pos)">35%</div></div></div>
+        <div class="kv"><span class="k">$10,000 → 10 yr</span><span class="v">$23,544</span></div>
+        <p class="sl-role"><b>Role — the highest-conviction overweight.</b> The only sleeve forecast to out-earn QQQ net of fees <em>while</em> drawing down less. At 11.6× forward against the Nasdaq-100&#8217;s 25.2× it carries a 40% discount to developed markets versus a long-run average nearer 25% — the widest since 2003. The forecast still charges it <b>−1.5%/yr of currency drag</b>, the honest cost of holding EM in dollars.</p>
+        <div class="wts"><div><div class="k">Baseline</div><div class="v">25%</div></div><div><div class="k">Optimized</div><div class="v" style="color:var(--pos)">40%</div></div></div>
       </div>
     </article>
 
@@ -490,19 +496,22 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       </div>
       <div class="sl-body">
         <div class="hero2">
-          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--warn)">11.0%</div></div>
+          <div><div class="k">Net 10-yr CAGR</div><div class="v" style="color:var(--warn)">9.98%</div></div>
           <div><div class="k">Expected max DD</div><div class="v" style="color:var(--neg)">−85%</div></div>
         </div>
         <div class="kv"><span class="k">Price</span><span class="v">$26.45</span></div>
         <div class="kv"><span class="k">Market cap</span><span class="v">$15.96B</span></div>
         <div class="kv"><span class="k">ETH treasury</span><span class="v">5,901,112</span></div>
-        <div class="kv"><span class="k">Treasury value</span><span class="v">$14.48B</span></div>
-        <div class="kv"><span class="k">mNAV</span><span class="v">1.10×</span></div>
+        <div class="kv"><span class="k">— share of ETH supply</span><span class="v">≈4.9%</span></div>
+        <div class="kv"><span class="k">ETH value</span><span class="v">$14.48B</span></div>
+        <div class="kv"><span class="k">Cash &amp; securities</span><span class="v">$541M</span></div>
+        <div class="kv"><span class="k">Total NAV</span><span class="v">$15.6B</span></div>
+        <div class="kv"><span class="k">mNAV (total / crypto)</span><span class="v">1.02× / 1.10×</span></div>
         <div class="kv"><span class="k">ETH staked</span><span class="v">85.9%</span></div>
         <div class="kv"><span class="k">52-wk range</span><span class="v">$12.80–65.60</span></div>
         <div class="kv"><span class="k">Beta</span><span class="v">2.84–3.41</span></div>
         <div class="kv"><span class="k">Annualised σ</span><span class="v" style="color:var(--neg)">~95%</span></div>
-        <p class="sl-role"><b>Role — capped convexity.</b> No fund fee, but three structural drags stand in for one: a <b>1.10× premium to net asset value</b> for exposure you could hold directly, severe historical dilution as equity is issued to buy ETH, and single-issuer risk. It has already fallen 80.5% peak-to-trough inside twelve months. The 11% median forecast carries by far the widest distribution here and should be read as the centre of a very fat curve, not an expectation.</p>
+        <p class="sl-role"><b>Role — capped convexity.</b> On total NAV of $15.6B the premium is only <b>1.02×</b> — close to fair, and materially better than the 1.10× headline against crypto alone. Staking 85.9% of the treasury adds roughly 2.6%/yr. Against that: severe historical dilution as equity is issued to buy ETH, single-issuer risk, and an 80.5% peak-to-trough fall already on the tape inside twelve months. The ~10% forecast is the <em>median of a very fat distribution</em>, not an expectation.</p>
         <div class="wts"><div><div class="k">Baseline</div><div class="v">5%</div></div><div><div class="k">Optimized</div><div class="v">5%</div></div></div>
       </div>
     </article>
@@ -514,18 +523,18 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <table>
       <thead><tr><th>Sleeve</th><th>Fee</th><th>Net CAGR</th><th>Max DD</th><th>σ</th></tr></thead>
       <tbody>
-        <tr><td>SGOV</td><td class="n">0.09%</td><td class="n pos">3.10%</td><td class="n">−0.3%</td><td class="n">0.5%</td></tr>
-        <tr><td>QQQ</td><td class="n">0.18%</td><td class="n pos">8.30%</td><td class="n neg">−40%</td><td class="n">21%</td></tr>
-        <tr class="hl"><td>IEMG</td><td class="n">0.09%</td><td class="n">8.60%</td><td class="n">−33%</td><td class="n">18%</td></tr>
-        <tr><td>BMNR</td><td class="n">—</td><td class="n pos">11.0%</td><td class="n neg">−85%</td><td class="n neg">95%</td></tr>
+        <tr><td>SGOV</td><td class="n">0.09%</td><td class="n pos">3.16%</td><td class="n">−0.3%</td><td class="n">0.5%</td></tr>
+        <tr><td>QQQ</td><td class="n">0.18%</td><td class="n pos">8.18%</td><td class="n neg">−40%</td><td class="n">21%</td></tr>
+        <tr class="hl"><td>IEMG</td><td class="n">0.09%</td><td class="n">8.94%</td><td class="n">−33%</td><td class="n">18%</td></tr>
+        <tr><td>BMNR</td><td class="n">—</td><td class="n pos">9.98%</td><td class="n neg">−85%</td><td class="n neg">95%</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="call" style="margin-top:14px"><b>Read the fourth column first.</b> BMNR offers 2.4 points of extra CAGR over IEMG for 52 points of extra drawdown. That trade only makes sense in small, capped size — which is exactly how both portfolios use it.</div>
+  <div class="call" style="margin-top:14px"><b>Read the fourth column first.</b> BMNR offers just 1.0 point of extra CAGR over IEMG for 52 points of extra drawdown — a far worse trade than it first appears, because IEMG&#8217;s forecast rose once its valuation discount was measured rather than assumed. That trade only makes sense in small, capped size.</div>
 </section>
 
 <!-- ============ PORTFOLIOS ============ -->
-<section class="pane" id="p-port">
+<section class="pane" id="p-port" role="tabpanel" aria-labelledby="t-port">
   <h2>Baseline vs optimized</h2>
   <p class="lede">Both hold all four mandated sleeves, both weight in increments of 5, both are built for a 10-year horizon. Only the equity split differs.</p>
 
@@ -535,8 +544,8 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       <svg viewBox="0 0 180 180" role="img" aria-label="Baseline allocation: QQQ 45 percent, IEMG 25 percent, SGOV 25 percent, BMNR 5 percent">
         <g transform="rotate(-90 90 90)" fill="none" stroke-width="26">
           <circle cx="90" cy="90" r="64" stroke="#2B5CE6" stroke-dasharray="180.96 221.17" stroke-dashoffset="0"/>
-          <circle cx="90" cy="90" r="64" stroke="#0F9B8E" stroke-dasharray="100.53 301.60" stroke-dashoffset="-180.96"/>
-          <circle cx="90" cy="90" r="64" stroke="#8A94A6" stroke-dasharray="100.53 301.60" stroke-dashoffset="-281.49"/>
+          <circle cx="90" cy="90" r="64" stroke="#0F9B8E" stroke-dasharray="100.53 301.59" stroke-dashoffset="-180.96"/>
+          <circle cx="90" cy="90" r="64" stroke="#8A94A6" stroke-dasharray="100.53 301.59" stroke-dashoffset="-281.49"/>
           <circle cx="90" cy="90" r="64" stroke="#E07A2F" stroke-dasharray="20.11 382.02" stroke-dashoffset="-382.02"/>
         </g>
         <text x="90" y="86" text-anchor="middle" fill="#10161F" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">7.21</text>
@@ -552,78 +561,118 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
 
     <div class="dn win">
       <div class="dn-t">Optimized</div><div class="dn-c">Macro-tilted</div>
-      <svg viewBox="0 0 180 180" role="img" aria-label="Optimized allocation: QQQ 35 percent, IEMG 35 percent, SGOV 25 percent, BMNR 5 percent">
+      <svg viewBox="0 0 180 180" role="img" aria-label="Optimized allocation: QQQ 30 percent, IEMG 40 percent, SGOV 25 percent, BMNR 5 percent">
         <g transform="rotate(-90 90 90)" fill="none" stroke-width="26">
-          <circle cx="90" cy="90" r="64" stroke="#2B5CE6" stroke-dasharray="140.74 261.38" stroke-dashoffset="0"/>
-          <circle cx="90" cy="90" r="64" stroke="#0F9B8E" stroke-dasharray="140.74 261.38" stroke-dashoffset="-140.74"/>
-          <circle cx="90" cy="90" r="64" stroke="#8A94A6" stroke-dasharray="100.53 301.60" stroke-dashoffset="-281.49"/>
+          <circle cx="90" cy="90" r="64" stroke="#2B5CE6" stroke-dasharray="120.64 281.49" stroke-dashoffset="0"/>
+          <circle cx="90" cy="90" r="64" stroke="#0F9B8E" stroke-dasharray="160.85 241.27" stroke-dashoffset="-120.64"/>
+          <circle cx="90" cy="90" r="64" stroke="#8A94A6" stroke-dasharray="100.53 301.59" stroke-dashoffset="-281.49"/>
           <circle cx="90" cy="90" r="64" stroke="#E07A2F" stroke-dasharray="20.11 382.02" stroke-dashoffset="-382.02"/>
         </g>
-        <text x="90" y="86" text-anchor="middle" fill="#0F5E63" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">7.24</text>
+        <text x="90" y="86" text-anchor="middle" fill="#0F5E63" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">7.32</text>
         <text x="90" y="102" text-anchor="middle" fill="#8A94A6" font-family="Public Sans, sans-serif" font-size="9" letter-spacing="0.8">NET CAGR %</text>
       </svg>
       <div class="leg">
-        <span><i style="background:var(--qqq)"></i>QQQ<em>35%</em></span>
-        <span><i style="background:var(--iemg)"></i>IEMG<em>35%</em></span>
+        <span><i style="background:var(--qqq)"></i>QQQ<em>30%</em></span>
+        <span><i style="background:var(--iemg)"></i>IEMG<em>40%</em></span>
         <span><i style="background:var(--sgov)"></i>SGOV<em>25%</em></span>
         <span><i style="background:var(--bmnr)"></i>BMNR<em>5%</em></span>
       </div>
     </div>
   </div>
 
-  <p class="vs">One 10-point rotation, QQQ → IEMG</p>
+  <p class="vs">One 15-point rotation, QQQ → IEMG</p>
 
   <h3>Forecast comparison</h3>
   <div class="tw">
     <table>
       <thead><tr><th>Metric</th><th>Baseline</th><th>Optimized</th><th>Δ</th></tr></thead>
       <tbody>
-        <tr><td>Net 10-yr CAGR</td><td class="n">7.21%</td><td class="n">7.24%</td><td class="n pos">+0.03</td></tr>
-        <tr><td>Weighted fee</td><td class="n">0.126%</td><td class="n">0.117%</td><td class="n pos">−0.009</td></tr>
-        <tr><td>Annualised σ</td><td class="n">16.59%</td><td class="n">16.16%</td><td class="n pos">−0.43</td></tr>
-        <tr class="hl"><td>Expected max DD</td><td class="n">−28.3%</td><td class="n">−26.7%</td><td class="n pos">+1.6</td></tr>
-        <tr><td>Severe-stress DD</td><td class="n neg">−38%</td><td class="n neg">−35%</td><td class="n pos">+3</td></tr>
-        <tr><td>Return / risk</td><td class="n">0.248</td><td class="n">0.256</td><td class="n pos">+0.008</td></tr>
-        <tr><td>$10,000 → 10 yr</td><td class="n">$20,061</td><td class="n">$20,117</td><td class="n pos">+$56</td></tr>
-        <tr><td>10-yr fee drag</td><td class="n neg">−$237</td><td class="n neg">−$221</td><td class="n pos">+$16</td></tr>
+        <tr><td>Net 10-yr CAGR</td><td class="n">7.21%</td><td class="n">7.32%</td><td class="n pos">+0.11</td></tr>
+        <tr><td>Weighted fee</td><td class="n">0.126%</td><td class="n">0.112%</td><td class="n pos">−0.014</td></tr>
+        <tr><td>Annualised σ</td><td class="n">16.59%</td><td class="n">16.00%</td><td class="n pos">−0.59</td></tr>
+        <tr class="hl"><td>Expected max DD</td><td class="n">−28.2%</td><td class="n">−27.2%</td><td class="n pos">+1.0</td></tr>
+        <tr><td>Correlated-stress DD</td><td class="n neg">−30.6%</td><td class="n neg">−29.5%</td><td class="n pos">+1.1</td></tr>
+        <tr><td>Return / risk</td><td class="n">0.244</td><td class="n">0.260</td><td class="n pos">+0.016</td></tr>
+        <tr><td>$10,000 → 10 yr</td><td class="n">$20,052</td><td class="n">$20,266</td><td class="n pos">+$214</td></tr>
+        <tr><td>10-yr fee drag</td><td class="n neg">−$237</td><td class="n neg">−$213</td><td class="n pos">+$24</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="call" style="margin-top:14px"><b>The optimized portfolio dominates on every axis.</b> Higher net return, lower volatility, shallower drawdown and lower fees — no trade-off was made. That is only possible because the rotation moves capital into a sleeve forecast to earn <em>more</em> while risking <em>less</em>, which the regional rankings independently identify.</div>
+  <div class="call" style="margin-top:14px"><b>The optimized portfolio dominates on every axis.</b> Higher net return, lower volatility, shallower drawdown and lower fees — no trade-off was made. That is only possible because the rotation moves capital into a sleeve forecast to earn <em>more</em> while risking <em>less</em>, which the regional rankings and the 11.6× vs 25.2× valuation gap independently identify. The correlated-stress row is the harsher test: it assumes every sleeve hits its own worst drawdown simultaneously, and the optimized book still wins.</div>
+
+  <h3>How the forecasts are built</h3>
+  <p class="lede" style="margin-bottom:12px">Each equity forecast is a sum of observable parts rather than a single judgement, so every figure can be challenged individually.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Component</th><th>QQQ</th><th>IEMG</th></tr></thead>
+      <tbody>
+        <tr><td>Dividend yield</td><td class="n">+0.65</td><td class="n">+2.29</td></tr>
+        <tr><td>Earnings growth</td><td class="n">+9.50</td><td class="n">+7.50</td></tr>
+        <tr><td>Valuation change</td><td class="n neg">−1.79</td><td class="n pos">+0.74</td></tr>
+        <tr><td>Currency drag</td><td class="n">—</td><td class="n neg">−1.50</td></tr>
+        <tr class="hl"><td>Gross CAGR</td><td class="n">8.36</td><td class="n">9.03</td></tr>
+        <tr><td>Expense ratio</td><td class="n neg">−0.18</td><td class="n neg">−0.09</td></tr>
+        <tr class="hl"><td>Net CAGR</td><td class="n">8.18</td><td class="n">8.94</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:11.5px;color:var(--ink-faint);margin-top:8px;line-height:1.5">Valuation change is the annualised effect of the forward multiple moving from its observed level to an assumed terminal level over ten years: QQQ 25.2× → 21×, IEMG 11.6× → 12.5×. IEMG&#8217;s reversion is deliberately partial — it closes less than half the gap to its own long-run average discount. BMNR is built separately: 9.0% assumed ETH appreciation, +2.6% staking on 85.9% of the treasury, −0.2% mNAV normalisation, −1.4% corporate and dilution drag.</p>
 
   <h3>Rationale</h3>
   <div class="num">
-    <div><b>Start from the horizon, not the headlines.</b> Ten years is long enough that cash drag compounds into a serious cost — SGOV's $13,570 terminal value against QQQ's $22,197 on the same $10,000 is the price of caution. The macro signal is therefore spent on <em>which</em> equities to own, not on how much equity to own. Total risk assets stay at 75% in both portfolios.</div>
-    <div><b>The equity rotation follows the rankings.</b> Asia/EM outscores the US at every horizon — 6.5 vs 5.0 at three months, 7.5 vs 7.0 at ten years. Moving 10 points from QQQ to IEMG brings the equity core to an even 35/35 split. It stops short of a full overweight because the US advantage compounds as the horizon extends, and the 10-year gap is only half a point.</div>
-    <div><b>IEMG is the rare sleeve that improves both sides.</b> Forecast 8.60% net against QQQ's 8.30%, on lower volatility (18% vs 21%), a shallower drawdown (−33% vs −40%) and half the fee. Adding it improves return and reduces risk simultaneously — which is why the optimization requires no trade-off.</div>
-    <div><b>SGOV stays at 25% as ammunition, not as fear.</b> With a composite reading of 4.8/10, cheap volatility and a 10-year at post-2023 highs, a repricing is a live risk. Holding it in 0–3 month bills rather than long bonds means the reserve is not itself damaged by rising yields, and it earns 3.66% while waiting. Its function is to be sold into the drawdown to rebalance back to target — a 25% reserve is what converts a −27% drawdown from a loss into a buying opportunity.</div>
-    <div><b>BMNR is capped at 5% because of risk, not weight.</b> At a twentieth of the capital it contributes 23.6% of portfolio variance — a 4.7× risk-to-weight ratio. It is also a poor diversifier: 0.65 correlated to QQQ, it fails in the same regimes as the growth sleeve. Held at 1.10× NAV with heavy dilution history and an 80.5% drawdown already on the tape, 5% is the largest defensible position. It earns its place as convexity to an ETH recovery, sized so that a total loss costs 5% of capital.</div>
-    <div><b>Fees are a controlled variable.</b> Weighted expense falls from 0.126% to 0.117% purely as a by-product of the rotation, since IEMG charges 0.09% against QQQ's 0.18%. Over ten years that is $16 saved per $10,000 — small, but it is return taken with no risk added, and QQQ's own cut from 0.20% is worth roughly $25 per $10,000 over the same period.</div>
+    <div><b>Start from the horizon, not the headlines.</b> Ten years is long enough that cash drag compounds into a serious cost — SGOV&#8217;s $13,649 terminal value against IEMG&#8217;s $23,544 on the same $10,000 is the price of caution. The macro signal is therefore spent on <em>which</em> equities to own, not on how much equity to own. Total risk assets stay at 75% in both portfolios.</div>
+    <div><b>The equity rotation follows three independent signals.</b> The regional rankings put Asia/EM ahead of the US at every horizon. The valuation data puts EM at 11.6× forward against the Nasdaq-100&#8217;s 25.2×, a 40% discount to developed markets versus a 25% long-run norm. The building-block model puts IEMG 0.76 points ahead of QQQ net of fees. All three point the same way, which is why the rotation is 15 points rather than a token tilt.</div>
+    <div><b>IEMG is the rare sleeve that improves both sides.</b> Forecast 8.94% net against QQQ&#8217;s 8.18%, on lower volatility (18% vs 21%), a shallower drawdown (−33% vs −40%) and half the fee. Adding it raises return and cuts risk simultaneously — which is why the optimization requires no trade-off at all.</div>
+    <div><b>Where the model was overruled.</b> Searching every 5%-increment allocation, the highest return-per-unit-risk mix is QQQ 5 / IEMG 70 / SGOV 20 / BMNR 5. That answer is rejected. It over-fits a point estimate whose two least reliable inputs — the valuation reversion and the currency drag — are precisely what drive it, and it concentrates a dollar investor in a bloc where China alone is roughly a quarter of the index. Capping the tilt at 40% keeps most of the benefit while leaving the conclusion robust to those assumptions being wrong.</div>
+    <div><b>SGOV stays at 25% as ammunition, not as fear.</b> With a composite reading of 4.8/10, implied volatility 24% below its own historical average and the 10-year at post-2023 highs, a repricing is a live risk. Holding the reserve in 0–3 month bills rather than long bonds means it is not itself damaged by rising yields, and it earns 3.63% while waiting. Its function is to be sold into the drawdown to rebalance back to target — a 25% reserve is what converts a −27% drawdown from a loss into a buying opportunity.</div>
+    <div><b>BMNR is capped at 5% because of risk, not weight.</b> At a twentieth of the capital it contributes 23.8% of portfolio variance — a 4.8× risk-to-weight ratio. It is also a poor diversifier: 0.65 correlated to QQQ, it fails in the same regimes as the growth sleeve. Verification did improve its standing — the premium is 1.02× on total NAV of $15.6B, not the 1.10× that crypto holdings alone imply — but with severe dilution history and an 80.5% drawdown already on the tape, 5% remains the largest defensible position. It earns its place as convexity to an ETH recovery, sized so total loss costs 5% of capital.</div>
+    <div><b>Fees are a controlled variable.</b> Weighted expense falls from 0.126% to 0.112% purely as a by-product of the rotation, since IEMG charges 0.09% against QQQ&#8217;s 0.18%. Over ten years that is $24 saved per $10,000 — small, but return taken with no risk added. QQQ&#8217;s own cut from 0.20% is worth about $41 per $10,000 over the same period.</div>
   </div>
 
-  <div class="call" style="margin-top:16px"><b>Recommendation.</b> Adopt the optimized allocation — QQQ 35 / IEMG 35 / SGOV 25 / BMNR 5 — and rebalance to target semi-annually or whenever any sleeve drifts more than 5 points. Rebalancing is doing most of the work here: it mechanically trims the sleeve that has run and buys the one that has fallen, which is what turns BMNR's 95% volatility from a liability into a small, systematic source of return. Revisit the regional tilt if the Fed hikes rather than holds, if the 10-year breaks decisively above 5%, or if the US–Asia ranking gap closes below half a point.</div>
+  <div class="call" style="margin-top:16px"><b>Recommendation.</b> Adopt the optimized allocation — QQQ 30 / IEMG 40 / SGOV 25 / BMNR 5 — and rebalance to target semi-annually or whenever any sleeve drifts more than 5 points. Rebalancing is doing most of the work here: it mechanically trims the sleeve that has run and buys the one that has fallen, which is what turns BMNR&#8217;s 95% volatility from a liability into a small, systematic source of return. Revisit the tilt if the Fed hikes rather than holds, if the 10-year breaks decisively above 5%, or if the EM forward-multiple discount narrows from 40% back toward its 25% long-run norm — that last one is the thesis, and its closing is the signal to take the overweight off.</div>
+
+  <h3>Verification log</h3>
+  <p class="lede" style="margin-bottom:12px">Every figure was re-checked against primary sources. Fourteen corrections were recorded; these are the ones that changed a number on this page.</p>
+  <div class="card">
+    <div class="kv"><span class="k">QQQ 1-yr return</span><span class="v">34.4% → <b>26.0%</b></span></div>
+    <div class="kv"><span class="k">QQQ YTD</span><span class="v">20.3% → <b>15.7%</b></span></div>
+    <div class="kv"><span class="k">SGOV yield</span><span class="v">3.66% → <b>3.63%</b></span></div>
+    <div class="kv"><span class="k">BMNR mNAV</span><span class="v">1.10× → <b>1.02×</b></span></div>
+    <div class="kv"><span class="k">China GDP 2026</span><span class="v">~5% → <b>4.4%</b></span></div>
+    <div class="kv"><span class="k">India GDP 2026</span><span class="v">6.4% → <b>6.3%</b></span></div>
+    <div class="kv"><span class="k">Fed dissenters</span><span class="v">3 → <b>3 voting, 5 total</b></span></div>
+    <div class="kv"><span class="k">QQQ 2022 drawdown</span><span class="v">−37% → <b>−33 to −37%</b></span></div>
+    <div class="kv"><span class="k">QQQ 2008 drawdown</span><span class="v">−53.5% → <b>−50 to −53%</b></span></div>
+    <div class="kv"><span class="k">VIX vs history</span><span class="v" style="color:var(--neg)"><b>contradiction fixed</b></span></div>
+    <div class="kv"><span class="k">Severe-stress DD</span><span class="v" style="color:var(--neg)"><b>asserted → derived</b></span></div>
+    <div class="kv"><span class="k">QQQ fee-cut value</span><span class="v">$25 → <b>$41</b></span></div>
+    <div class="kv"><span class="k">Return forecasts</span><span class="v"><b>rebuilt from multiples</b></span></div>
+    <div class="kv"><span class="k">Optimized weights</span><span class="v">35/35 → <b>30/40</b></span></div>
+    <p class="sl-role" style="margin-top:12px"><b>The two that mattered most.</b> The page previously stated both that the VIX &#8220;sits near its 10-year average&#8221; and that the average was near 19 — a direct self-contradiction; the 2016–2023 mean is 18.9, so spot at 14.32 is ~24% <em>below</em> it. And QQQ&#8217;s trailing returns were carried from a 30 June factsheet without being marked stale, overstating the run-up by 8 points and making the US sleeve look more extended than it is.</p>
+  </div>
 
   <h3>Sources</h3>
   <p class="src">
     Fund data — <a href="https://www.ishares.com/us/products/314116/ishares-0-3-month-treasury-bond-etf">iShares SGOV</a> · <a href="https://www.ishares.com/us/products/244050/ishares-core-msci-emerging-markets-etf">iShares IEMG</a> · <a href="https://www.invesco.com/qqq-etf/en/performance.html">Invesco QQQ</a> · <a href="https://www.invesco.com/qqq-etf/en/market-outlook/whats-new-about-qqq.html">QQQ modernization</a><br>
-    Policy &amp; macro — <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20260729a.htm">FOMC statement, 29 Jul 2026</a> · <a href="https://www.federalreserve.gov/monetarypolicy/fomcminutes20260729.htm">FOMC minutes</a> · <a href="https://www.bls.gov/news.release/cpi.nr0.htm">BLS CPI</a> · <a href="https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260611~4d41bd5e83.en.html">ECB decision, 11 Jun 2026</a> · <a href="https://www.imf.org/-/media/files/publications/weo/2026/january/english/text.pdf">IMF World Economic Outlook</a><br>
-    Rates &amp; volatility — <a href="https://fred.stlouisfed.org/series/dgs10">FRED 10-yr Treasury</a> · <a href="https://fred.stlouisfed.org/graph/?g=A58O">FRED VIX</a> · <a href="https://www.cboe.com/tradable-products/vix/">Cboe</a><br>
-    BMNR — <a href="https://www.sec.gov/Archives/edgar/data/0001829311/000149315226029507/ex99-1.htm">SEC Form 8-K</a> · <a href="https://blockworks.com/analytics/BMNR/bitmine-bmnr-treasury-holdings/bitmine-bmnr-basic-mnav">Blockworks mNAV</a>
+    Valuation — <a href="https://siblisresearch.com/data/nasdaq-100-pe-ratio/">Siblis Nasdaq-100 P/E</a> · <a href="https://siblisresearch.com/data/emerging-markets-valuations/">Siblis EM valuations</a> · <a href="https://www.msci.com/indexes/markets-in-motion/visualizations/em-gains-but-discount-to-developed-markets-deepens">MSCI EM discount</a><br>
+    Policy &amp; macro — <a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20260729a.htm">FOMC statement, 29 Jul 2026</a> · <a href="https://www.federalreserve.gov/monetarypolicy/fomcminutes20260729.htm">FOMC minutes</a> · <a href="https://www.bls.gov/news.release/cpi.nr0.htm">BLS CPI</a> · <a href="https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp260611~4d41bd5e83.en.html">ECB decision, 11 Jun 2026</a> · <a href="https://www.imf.org/external/datamapper/index.php">IMF WEO datamapper</a><br>
+    Rates &amp; volatility — <a href="https://fred.stlouisfed.org/series/dgs10">FRED 10-yr Treasury</a> · <a href="https://www.cboe.com/tradable-products/vix/vix-historical-data">Cboe VIX history</a> · <a href="https://www.macrotrends.net/2603/vix-volatility-index-historical-chart">VIX annual averages</a><br>
+    BMNR — <a href="https://www.sec.gov/Archives/edgar/data/0001829311/000149315226029507/ex99-1.htm">SEC Form 8-K</a> · <a href="https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-5-90-million-tokens-and-total-crypto-and-total-cash-holdings-of-15-6-billion-302864579.html">Holdings release, 5.90M ETH</a> · <a href="https://blockworks.com/analytics/BMNR/bitmine-bmnr-treasury-holdings/bitmine-bmnr-basic-mnav">Blockworks mNAV</a>
   </p>
 
-  <div class="disc"><b>Not investment advice.</b> Forward CAGR and drawdown figures are modelled estimates, not guarantees — they depend on assumptions for volatility, correlation and terminal valuation that will not hold exactly. Market data is as of 4 September 2026 and moves continuously; August CPI was still unreleased at the time of writing, scheduled for 11 September. Past performance does not predict future results. BMNR in particular carries single-issuer, dilution and crypto-price risk that can result in total loss of that position.</div>
+  <div class="disc"><b>Not investment advice.</b> Forward CAGR and drawdown figures are modelled estimates, not guarantees — they depend on assumptions for earnings growth, terminal valuation, currency and correlation that will not hold exactly. The two most sensitive are IEMG&#8217;s valuation reversion and its −1.5% currency drag; changing either by a point moves the recommended tilt. Market data is as of 4 September 2026 and moves continuously; August CPI was unreleased at the time of writing, scheduled for 11 September, and the FOMC meets 15–16 September. EM forward P/E is dated 1 January 2026 and the EM dividend yield is an EEM proxy, both the stalest inputs here. Past performance does not predict future results. BMNR carries single-issuer, dilution and crypto-price risk that can result in total loss of that position.</div>
 </section>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
-    <button class="tab on" data-p="p-macro" role="tab" aria-selected="true">
+    <button class="tab on" id="t-macro" type="button" data-p="p-macro" role="tab" aria-selected="true" aria-controls="p-macro">
       <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12l5.5-5.5"/><path d="M21 3v6h-6"/></svg><span>Macro</span></button>
-    <button class="tab" data-p="p-regions" role="tab" aria-selected="false">
+    <button class="tab" id="t-regions" type="button" data-p="p-regions" role="tab" aria-selected="false" aria-controls="p-regions">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18"/></svg><span>Regions</span></button>
-    <button class="tab" data-p="p-vol" role="tab" aria-selected="false">
+    <button class="tab" id="t-vol" type="button" data-p="p-vol" role="tab" aria-selected="false" aria-controls="p-vol">
       <svg viewBox="0 0 24 24"><path d="M3 16l4-7 4 5 3-9 3 7 4-4"/></svg><span>Volatility</span></button>
-    <button class="tab" data-p="p-assets" role="tab" aria-selected="false">
+    <button class="tab" id="t-assets" type="button" data-p="p-assets" role="tab" aria-selected="false" aria-controls="p-assets">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="14" height="16" rx="2"/><path d="M20 7v11a2 2 0 0 1-2 2"/><path d="M7 9h6M7 13h4"/></svg><span>Sleeves</span></button>
-    <button class="tab" data-p="p-port" role="tab" aria-selected="false">
+    <button class="tab" id="t-port" type="button" data-p="p-port" role="tab" aria-selected="false" aria-controls="p-port">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v8.5h8.5"/></svg><span>Portfolios</span></button>
   </nav>
 </div>
@@ -644,11 +693,18 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
   });
   var deck=document.getElementById('deck'), dots=[].slice.call(document.querySelectorAll('#dots b'));
   if(deck){
-    deck.addEventListener('scroll',function(){
-      var i=Math.round(deck.scrollLeft/(deck.scrollWidth/dots.length));
-      i=Math.max(0,Math.min(dots.length-1,i));
-      dots.forEach(function(d,j){ d.classList.toggle('on',j===i); });
-    },{passive:true});
+    var slides=[].slice.call(deck.querySelectorAll('.slide'));
+    var sync=function(){
+      var mid=deck.scrollLeft+deck.clientWidth/2, best=0, bd=Infinity;
+      slides.forEach(function(sl,j){
+        var d=Math.abs((sl.offsetLeft+sl.offsetWidth/2)-mid);
+        if(d<bd){bd=d;best=j;}
+      });
+      dots.forEach(function(d,j){ d.classList.toggle('on',j===best); });
+    };
+    deck.addEventListener('scroll',sync,{passive:true});
+    window.addEventListener('resize',sync);
+    sync();
   }
 })();
 </script>
