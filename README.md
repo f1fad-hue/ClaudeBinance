@@ -15,7 +15,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 
 ## Sections
 
-1. **Macro** — composite driver gauge (1–10) over six weighted inputs, plus correlated transmission into each sleeve.
+1. **Macro** — composite driver gauge (1–5) over six weighted inputs, plus correlated transmission into each sleeve.
 2. **Regions** — US / Europe / Asia-EM ranked at 3, 6, 12 months and 10 years.
 3. **Volatility** — VIX term-structure math, portfolio σ and VaR by horizon, risk decomposition, 10-year regime view.
 4. **Sleeves** — one swipeable slide per holding with net-of-fee 10-year CAGR and expected drawdown.
@@ -79,6 +79,24 @@ BMNR 5. It is deliberately rejected: it over-fits the two least reliable inputs 
 valuation reversion and currency drag) and concentrates a dollar investor in a bloc where
 China alone is roughly a quarter of the index. The 40% cap keeps most of the benefit while
 staying robust to those assumptions being wrong.
+
+## Macro gauge
+
+Scored 1–5, where 3 is neutral. Current composite reading is **2.7/5**.
+
+| Driver | Weight | Score |
+|---|---|---|
+| Growth momentum | 25% | 3.7 |
+| Inflation trajectory | 15% | 2.3 |
+| Monetary policy | 20% | 2.1 |
+| Liquidity & credit | 15% | 3.2 |
+| Valuation & positioning | 15% | 2.1 |
+| Geopolitical risk | 10% | 1.9 |
+
+Converting a 1–10 score to 1–5 is `1 + (x-1) * 4/9`, not division by two, since both
+scales floor at 1. The arc fills on `(score-1)/4` so the scale's floor sits at the left
+stop rather than at zero. Regional rankings deliberately remain on their own 1–10 scale;
+they are a separate instrument.
 
 ## Volatility regime
 
