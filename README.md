@@ -11,6 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Reproduces every number on the page: CAGR, volatility, VaR, drawdown, risk contribution. |
+| `vol_regime.py` | Two-regime volatility analysis and the frontier search behind the optimized weights. |
 
 ## Sections
 
@@ -26,18 +27,24 @@ Weights are constrained to increments of 5.
 
 | Sleeve | Baseline | Optimized |
 |---|---|---|
-| QQQ  | 45% | 30% |
+| QQQ  | 45% | 25% |
 | IEMG | 25% | 40% |
-| SGOV | 25% | 25% |
+| SGOV | 25% | 30% |
 | BMNR |  5% |  5% |
 
 | Metric | Baseline | Optimized |
 |---|---|---|
-| Net 10-yr CAGR | 7.21% | 7.32% |
-| Weighted fee | 0.126% | 0.112% |
-| Annualised σ | 16.59% | 16.00% |
-| Expected max drawdown | −28.2% | −27.2% |
-| Correlated-stress drawdown | −30.6% | −29.5% |
+| Net 10-yr CAGR | 7.21% | 7.07% |
+| Weighted fee | 0.126% | 0.108% |
+| σ — calm (today) | 16.59% | 15.05% |
+| σ — vol normalized | 22.41% | 20.39% |
+| Max drawdown — calm | −28.2% | −25.6% |
+| Max drawdown — normalized | −38.1% | −34.7% |
+| Correlated-stress drawdown | −30.6% | −27.5% |
+
+The optimized book is driven by macro sentiment, regional rankings **and** volatility
+analysis across 3, 6 and 12 months. Unlike earlier revisions it does not dominate the
+baseline on every axis: it gives up 0.14 points of CAGR to buy 3.4 points of drawdown.
 
 ## Method
 
@@ -72,6 +79,33 @@ BMNR 5. It is deliberately rejected: it over-fits the two least reliable inputs 
 valuation reversion and currency drag) and concentrates a dollar investor in a bloc where
 China alone is roughly a quarter of the index. The 40% cap keeps most of the benefit while
 staying robust to those assumptions being wrong.
+
+## Volatility regime
+
+Weights are sized to *normalized* volatility, not today's calm. Spot VIX of 14.32 sits
+roughly 24% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled by
+1.32 and correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
+
+| Sleeve | σ calm | σ normalized |
+|---|---|---|
+| QQQ | 21.0% | 27.7% |
+| IEMG | 18.0% | 23.8% |
+| SGOV | 0.5% | 0.5% |
+| BMNR | 95% | 109% |
+
+Two findings constrained the answer:
+
+- **The cash line is straight.** Substituting QQQ for SGOV from 35/20 through 15/40 gives
+  an identical return-per-drawdown ratio of 0.113 at every step, because an uncorrelated
+  near-zero-volatility asset traces a capital-allocation line. The optimizer cannot pick
+  the cash weight; 30% is a stated drawdown budget, not a model output.
+- **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
+  volatility implies a 69.6% arithmetic mean, which nobody would forecast. A Booth-Fama
+  rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
+  and discarded rather than published.
+
+The equity tilt is unchanged across both regimes — the Sharpe ordering of every candidate
+allocation survives — so volatility analysis altered how much to hold, not what to hold.
 
 ## Verification
 

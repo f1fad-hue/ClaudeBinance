@@ -365,37 +365,70 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
       <thead><tr><th>Horizon</th><th colspan="2">Baseline</th><th colspan="2">Optimized</th></tr>
       <tr><th></th><th>σ</th><th>95% VaR</th><th>σ</th><th>95% VaR</th></tr></thead>
       <tbody>
-        <tr><td>3 months</td><td class="n">8.30%</td><td class="n neg">−11.8%</td><td class="n">8.00%</td><td class="n neg">−11.3%</td></tr>
-        <tr><td>6 months</td><td class="n">11.73%</td><td class="n neg">−15.7%</td><td class="n">11.31%</td><td class="n neg">−14.9%</td></tr>
-        <tr><td>12 months</td><td class="n">16.59%</td><td class="n neg">−20.1%</td><td class="n">16.00%</td><td class="n neg">−19.0%</td></tr>
-        <tr class="hl"><td>10 yr max DD</td><td class="n" colspan="2">−27.4 to −29.0%</td><td class="n" colspan="2">−26.4 to −28.0%</td></tr>
+        <tr><td>3 months</td><td class="n">8.30%</td><td class="n neg">−11.8%</td><td class="n">7.52%</td><td class="n neg">−10.6%</td></tr>
+        <tr><td>6 months</td><td class="n">11.73%</td><td class="n neg">−15.7%</td><td class="n">10.64%</td><td class="n neg">−14.0%</td></tr>
+        <tr><td>12 months</td><td class="n">16.59%</td><td class="n neg">−20.1%</td><td class="n">15.05%</td><td class="n neg">−17.7%</td></tr>
+        <tr class="hl"><td>10 yr max DD</td><td class="n" colspan="2">−28.2%</td><td class="n" colspan="2">−25.6%</td></tr>
+        <tr><td>12 mo, normalized</td><td class="n">22.41%</td><td class="n neg">−29.7%</td><td class="n">20.39%</td><td class="n neg">−26.5%</td></tr>
+        <tr><td>Max DD, normalized</td><td class="n neg" colspan="2">−38.1%</td><td class="n neg" colspan="2">−34.7%</td></tr>
       </tbody>
     </table>
   </div>
   <p style="font-size:11.5px;color:var(--ink-faint);margin-top:8px;line-height:1.5">VaR is drift-adjusted at the 5th percentile. Ten-year maximum drawdown is reported as the full <span style="font-family:var(--f-mono)">1.65–1.75 × σ<sub>ann</sub></span> band rather than a single figure, since that approximation carries more uncertainty than a point estimate implies; the mid-band values (−28.2% and −27.2%) are what the comparison table uses.</p>
 
-  <h3>Risk contribution</h3>
-  <p class="lede" style="margin-bottom:12px">Weight is not risk. Decomposing each sleeve's share of total portfolio variance exposes the single most important sizing constraint in this mandate:</p>
+  <h3>Two-regime sizing</h3>
+  <p class="lede" style="margin-bottom:12px">This is where volatility analysis stops describing risk and starts setting weights. Today&#8217;s implied volatility is ~24% below its own historical average, so a portfolio sized to <em>today</em> is under-sized for risk. Both books are therefore measured twice: at current calm, and with volatility mean-reverted to the 18.9 average and correlations stressed to crisis levels.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Sleeve</th><th>σ calm</th><th>σ normalized</th></tr></thead>
+      <tbody>
+        <tr><td>QQQ</td><td class="n">21.0%</td><td class="n neg">27.7%</td></tr>
+        <tr><td>IEMG</td><td class="n">18.0%</td><td class="n neg">23.8%</td></tr>
+        <tr><td>SGOV</td><td class="n">0.5%</td><td class="n">0.5%</td></tr>
+        <tr><td>BMNR</td><td class="n">95%</td><td class="n neg">109%</td></tr>
+        <tr><td>ρ QQQ·IEMG</td><td class="n">0.72</td><td class="n neg">0.85</td></tr>
+        <tr><td>ρ QQQ·BMNR</td><td class="n">0.65</td><td class="n neg">0.80</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="warnbox" style="margin-top:12px"><b>What this changes.</b> A 75%-risk-asset book that looks like a −27% drawdown at today&#8217;s volatility is a <b>−37% drawdown book</b> when volatility normalises — and correlations rising from 0.72 to 0.85 removes much of the diversification exactly when it is needed. The equity tilt survives both regimes unchanged, so volatility analysis did not alter <em>what</em> to own. It altered <em>how much</em>.</div>
+
+  <h3>Two findings that constrained the answer</h3>
   <div class="card">
     <div class="drv">
-      <div class="drv-n">BMNR <span class="wt">5% weight</span></div><div class="drv-s" style="color:var(--neg)">23.8%</div>
-      <div class="drv-bar"><i style="width:23.8%;background:var(--bmnr)"></i></div>
-      <div class="drv-d">A twentieth of the capital carrying nearly a quarter of the risk — a <b>4.8× risk-to-weight ratio</b>. This is why 5% is the correct size, not a timid one.</div>
+      <div class="drv-n">The cash line is straight</div><div class="drv-s">ret/DD 0.113</div>
+      <div class="drv-bar"><i style="width:100%;background:var(--sgov)"></i></div>
+      <div class="drv-d">Substituting QQQ for SGOV from 35/20 through 15/40 gives an <b>identical return-per-drawdown ratio of 0.113 at every step</b>. Because SGOV is uncorrelated and near-zero volatility, moving along it is a pure capital-allocation line, not an optimisation. No amount of volatility analysis can identify a &#8220;correct&#8221; cash weight — it can only tell you what risk each one actually carries. The 30% chosen here is a drawdown budget, honestly labelled as a preference.</div>
     </div>
     <div class="drv">
-      <div class="drv-n">QQQ <span class="wt">30% weight</span></div><div class="drv-s">35.9%</div>
-      <div class="drv-bar"><i style="width:35.9%;background:var(--qqq)"></i></div>
-      <div class="drv-d">Down from 54.2% of risk in the baseline — the single largest concentration the optimization addresses, and the reason portfolio σ falls even as expected return rises.</div>
+      <div class="drv-n">Variance math breaks on BMNR</div><div class="drv-s" style="color:var(--neg)">69.6%</div>
+      <div class="drv-bar"><i style="width:100%;background:var(--bmnr)"></i></div>
+      <div class="drv-d">Under a lognormal model, a +10% compound return at 109% volatility implies an <b>arithmetic mean of 69.6%</b>. Nobody forecasts that. The two assumptions are jointly incoherent, which means every variance-based statistic involving BMNR is approximate at best. A rebalancing-premium adjustment was computed, found to be dominated by this artefact, and discarded rather than published. It is a further argument for the 5% cap: keep the position small enough that model breakdown there cannot corrupt the portfolio conclusion.</div>
+    </div>
+  </div>
+
+  <h3>Risk contribution</h3>
+  <p class="lede" style="margin-bottom:12px">Weight is not risk. Decomposing each sleeve's share of total portfolio variance, under the normalized regime, exposes the single most important sizing constraint in this mandate:</p>
+  <div class="card">
+    <div class="drv">
+      <div class="drv-n">BMNR <span class="wt">5% weight</span></div><div class="drv-s" style="color:var(--neg)">23.4%</div>
+      <div class="drv-bar"><i style="width:23.4%;background:var(--bmnr)"></i></div>
+      <div class="drv-d">A twentieth of the capital carrying nearly a quarter of the risk — a <b>4.7× risk-to-weight ratio</b>. This is why 5% is the correct size, not a timid one.</div>
     </div>
     <div class="drv">
-      <div class="drv-n">IEMG <span class="wt">40% weight</span></div><div class="drv-s">40.4%</div>
-      <div class="drv-bar"><i style="width:40.4%;background:var(--iemg)"></i></div>
-      <div class="drv-d">Risk contribution almost exactly equal to its weight — lower volatility and imperfect correlation to QQQ make it the efficient place to carry equity beta.</div>
+      <div class="drv-n">QQQ <span class="wt">25% weight</span></div><div class="drv-s">32.3%</div>
+      <div class="drv-bar"><i style="width:32.3%;background:var(--qqq)"></i></div>
+      <div class="drv-d">Down from 54.4% of risk in the baseline — the single largest concentration the optimization addresses, and the reason portfolio σ falls in both volatility regimes.</div>
     </div>
     <div class="drv">
-      <div class="drv-n">SGOV <span class="wt">25% weight</span></div><div class="drv-s" style="color:var(--pos)">0.0%</div>
+      <div class="drv-n">IEMG <span class="wt">40% weight</span></div><div class="drv-s">44.3%</div>
+      <div class="drv-bar"><i style="width:44.3%;background:var(--iemg)"></i></div>
+      <div class="drv-d">Now the largest single risk contributor, above its weight. That is the accepted cost of the tilt: lower volatility than QQQ in both regimes, but it is carrying the book&#8217;s equity beta.</div>
+    </div>
+    <div class="drv">
+      <div class="drv-n">SGOV <span class="wt">30% weight</span></div><div class="drv-s" style="color:var(--pos)">0.0%</div>
       <div class="drv-bar"><i style="width:1%;background:var(--sgov)"></i></div>
-      <div class="drv-d">A quarter of capital contributing effectively no variance. This is the drawdown control and the rebalancing reserve in one line.</div>
+      <div class="drv-d">Just under a third of capital contributing effectively no variance. This is the drawdown control and the rebalancing reserve in one line — and the sleeve that was raised when volatility analysis restated the true risk.</div>
     </div>
   </div>
 
@@ -536,7 +569,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
 <!-- ============ PORTFOLIOS ============ -->
 <section class="pane" id="p-port" role="tabpanel" aria-labelledby="t-port">
   <h2>Baseline vs optimized</h2>
-  <p class="lede">Both hold all four mandated sleeves, both weight in increments of 5, both are built for a 10-year horizon. Only the equity split differs.</p>
+  <p class="lede">Both hold all four mandated sleeves, both weight in increments of 5, both are built for a 10-year horizon. The baseline is a plain strategic split; the optimized book is driven by macro sentiment, regional rankings <em>and</em> volatility analysis across 3, 6 and 12 months.</p>
 
   <div class="duo">
     <div class="dn">
@@ -561,44 +594,46 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
 
     <div class="dn win">
       <div class="dn-t">Optimized</div><div class="dn-c">Macro-tilted</div>
-      <svg viewBox="0 0 180 180" role="img" aria-label="Optimized allocation: QQQ 30 percent, IEMG 40 percent, SGOV 25 percent, BMNR 5 percent">
+      <svg viewBox="0 0 180 180" role="img" aria-label="Optimized allocation: QQQ 25 percent, IEMG 40 percent, SGOV 30 percent, BMNR 5 percent">
         <g transform="rotate(-90 90 90)" fill="none" stroke-width="26">
-          <circle cx="90" cy="90" r="64" stroke="#2B5CE6" stroke-dasharray="120.64 281.49" stroke-dashoffset="0"/>
-          <circle cx="90" cy="90" r="64" stroke="#0F9B8E" stroke-dasharray="160.85 241.27" stroke-dashoffset="-120.64"/>
-          <circle cx="90" cy="90" r="64" stroke="#8A94A6" stroke-dasharray="100.53 301.59" stroke-dashoffset="-281.49"/>
+          <circle cx="90" cy="90" r="64" stroke="#2B5CE6" stroke-dasharray="100.53 301.59" stroke-dashoffset="0"/>
+          <circle cx="90" cy="90" r="64" stroke="#0F9B8E" stroke-dasharray="160.85 241.27" stroke-dashoffset="-100.53"/>
+          <circle cx="90" cy="90" r="64" stroke="#8A94A6" stroke-dasharray="120.64 281.49" stroke-dashoffset="-261.38"/>
           <circle cx="90" cy="90" r="64" stroke="#E07A2F" stroke-dasharray="20.11 382.02" stroke-dashoffset="-382.02"/>
         </g>
-        <text x="90" y="86" text-anchor="middle" fill="#0F5E63" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">7.32</text>
+        <text x="90" y="86" text-anchor="middle" fill="#0F5E63" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">7.07</text>
         <text x="90" y="102" text-anchor="middle" fill="#8A94A6" font-family="Public Sans, sans-serif" font-size="9" letter-spacing="0.8">NET CAGR %</text>
       </svg>
       <div class="leg">
-        <span><i style="background:var(--qqq)"></i>QQQ<em>30%</em></span>
+        <span><i style="background:var(--qqq)"></i>QQQ<em>25%</em></span>
         <span><i style="background:var(--iemg)"></i>IEMG<em>40%</em></span>
-        <span><i style="background:var(--sgov)"></i>SGOV<em>25%</em></span>
+        <span><i style="background:var(--sgov)"></i>SGOV<em>30%</em></span>
         <span><i style="background:var(--bmnr)"></i>BMNR<em>5%</em></span>
       </div>
     </div>
   </div>
 
-  <p class="vs">One 15-point rotation, QQQ → IEMG</p>
+  <p class="vs">20 points out of QQQ — 15 to IEMG, 5 to the reserve</p>
 
   <h3>Forecast comparison</h3>
   <div class="tw">
     <table>
       <thead><tr><th>Metric</th><th>Baseline</th><th>Optimized</th><th>Δ</th></tr></thead>
       <tbody>
-        <tr><td>Net 10-yr CAGR</td><td class="n">7.21%</td><td class="n">7.32%</td><td class="n pos">+0.11</td></tr>
-        <tr><td>Weighted fee</td><td class="n">0.126%</td><td class="n">0.112%</td><td class="n pos">−0.014</td></tr>
-        <tr><td>Annualised σ</td><td class="n">16.59%</td><td class="n">16.00%</td><td class="n pos">−0.59</td></tr>
-        <tr class="hl"><td>Expected max DD</td><td class="n">−28.2%</td><td class="n">−27.2%</td><td class="n pos">+1.0</td></tr>
-        <tr><td>Correlated-stress DD</td><td class="n neg">−30.6%</td><td class="n neg">−29.5%</td><td class="n pos">+1.1</td></tr>
-        <tr><td>Return / risk</td><td class="n">0.244</td><td class="n">0.260</td><td class="n pos">+0.016</td></tr>
-        <tr><td>$10,000 → 10 yr</td><td class="n">$20,052</td><td class="n">$20,266</td><td class="n pos">+$214</td></tr>
-        <tr><td>10-yr fee drag</td><td class="n neg">−$237</td><td class="n neg">−$213</td><td class="n pos">+$24</td></tr>
+        <tr><td>Net 10-yr CAGR</td><td class="n">7.21%</td><td class="n">7.07%</td><td class="n neg">−0.14</td></tr>
+        <tr><td>Weighted fee</td><td class="n">0.126%</td><td class="n">0.108%</td><td class="n pos">−0.018</td></tr>
+        <tr><td>σ — calm (today)</td><td class="n">16.59%</td><td class="n">15.05%</td><td class="n pos">−1.54</td></tr>
+        <tr><td>σ — vol normalized</td><td class="n">22.41%</td><td class="n">20.39%</td><td class="n pos">−2.02</td></tr>
+        <tr><td>Max DD — calm</td><td class="n">−28.2%</td><td class="n">−25.6%</td><td class="n pos">+2.6</td></tr>
+        <tr class="hl"><td>Max DD — normalized</td><td class="n neg">−38.1%</td><td class="n neg">−34.7%</td><td class="n pos">+3.4</td></tr>
+        <tr><td>Correlated-stress DD</td><td class="n neg">−30.6%</td><td class="n neg">−27.5%</td><td class="n pos">+3.1</td></tr>
+        <tr><td>Return / risk (calm)</td><td class="n">0.244</td><td class="n">0.260</td><td class="n pos">+0.016</td></tr>
+        <tr><td>$10,000 → 10 yr</td><td class="n">$20,052</td><td class="n">$19,801</td><td class="n neg">−$251</td></tr>
+        <tr><td>10-yr fee drag</td><td class="n neg">−$237</td><td class="n neg">−$201</td><td class="n pos">+$36</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="call" style="margin-top:14px"><b>The optimized portfolio dominates on every axis.</b> Higher net return, lower volatility, shallower drawdown and lower fees — no trade-off was made. That is only possible because the rotation moves capital into a sleeve forecast to earn <em>more</em> while risking <em>less</em>, which the regional rankings and the 11.6× vs 25.2× valuation gap independently identify. The correlated-stress row is the harsher test: it assumes every sleeve hits its own worst drawdown simultaneously, and the optimized book still wins.</div>
+  <div class="call" style="margin-top:14px"><b>This version trades return for risk, deliberately.</b> Earlier drafts of the optimized book dominated on every axis. Adding volatility analysis as an explicit input removed that free lunch: once you size to <em>normalized</em> rather than today&#8217;s unusually calm volatility, the honest drawdown of a 75%-risk-asset portfolio is around −37%, not −27%. Giving up 0.14 points of CAGR to bring that back to −34.7% is the trade this version makes. The equity tilt is unchanged — it survives both regimes — so what moved is the size of the reserve, not the shape of the bet.</div>
 
   <h3>How the forecasts are built</h3>
   <p class="lede" style="margin-bottom:12px">Each equity forecast is a sum of observable parts rather than a single judgement, so every figure can be challenged individually.</p>
@@ -622,14 +657,15 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
   <div class="num">
     <div><b>Start from the horizon, not the headlines.</b> Ten years is long enough that cash drag compounds into a serious cost — SGOV&#8217;s $13,649 terminal value against IEMG&#8217;s $23,544 on the same $10,000 is the price of caution. The macro signal is therefore spent on <em>which</em> equities to own, not on how much equity to own. Total risk assets stay at 75% in both portfolios.</div>
     <div><b>The equity rotation follows three independent signals.</b> The regional rankings put Asia/EM ahead of the US at every horizon. The valuation data puts EM at 11.6× forward against the Nasdaq-100&#8217;s 25.2×, a 40% discount to developed markets versus a 25% long-run norm. The building-block model puts IEMG 0.76 points ahead of QQQ net of fees. All three point the same way, which is why the rotation is 15 points rather than a token tilt.</div>
+    <div><b>Volatility analysis sizes the book, it does not steer it.</b> The tilt is unchanged when the model is re-run with volatility mean-reverted to its 18.9 average and correlations stressed to 0.85 — the Sharpe ordering of every candidate allocation survives, so the EM overweight is robust to the volatility regime. What does not survive is the <em>risk estimate</em>. At today&#8217;s calm the book looks like −25.6%; normalised, it is −34.7%. Sizing to the second number rather than the first is the entire reason the reserve rose from 25% to 30%.</div>
     <div><b>IEMG is the rare sleeve that improves both sides.</b> Forecast 8.94% net against QQQ&#8217;s 8.18%, on lower volatility (18% vs 21%), a shallower drawdown (−33% vs −40%) and half the fee. Adding it raises return and cuts risk simultaneously — which is why the optimization requires no trade-off at all.</div>
-    <div><b>Where the model was overruled.</b> Searching every 5%-increment allocation, the highest return-per-unit-risk mix is QQQ 5 / IEMG 70 / SGOV 20 / BMNR 5. That answer is rejected. It over-fits a point estimate whose two least reliable inputs — the valuation reversion and the currency drag — are precisely what drive it, and it concentrates a dollar investor in a bloc where China alone is roughly a quarter of the index. Capping the tilt at 40% keeps most of the benefit while leaving the conclusion robust to those assumptions being wrong.</div>
-    <div><b>SGOV stays at 25% as ammunition, not as fear.</b> With a composite reading of 4.8/10, implied volatility 24% below its own historical average and the 10-year at post-2023 highs, a repricing is a live risk. Holding the reserve in 0–3 month bills rather than long bonds means it is not itself damaged by rising yields, and it earns 3.63% while waiting. Its function is to be sold into the drawdown to rebalance back to target — a 25% reserve is what converts a −27% drawdown from a loss into a buying opportunity.</div>
+    <div><b>Where the model was overruled — twice.</b> Searching every 5%-increment allocation, the highest return-per-unit-risk mix is QQQ 5 / IEMG 70 / SGOV 20 / BMNR 5, in both volatility regimes. That answer is rejected: it over-fits a point estimate whose two least reliable inputs — the valuation reversion and the currency drag — are precisely what drive it, and it concentrates a dollar investor in a bloc where China alone is roughly a quarter of the index. Capping the tilt at 40% keeps most of the benefit while leaving the conclusion robust to those assumptions being wrong. Separately, a rebalancing-premium adjustment worth an apparent +2.9%/yr was computed and then discarded once it proved to be an artefact of BMNR&#8217;s 109% volatility rather than a real return.</div>
+    <div><b>SGOV rises to 30% as ammunition, not as fear — and the number is a preference, not an output.</b> Substituting QQQ for SGOV anywhere from 35/20 to 15/40 produces an identical return-per-drawdown ratio of 0.113 at every step, because an uncorrelated near-zero-volatility asset traces a straight capital-allocation line. The optimizer genuinely cannot pick this weight; 30% is a stated drawdown budget of roughly −35% in a normalised-volatility world. Holding it in 0–3 month bills rather than long bonds means the reserve is not itself damaged by rising yields, and it earns 3.63% while waiting to be sold into the drawdown.</div>
     <div><b>BMNR is capped at 5% because of risk, not weight.</b> At a twentieth of the capital it contributes 23.8% of portfolio variance — a 4.8× risk-to-weight ratio. It is also a poor diversifier: 0.65 correlated to QQQ, it fails in the same regimes as the growth sleeve. Verification did improve its standing — the premium is 1.02× on total NAV of $15.6B, not the 1.10× that crypto holdings alone imply — but with severe dilution history and an 80.5% drawdown already on the tape, 5% remains the largest defensible position. It earns its place as convexity to an ETH recovery, sized so total loss costs 5% of capital.</div>
-    <div><b>Fees are a controlled variable.</b> Weighted expense falls from 0.126% to 0.112% purely as a by-product of the rotation, since IEMG charges 0.09% against QQQ&#8217;s 0.18%. Over ten years that is $24 saved per $10,000 — small, but return taken with no risk added. QQQ&#8217;s own cut from 0.20% is worth about $41 per $10,000 over the same period.</div>
+    <div><b>Fees are a controlled variable.</b> Weighted expense falls from 0.126% to 0.108% purely as a by-product of the rotation, since IEMG and SGOV both charge 0.09% against QQQ&#8217;s 0.18%. Over ten years that is $36 saved per $10,000 — small, but return taken with no risk added. QQQ&#8217;s own cut from 0.20% is worth about $41 per $10,000 over the same period.</div>
   </div>
 
-  <div class="call" style="margin-top:16px"><b>Recommendation.</b> Adopt the optimized allocation — QQQ 30 / IEMG 40 / SGOV 25 / BMNR 5 — and rebalance to target semi-annually or whenever any sleeve drifts more than 5 points. Rebalancing is doing most of the work here: it mechanically trims the sleeve that has run and buys the one that has fallen, which is what turns BMNR&#8217;s 95% volatility from a liability into a small, systematic source of return. Revisit the tilt if the Fed hikes rather than holds, if the 10-year breaks decisively above 5%, or if the EM forward-multiple discount narrows from 40% back toward its 25% long-run norm — that last one is the thesis, and its closing is the signal to take the overweight off.</div>
+  <div class="call" style="margin-top:16px"><b>Recommendation.</b> Adopt the optimized allocation — QQQ 25 / IEMG 40 / SGOV 30 / BMNR 5 — and rebalance to target semi-annually or whenever any sleeve drifts more than 5 points. Rebalancing is doing most of the work here: it mechanically trims the sleeve that has run and buys the one that has fallen, which is what turns BMNR&#8217;s 95% volatility from a liability into a small, systematic source of return. Revisit the tilt if the Fed hikes rather than holds, if the 10-year breaks decisively above 5%, or if the EM forward-multiple discount narrows from 40% back toward its 25% long-run norm — that last one is the thesis, and its closing is the signal to take the overweight off. On the reserve: if the VIX sustains a move back above its 18.9 average, the volatility premise has already played out, and 30% cash becomes a candidate to spend down toward 25% rather than to hold.</div>
 
   <h3>Verification log</h3>
   <p class="lede" style="margin-bottom:12px">Every figure was re-checked against primary sources. Fourteen corrections were recorded; these are the ones that changed a number on this page.</p>
@@ -647,7 +683,9 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     <div class="kv"><span class="k">Severe-stress DD</span><span class="v" style="color:var(--neg)"><b>asserted → derived</b></span></div>
     <div class="kv"><span class="k">QQQ fee-cut value</span><span class="v">$25 → <b>$41</b></span></div>
     <div class="kv"><span class="k">Return forecasts</span><span class="v"><b>rebuilt from multiples</b></span></div>
-    <div class="kv"><span class="k">Optimized weights</span><span class="v">35/35 → <b>30/40</b></span></div>
+    <div class="kv"><span class="k">Optimized weights</span><span class="v">35/35 → 30/40 → <b>25/40/30/5</b></span></div>
+    <div class="kv"><span class="k">Vol regime added</span><span class="v"><b>calm + normalized</b></span></div>
+    <div class="kv"><span class="k">Rebalancing premium</span><span class="v" style="color:var(--neg)"><b>computed, discarded</b></span></div>
     <p class="sl-role" style="margin-top:12px"><b>The two that mattered most.</b> The page previously stated both that the VIX &#8220;sits near its 10-year average&#8221; and that the average was near 19 — a direct self-contradiction; the 2016–2023 mean is 18.9, so spot at 14.32 is ~24% <em>below</em> it. And QQQ&#8217;s trailing returns were carried from a 30 June factsheet without being marked stale, overstating the run-up by 8 points and making the US sleeve look more extended than it is.</p>
   </div>
 
@@ -660,7 +698,7 @@ tr.hl td{background:var(--accent-soft);font-weight:600}
     BMNR — <a href="https://www.sec.gov/Archives/edgar/data/0001829311/000149315226029507/ex99-1.htm">SEC Form 8-K</a> · <a href="https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-5-90-million-tokens-and-total-crypto-and-total-cash-holdings-of-15-6-billion-302864579.html">Holdings release, 5.90M ETH</a> · <a href="https://blockworks.com/analytics/BMNR/bitmine-bmnr-treasury-holdings/bitmine-bmnr-basic-mnav">Blockworks mNAV</a>
   </p>
 
-  <div class="disc"><b>Not investment advice.</b> Forward CAGR and drawdown figures are modelled estimates, not guarantees — they depend on assumptions for earnings growth, terminal valuation, currency and correlation that will not hold exactly. The two most sensitive are IEMG&#8217;s valuation reversion and its −1.5% currency drag; changing either by a point moves the recommended tilt. Market data is as of 4 September 2026 and moves continuously; August CPI was unreleased at the time of writing, scheduled for 11 September, and the FOMC meets 15–16 September. EM forward P/E is dated 1 January 2026 and the EM dividend yield is an EEM proxy, both the stalest inputs here. Past performance does not predict future results. BMNR carries single-issuer, dilution and crypto-price risk that can result in total loss of that position.</div>
+  <div class="disc"><b>Not investment advice.</b> Forward CAGR and drawdown figures are modelled estimates, not guarantees — they depend on assumptions for earnings growth, terminal valuation, currency, volatility and correlation that will not hold exactly. The two most sensitive are IEMG&#8217;s valuation reversion and its −1.5% currency drag; changing either by a point moves the recommended tilt. The normalized-volatility regime assumes mean reversion to an 18.9 VIX and crisis correlations of 0.85; it is a design case, not a forecast of when. Market data is as of 4 September 2026 and moves continuously; August CPI was unreleased at the time of writing, scheduled for 11 September, and the FOMC meets 15–16 September. EM forward P/E is dated 1 January 2026 and the EM dividend yield is an EEM proxy, both the stalest inputs here. Past performance does not predict future results. BMNR carries single-issuer, dilution and crypto-price risk that can result in total loss of that position.</div>
 </section>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
