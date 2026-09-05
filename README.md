@@ -10,20 +10,40 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 | File | Purpose |
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
-| `portfolio_model.py` | Reproduces every number on the page: CAGR, volatility, VaR, drawdown, risk contribution. |
-| `vol_regime.py` | Two-regime volatility analysis and the frontier search behind the optimized weights. |
+| `portfolio_model.py` | Single source of truth for every figure on the page. |
+| `validate.py` | Asserts the page matches the model. 139 checks, exits non-zero on drift. |
+| `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
+
+```bash
+python3 portfolio_model.py   # readable report of every figure
+python3 validate.py          # verify allocation.html against it
+./sync-artifact.sh           # validate, then push to the publish path
+```
+
+This repo is the source of truth. `sync-artifact.sh` copies one way only —
+copying back from the publish path once silently reverted a fix that had
+already passed validation.
+
+If a number changes in the model, the page is wrong until it changes there too.
+`validate.py` covers sleeve figures, building blocks, both portfolios in both
+volatility regimes, risk contributions, gauge and regional scores with their bar
+fills, donut geometry, VIX term structure, the frontier and cash-line claims made
+in the prose, and the brief's own weight constraints.
 
 ## Sections
 
-1. **Macro** — composite driver gauge (1–5) over six weighted inputs, plus correlated transmission into each sleeve.
+1. **Macro** — composite driver gauge (1–5) over six weighted inputs, plus correlated
+   transmission into each sleeve.
 2. **Regions** — US / Europe / Asia-EM ranked 1–5 at 3, 6, 12 months and 10 years.
-3. **Volatility** — VIX term-structure math, portfolio σ and VaR by horizon, risk decomposition, 10-year regime view.
-4. **Sleeves** — one swipeable slide per holding with net-of-fee 10-year CAGR and expected drawdown.
-5. **Portfolios** — baseline vs optimized donuts, forecast comparison, rationale.
+3. **Volatility** — VIX term structure, two-regime sizing, risk decomposition, 10-year
+   regime view.
+4. **Sleeves** — one swipeable slide per holding with net-of-fee CAGR and expected drawdown.
+5. **Portfolios** — baseline vs optimized donuts, forecast comparison, rationale,
+   verification log.
 
 ## Allocations
 
-Weights are constrained to increments of 5.
+Weights are constrained to increments of 5, and all four sleeves must be held.
 
 | Sleeve | Baseline | Optimized |
 |---|---|---|
@@ -37,18 +57,20 @@ Weights are constrained to increments of 5.
 | Net 10-yr CAGR | 7.21% | 7.07% |
 | Weighted fee | 0.126% | 0.108% |
 | σ — calm (today) | 16.59% | 15.05% |
-| σ — vol normalized | 22.41% | 20.39% |
+| σ — vol normalized | 22.41% | 20.38% |
 | Max drawdown — calm | −28.2% | −25.6% |
-| Max drawdown — normalized | −38.1% | −34.7% |
+| Max drawdown — normalized | −38.1% | −34.6% |
 | Correlated-stress drawdown | −30.6% | −27.5% |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
-analysis across 3, 6 and 12 months. Unlike earlier revisions it does not dominate the
-baseline on every axis: it gives up 0.14 points of CAGR to buy 3.4 points of drawdown.
+analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
+it gives up 0.14 points of CAGR to buy 3.5 points of drawdown.
 
 ## Method
 
-Equity forecasts are built from observable components rather than asserted:
+Equity forecasts are built from observable components rather than asserted. Components
+are rounded to displayed precision before summing, so every figure on the page can be
+reproduced by hand from the components shown.
 
 | Component | QQQ | IEMG |
 |---|---|---|
@@ -62,60 +84,24 @@ Equity forecasts are built from observable components rather than asserted:
 
 Valuation change annualises the forward multiple moving from its observed level
 (QQQ 25.2×, IEMG 11.6×) to an assumed terminal level (21×, 12.5×) over ten years.
-BMNR is modelled separately: 9.0% ETH appreciation, +2.6% staking on 85.9% of the
-treasury, −0.2% mNAV normalisation, −1.4% corporate and dilution drag. Portfolio
-volatility is computed from a correlation matrix (QQQ·IEMG 0.72, QQQ·BMNR 0.65,
-IEMG·BMNR 0.55, SGOV uncorrelated). Horizon volatility scales as σ√(h/12); VaR is the
-drift-adjusted 5th percentile. Ten-year expected maximum drawdown uses the
-≈1.65–1.75 × σ approximation for a positively-drifting portfolio, cross-checked against
-correlation-weighted sleeve drawdowns.
+BMNR is modelled separately: 9.0% ETH appreciation, +2.58% staking on 85.9% of the
+treasury, −0.20% mNAV normalisation, −1.40% corporate and dilution drag.
 
-Market data is as of 4 September 2026 and sourced from fund issuers (iShares, Invesco),
-Siblis Research and MSCI for valuations, the Federal Reserve, BLS, ECB, IMF, FRED, Cboe
-and SEC filings. Sources are linked on the page.
+## Sentiment scales
 
-The unconstrained max-Sharpe allocation over 5% increments is QQQ 5 / IEMG 70 / SGOV 20 /
-BMNR 5. It is deliberately rejected: it over-fits the two least reliable inputs (EM
-valuation reversion and currency drag) and concentrates a dollar investor in a bloc where
-China alone is roughly a quarter of the index. The 40% cap keeps most of the benefit while
-staying robust to those assumptions being wrong.
-
-## Macro gauge
-
-Scored 1–5, where 3 is neutral. Current composite reading is **2.7/5**.
-
-| Driver | Weight | Score |
-|---|---|---|
-| Growth momentum | 25% | 3.7 |
-| Inflation trajectory | 15% | 2.3 |
-| Monetary policy | 20% | 2.1 |
-| Liquidity & credit | 15% | 3.2 |
-| Valuation & positioning | 15% | 2.1 |
-| Geopolitical risk | 10% | 1.9 |
-
-Converting a 1–10 score to 1–5 is `1 + (x-1) * 4/9`, not division by two, since both
-scales floor at 1. The arc fills on `(score-1)/4` so the scale's floor sits at the left
+Both the composite gauge and the regional rankings use 1–5, where 3 is neutral.
+Converting a 1–10 score is `1 + (x-1) * 4/9`, not division by two, since both scales
+floor at 1. Arcs and bars fill on `(score-1)/4` so the scale's floor sits at the left
 stop rather than at zero.
 
-### Regional rankings
-
-Same 1–5 scale, same mapping, bars filling on `(score-1)/4`:
-
-| Bloc | 3 mo | 6 mo | 12 mo | 10 yr | Mean |
-|---|---|---|---|---|---|
-| Asia / EM | 3.4 | 3.7 | 3.9 | 3.9 | 3.7 |
-| United States | 2.8 | 3.0 | 3.4 | 3.7 | 3.2 |
-| Europe | 2.1 | 2.3 | 2.6 | 2.8 | 2.4 |
-
-Point gaps shrink by the 4/9 factor — the Asia-US lead reads 0.7 at 3 months and 0.2 at
-10 years — but no ordering changes at any horizon, so the allocation conclusion is
-untouched. Bars are drawn from unrounded values while cells display one decimal.
+Composite reads **2.7/5**. Regional means: Asia/EM 3.7, US 3.2, Europe 2.4 — ordering
+preserved at every horizon, which is the check that the rescale is presentational only.
 
 ## Volatility regime
 
 Weights are sized to *normalized* volatility, not today's calm. Spot VIX of 14.32 sits
-roughly 24% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled by
-1.32 and correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
+~24% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled by 1.32 and
+correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
@@ -135,31 +121,45 @@ Two findings constrained the answer:
   rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
   and discarded rather than published.
 
-The equity tilt is unchanged across both regimes — the Sharpe ordering of every candidate
-allocation survives — so volatility analysis altered how much to hold, not what to hold.
+Subject only to the brief's floor of 5% per sleeve, the highest return-per-unit-risk mix
+is QQQ 5 / IEMG 85 / SGOV 5 / BMNR 5 (Sharpe 0.287 vs the recommended book's 0.260). It is
+rejected: it over-fits the two least reliable inputs and carries a −43.6% normalised
+drawdown. The 40% cap keeps most of the benefit while staying robust to those assumptions
+being wrong.
 
 ## Verification
 
-Rev 2 re-checked every figure against primary sources. Fourteen corrections were recorded;
-the two most consequential:
+Twenty corrections have been recorded across three verification passes. The most
+consequential:
 
 - The page asserted both that the VIX "sits near its 10-year average" and that the average
   was near 19 — a direct self-contradiction. The 2016–2023 mean is 18.9, so spot at 14.32
   is ~24% below it.
 - QQQ trailing returns were carried from a 30 June factsheet without being marked stale,
   overstating the twelve-month run-up by 8 points (34.4% vs an actual 26.0%).
+- The stated unconstrained frontier optimum was an artefact of a 20% cash floor left over
+  from an earlier run and never stated as an assumption. Against the brief's actual floor
+  the optimizer wants 85% in emerging markets.
+- The gauge arc filled `value/10` when the scale's floor is 1, overstating the needle by
+  ~6 points of arc.
+- A stale mid-band drawdown reference of −27.2% survived from when the optimized book was
+  30/40/25/5. It was fixed, then silently reverted by copying the published file back over
+  the repo copy — which is why `sync-artifact.sh` now exists and only copies one way.
 
-Others: SGOV yield 3.66→3.63%, BMNR mNAV 1.10→1.02× (total NAV, not crypto alone), China
-GDP ~5→4.4% and India 6.4→6.3% (IMF), 3→5 FOMC officials favouring a hike, QQQ drawdown
-history restated as ranges, severe-stress drawdown changed from asserted to derived, and
-the QQQ fee-cut value corrected from $25 to $41 per $10,000.
+Data corrections: SGOV yield 3.66→3.63%, BMNR mNAV 1.10→1.02× (total NAV, not crypto
+alone), China GDP ~5→4.4% and India 6.4→6.3% (IMF), three→five FOMC officials favouring a
+hike, QQQ drawdown history restated as ranges, severe-stress drawdown changed from asserted
+to derived, QQQ fee-cut value $25→$41 per $10,000, and the August payrolls print (162,000,
+beating consensus) added.
 
-A swipe-indicator bug was also fixed: dot tracking divided `scrollWidth` by slide count,
-ignoring gap and padding, so the active dot drifted. It now selects the slide whose centre
-is nearest the viewport centre.
+Arithmetic corrections found by `validate.py`: optimized σ normalized 20.39→20.38%, max
+drawdown −34.7→−34.6%, risk contributions IEMG 44.3→44.2% and BMNR 23.4→23.5%, and the
+baseline terminal value $20,052→$20,061 (it had been computed from an unrounded CAGR while
+the page displayed a rounded one).
 
 ## Disclaimer
 
-Not investment advice. Forward figures are modelled estimates that depend on volatility,
-correlation and terminal-valuation assumptions which will not hold exactly. BMNR carries
-single-issuer, dilution and crypto-price risk that can result in total loss of that position.
+Not investment advice. Forward figures are modelled estimates that depend on earnings
+growth, terminal valuation, currency, volatility and correlation assumptions which will not
+hold exactly. Market data is as of 4 September 2026. BMNR carries single-issuer, dilution
+and crypto-price risk that can result in total loss of that position.

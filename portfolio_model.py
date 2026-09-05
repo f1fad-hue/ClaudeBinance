@@ -1,118 +1,226 @@
-import math, itertools
+#!/usr/bin/env python3
+"""
+Single source of truth for every figure in allocation.html.
 
-# ============ VERIFIED INPUTS (Sep 4 2026) ============
-# QQQ  : fwd P/E 25.17 (Siblis, Jul 1 26); div yld 0.65% (ChartRow, Aug 28 26); ER 0.18%
-# IEMG : fwd P/E 11.61 (Siblis, Jan 1 26); div yld 2.29% (EEM proxy, May 8 26); ER 0.09%
-# SGOV : 30-day SEC yield 3.63% (Sep 2 26); ER 0.09%
-# BMNR : mNAV 1.02x on total NAV $15.6B; 85.9% of ETH staked
+Run directly for a readable report; `python3 validate.py` checks the published
+page against whatever this file computes. If a number changes here, the page is
+wrong until it is changed there too.
 
-def valuation_drag(p_now, p_end, yrs=10):
-    return ((p_end/p_now)**(1/yrs) - 1) * 100
+Market data as of 4 September 2026. Sources are linked on the page itself.
+"""
+import math, json
+from decimal import Decimal, ROUND_HALF_UP
 
-print("=== BUILDING-BLOCK RETURN FORECASTS (10yr) ===")
-qqq_val  = valuation_drag(25.17, 21.0)
-iemg_val = valuation_drag(11.61, 12.5)
-print(f"QQQ  valuation 25.17->21.0 : {qqq_val:+.2f}%/yr")
-print(f"IEMG valuation 11.61->12.5 : {iemg_val:+.2f}%/yr")
+def r2h(x):
+    """Round half away from zero, the convention a reader applies by hand.
+    Python's round() is banker's rounding, which makes 7.205 -> 7.20."""
+    return float(Decimal(repr(x)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
-qqq_gross  = 0.65 + 9.50 + qqq_val
-iemg_gross = 2.29 + 7.50 + iemg_val - 1.50          # -1.50 EM FX drag for USD investor
-sgov_gross = 3.25
-bmnr_net   = 9.00 + 0.859*3.00 - valuation_drag(1.02,1.00)*-1*0 - 0.20 - 1.40
-bmnr_net   = 9.00 + 0.859*3.00 - 0.20 - 1.40
-print(f"\nQQQ  gross = 0.65 div + 9.50 eps {qqq_val:+.2f} val        = {qqq_gross:.2f}%")
-print(f"IEMG gross = 2.29 div + 7.50 eps {iemg_val:+.2f} val -1.50 fx = {iemg_gross:.2f}%")
-print(f"SGOV gross = {sgov_gross:.2f}%   (10yr avg bill yield assumption)")
-print(f"BMNR net   = 9.00 eth + {0.859*3.00:.2f} stake -0.20 mnav -1.40 drag = {bmnr_net:.2f}%")
-
-A = {
- 'QQQ' : dict(gross=qqq_gross,  er=0.18, vol=21.0, dd=40.0),
- 'IEMG': dict(gross=iemg_gross, er=0.09, vol=18.0, dd=33.0),
- 'SGOV': dict(gross=sgov_gross, er=0.09, vol=0.5,  dd=0.3),
- 'BMNR': dict(gross=bmnr_net,   er=0.00, vol=95.0, dd=85.0),
+# ── observed inputs ──────────────────────────────────────────────────────────
+OBS = {
+    'QQQ' : dict(er=0.18, fwd_pe=25.17, div=0.65, eps=9.50, pe_end=21.0,  fx=0.0),
+    'IEMG': dict(er=0.09, fwd_pe=11.61, div=2.29, eps=7.50, pe_end=12.5,  fx=-1.50),
 }
-for k,v in A.items(): v['net']=round(v['gross']-v['er'],2)
-print("\n=== NET (after fund fees) ===")
-for k,v in A.items():
-    print(f"  {k}: gross {v['gross']:.2f} - fee {v['er']:.2f} = NET {v['net']:.2f}%  -> $10k becomes ${10000*(1+v['net']/100)**10:,.0f}")
+SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.63%)
+SGOV_ER    = 0.09
+BMNR = dict(eth=9.00, stake_share=0.859, stake_yield=3.00, mnav=1.02, drag=1.40)
 
-RHO={('QQQ','IEMG'):0.72,('QQQ','BMNR'):0.65,('IEMG','BMNR'):0.55,
-     ('QQQ','SGOV'):0.0,('IEMG','SGOV'):0.0,('SGOV','BMNR'):0.0}
-def rho(a,b): return 1.0 if a==b else RHO.get((a,b),RHO.get((b,a)))
+VIX_SPOT, VIX_MEAN = 14.32, 18.9      # 2016-2023 mean of annual closes
+DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
+RF_LABEL = 'SGOV'
 
-def stats(w):
-    ks=list(w)
-    cagr=sum(w[k]/100*A[k]['net'] for k in ks)
-    fee =sum(w[k]/100*A[k]['er']  for k in ks)
-    var=sum((w[a]/100)*(w[b]/100)*A[a]['vol']*A[b]['vol']*rho(a,b) for a in ks for b in ks)
-    vol=math.sqrt(var)
-    mrc={a:(w[a]/100)*sum((w[b]/100)*A[a]['vol']*A[b]['vol']*rho(a,b) for b in ks)/vol for a in ks}
-    ndd=sum(w[k]/100*A[k]['dd'] for k in ks)
-    return dict(cagr=cagr,fee=fee,vol=vol,mrc=mrc,ndd=ndd,
-                dd=vol*1.65, dd_hi=vol*1.75, sharpe=(cagr-A['SGOV']['net'])/vol)
+def annualised(p_now, p_end, yrs=10):
+    return ((p_end / p_now) ** (1 / yrs) - 1) * 100
 
-# ---- frontier search: 5% increments, all sleeves >=5, BMNR<=5 (risk cap), SGOV>=20 (dd floor)
-print("\n=== FRONTIER SEARCH (5% increments) ===")
-cands=[]
-for q in range(5,101,5):
-  for i in range(5,101,5):
-    for s in range(20,101,5):
-      b=100-q-i-s
-      if b!=5: continue
-      w={'QQQ':q,'IEMG':i,'SGOV':s,'BMNR':b}
-      st=stats(w); cands.append((w,st))
-cands.sort(key=lambda x:-x[1]['sharpe'])
-print(f"{'QQQ':>4}{'IEMG':>5}{'SGOV':>5}{'BMNR':>5} | {'CAGR':>6}{'vol':>7}{'maxDD':>7}{'Sharpe':>8}")
-for w,st in cands[:8]:
-    print(f"{w['QQQ']:>4}{w['IEMG']:>5}{w['SGOV']:>5}{w['BMNR']:>5} | "
-          f"{st['cagr']:>6.2f}{st['vol']:>7.2f}{-st['dd']:>7.1f}{st['sharpe']:>8.3f}")
+# ── forecasts ────────────────────────────────────────────────────────────────
+def build():
+    """Components are rounded to the precision the page displays, then summed, so
+    every figure on the page can be reproduced by hand from the components shown."""
+    r2 = r2h
+    a = {}
+    for k, o in OBS.items():
+        val   = r2(annualised(o['fwd_pe'], o['pe_end']))
+        gross = r2(o['div'] + o['eps'] + val + o['fx'])
+        a[k] = dict(div=o['div'], eps=o['eps'], val=val, fx=o['fx'],
+                    gross=gross, er=o['er'], net=r2(gross - o['er']))
+    a['SGOV'] = dict(gross=SGOV_GROSS, er=SGOV_ER, net=r2(SGOV_GROSS - SGOV_ER))
+    b = BMNR
+    mnav  = r2(annualised(b['mnav'], 1.00))
+    stake = r2(b['stake_share'] * b['stake_yield'])
+    net   = r2(b['eth'] + stake + mnav - b['drag'])
+    a['BMNR'] = dict(eth=b['eth'], stake=stake, mnav=mnav, drag=-b['drag'],
+                     er=0.0, net=net, gross=net)
+    return a
 
-BASE={'QQQ':45,'IEMG':25,'SGOV':25,'BMNR':5}
-OPT ={'QQQ':30,'IEMG':40,'SGOV':25,'BMNR':5}
-print("\n=== CANDIDATE PORTFOLIOS ===")
-for nm,w in [('BASELINE',BASE),('OPTIMIZED',OPT)]:
-    st=stats(w); tot=sum(st['mrc'].values())
-    print(f"\n--- {nm} {w}  (sum {sum(w.values())})")
-    print(f"  net CAGR {st['cagr']:.2f}%  | wtd fee {st['fee']:.3f}%  | vol {st['vol']:.2f}%")
-    print(f"  horizon vol   3mo {st['vol']*.5:.2f}%  6mo {st['vol']*math.sqrt(.5):.2f}%  12mo {st['vol']:.2f}%")
-    print(f"  95% VaR       3mo {st['cagr']*.25-1.645*st['vol']*.5:+.1f}%  "
-          f"6mo {st['cagr']*.5-1.645*st['vol']*math.sqrt(.5):+.1f}%  12mo {st['cagr']-1.645*st['vol']:+.1f}%")
-    print(f"  maxDD  model -{st['dd']:.1f}% (hi -{st['dd_hi']:.1f}%)  | naive wtd -{st['ndd']:.1f}%")
-    print(f"  Sharpe {st['sharpe']:.3f}")
-    print(f"  risk contrib " + "  ".join(f"{k} {st['mrc'][k]/tot*100:.1f}%" for k in w))
-    print(f"  $10,000 -> ${10000*(1+st['cagr']/100)**10:,.0f}   "
-          f"fee drag ${10000*(1+(st['cagr']+st['fee'])/100)**10 - 10000*(1+st['cagr']/100)**10:,.0f}")
+A = build()
+DD  = {'QQQ': 40.0, 'IEMG': 33.0, 'SGOV': 0.3, 'BMNR': 85.0}
+UPLIFT = VIX_MEAN / VIX_SPOT
 
-# ---- macro gauge
-print("\n=== MACRO GAUGE ===")
-sub=[('Growth momentum',7.0,.25),('Inflation trajectory',4.0,.15),('Monetary policy',3.5,.20),
-     ('Liquidity & credit',6.0,.15),('Valuation & positioning',3.5,.15),('Geopolitical risk',3.0,.10)]
-assert abs(sum(w for _,_,w in sub)-1.0)<1e-9
-g=sum(s*w for _,s,w in sub)
-for n,s,w in sub: print(f"  {n:<26} {s:>4.1f} x {w:.2f} = {s*w:.3f}")
-print(f"  GAUGE = {g:.2f}/10")
+REGIME = {
+ 'calm':       dict(vol={'QQQ':21.0,'IEMG':18.0,'SGOV':0.5,'BMNR':95.0},
+                    rho={('QQQ','IEMG'):0.72,('QQQ','BMNR'):0.65,('IEMG','BMNR'):0.55}),
+ 'normalized': dict(vol={'QQQ':21.0*UPLIFT,'IEMG':18.0*UPLIFT,'SGOV':0.5,'BMNR':95.0*1.15},
+                    rho={('QQQ','IEMG'):0.85,('QQQ','BMNR'):0.80,('IEMG','BMNR'):0.72}),
+}
 
-# ---- VIX term structure
-print("\n=== VIX TERM STRUCTURE (spot 14.32) ===")
-vix=14.32
-for lbl,h in [('1 day',1/252),('3 months',0.25),('6 months',0.5),('12 months',1.0)]:
-    s=vix*math.sqrt(h); print(f"  {lbl:<10} sqrt {math.sqrt(h):.3f}  sigma {s:.2f}%  95% band +/-{1.645*s:.1f}%")
-va=18.4
-print(f"  VIX vs ~{va} 10yr avg: {(vix-va)/va*100:.1f}% below")
+PORTFOLIOS = {
+ 'baseline':  {'QQQ':45,'IEMG':25,'SGOV':25,'BMNR':5},
+ 'optimized': {'QQQ':25,'IEMG':40,'SGOV':30,'BMNR':5},
+}
 
-# ---- SVG geometry check
-print("\n=== SVG GEOMETRY ===")
-C=2*math.pi*64
-print(f"  donut circumference r=64: {C:.3f}")
-for nm,w in [('BASELINE',BASE),('OPTIMIZED',OPT)]:
-    off=0.0; print(f"  {nm}:")
-    for k in ['QQQ','IEMG','SGOV','BMNR']:
-        seg=w[k]/100*C
-        print(f"    {k:<5} {w[k]:>3}%  dasharray=\"{seg:.2f} {C-seg:.2f}\" dashoffset=\"{-off:.2f}\"")
-        off+=seg
-    assert abs(off-C)<1e-6, "segments must close the circle"
-    print(f"    closes at {off:.3f} == {C:.3f} OK")
-L=math.pi*80
-print(f"  gauge semicircle r=80 length {L:.3f}; fill {g/10:.3f} -> dasharray {g/10*L:.2f} {L:.2f}")
-th=math.radians(180-g/10*180)
-print(f"  needle angle {math.degrees(th):.2f}deg -> x={106+62*math.cos(th):.2f} y={116-62*math.sin(th):.2f}")
+def rho(R, x, y):
+    if x == y: return 1.0
+    if 'SGOV' in (x, y): return 0.0
+    return R.get((x, y), R.get((y, x)))
+
+def stats(w, regime):
+    reg = REGIME[regime]; V, R = reg['vol'], reg['rho']; ks = list(w)
+    assert sum(w.values()) == 100, f'weights must sum to 100: {w}'
+    assert all(v % 5 == 0 for v in w.values()), f'weights must be multiples of 5: {w}'
+    cagr = sum(w[k]/100 * A[k]['net'] for k in ks)
+    fee  = sum(w[k]/100 * A[k]['er']  for k in ks)
+    var  = sum((w[x]/100)*(w[y]/100)*V[x]*V[y]*rho(R,x,y) for x in ks for y in ks)
+    vol  = math.sqrt(var)
+    mrc  = {x: (w[x]/100)*sum((w[y]/100)*V[x]*V[y]*rho(R,x,y) for y in ks)/vol for x in ks}
+    tot  = sum(mrc.values())
+    cagr_d = r2h(cagr)                       # what the page shows
+    return dict(cagr=cagr, cagr_d=cagr_d, fee=fee, vol=vol, dd=vol*DD_MULT,
+                naive=sum(w[k]/100*DD[k] for k in ks),
+                rc={k: mrc[k]/tot*100 for k in ks},
+                sharpe=(cagr - A[RF_LABEL]['net'])/vol,
+                var={h: cagr*h - 1.645*vol*math.sqrt(h) for h in (0.25, 0.5, 1.0)},
+                sigma_h={h: vol*math.sqrt(h) for h in (0.25, 0.5, 1.0)},
+                terminal=10000*(1+cagr_d/100)**10,
+                fee_drag=10000*(1+(cagr_d+fee)/100)**10 - 10000*(1+cagr_d/100)**10)
+
+# ── 1-5 sentiment scales ─────────────────────────────────────────────────────
+def to5(x):
+    """Map a 1-10 score to 1-5. Both scales floor at 1, so this is not x/2."""
+    return 1 + (x - 1) * 4 / 9
+
+def fill(v):
+    """Bar/arc fill for a 1-5 score: the floor sits at the left stop, not at zero."""
+    return (v - 1) / 4 * 100
+
+DRIVERS = [('Growth momentum',7.0,.25), ('Inflation trajectory',4.0,.15),
+           ('Monetary policy',3.5,.20), ('Liquidity & credit',6.0,.15),
+           ('Valuation & positioning',3.5,.15), ('Geopolitical risk',3.0,.10)]
+REGIONS = {'Asia / EM':[6.5,7.0,7.5,7.5], 'United States':[5.0,5.5,6.5,7.0],
+           'Europe':[3.5,4.0,4.5,5.0]}
+
+def gauge():
+    assert abs(sum(w for _,_,w in DRIVERS) - 1.0) < 1e-9, 'driver weights must sum to 1'
+    composite10 = sum(s*w for _,s,w in DRIVERS)
+    composite5  = sum(to5(s)*w for _,s,w in DRIVERS)
+    # a linear map commutes with a weighted average - this must hold
+    assert abs(composite5 - to5(composite10)) < 1e-9, 'rescale/average must commute'
+    return composite10, composite5
+
+def donut(w, r=64):
+    C = 2*math.pi*r; off = 0.0; out = []
+    for k in ('QQQ','IEMG','SGOV','BMNR'):
+        seg = w[k]/100*C
+        out.append((k, round(seg,2), round(C-seg,2), round(-off,2)))
+        off += seg
+    assert abs(off - C) < 1e-9, 'donut segments must close the circle'
+    return out, C
+
+def export():
+    """Everything the page asserts, as plain data for validate.py."""
+    g10, g5 = gauge()
+    arc = math.pi*80
+    f   = fill(g5)/100
+    th  = math.radians(180 - f*180)
+    return dict(
+        sleeves={k: dict(net=round(v['net'],2), er=v['er'],
+                         terminal=round(10000*(1+v['net']/100)**10)) for k,v in A.items()},
+        components={k: {c: round(A[k][c],2) for c in ('div','eps','val','fx','gross','er','net')}
+                    for k in ('QQQ','IEMG')},
+        portfolios={p: {r: stats(w,r) for r in REGIME} for p,w in PORTFOLIOS.items()},
+        weights=PORTFOLIOS,
+        gauge=dict(score10=round(g10,4), score5=round(g5,4), display=round(g5,1),
+                   arc_dash=round(f*arc,1), needle=(round(106+62*math.cos(th),1),
+                                                    round(116-62*math.sin(th),1)),
+                   drivers=[(n, round(to5(s),1), round(fill(to5(s)),1)) for n,s,_ in DRIVERS]),
+        regions={k: dict(scores=[round(to5(x),1) for x in v],
+                         fills=[round(fill(to5(x)),1) for x in v],
+                         mean=round(sum(to5(x) for x in v)/len(v),1)) for k,v in REGIONS.items()},
+        donuts={p: donut(w)[0] for p,w in PORTFOLIOS.items()},
+        vix=dict(spot=VIX_SPOT, mean=VIX_MEAN,
+                 below=round((VIX_SPOT-VIX_MEAN)/VIX_MEAN*100,1),
+                 term={h: round(VIX_SPOT*math.sqrt(h),2) for h in (1/252,0.25,0.5,1.0)}),
+        uplift=round(UPLIFT,4),
+    )
+
+if __name__ == '__main__':
+    g10, g5 = gauge()
+    print('== SLEEVES (10yr, net of fund fees) ==')
+    for k,v in A.items():
+        print(f"  {k:<5} gross {v['gross']:>5.2f} - fee {v['er']:.2f} = net {v['net']:>5.2f}%"
+              f"   maxDD -{DD[k]:>4.1f}%   $10k -> ${10000*(1+v['net']/100)**10:>8,.0f}")
+    print('\n== BUILDING BLOCKS ==')
+    for k in ('QQQ','IEMG'):
+        c=A[k]; print(f"  {k:<5} div {c['div']:+.2f}  eps {c['eps']:+.2f}  val {c['val']:+.2f}"
+                      f"  fx {c['fx']:+.2f}  = gross {c['gross']:.2f}  net {c['net']:.2f}")
+    print(f"\n== VOL REGIMES ==  uplift {VIX_MEAN}/{VIX_SPOT} = {UPLIFT:.4f}")
+    for r in REGIME:
+        print(f"  {r:<11}" + "  ".join(f"{k} {REGIME[r]['vol'][k]:.1f}%" for k in DD))
+    for p,w in PORTFOLIOS.items():
+        print(f"\n== {p.upper()} {w} ==")
+        for r in REGIME:
+            s = stats(w,r)
+            print(f"  {r:<11} CAGR {s['cagr_d']:.2f}%  fee {s['fee']:.3f}%  sigma {s['vol']:.2f}%"
+                  f"  maxDD -{s['dd']:.1f}%  Sharpe {s['sharpe']:.3f}")
+            print(f"              3mo s {s['sigma_h'][0.25]:.2f}% VaR {s['var'][0.25]:+.1f}% | "
+                  f"6mo s {s['sigma_h'][0.5]:.2f}% VaR {s['var'][0.5]:+.1f}% | "
+                  f"12mo s {s['sigma_h'][1.0]:.2f}% VaR {s['var'][1.0]:+.1f}%")
+        s = stats(w,'normalized')
+        print(f"  naive-stress -{s['naive']:.1f}%   $10k -> ${s['terminal']:,.0f}"
+              f"   fee drag ${s['fee_drag']:,.0f}")
+        print("  risk contrib (normalized): " + "  ".join(f"{k} {s['rc'][k]:.1f}%" for k in w))
+    print(f"\n== GAUGE ==  {g10:.4f}/10 -> {g5:.4f}/5 (displays {g5:.1f}), arc fill {fill(g5):.1f}%")
+    for n,s,wt in DRIVERS:
+        print(f"  {n:<26} {s:>4.1f}/10 -> {to5(s):.2f}/5  bar {fill(to5(s)):.1f}%  w {wt:.0%}")
+    print('\n== REGIONS (1-5) ==')
+    for k,v in REGIONS.items():
+        n=[to5(x) for x in v]
+        print(f"  {k:<14} " + " ".join(f"{x:.1f}" for x in n) + f"   mean {sum(n)/4:.1f}")
+    print('\nJSON export OK:', len(json.dumps(export(), default=str)), 'bytes')
+
+
+# ── claims the page makes that must stay reproducible ────────────────────────
+def frontier(regime, bmnr=5, sgov_min=15):
+    """Every 5%-increment allocation, ranked by Sharpe. The page states the
+    unconstrained winner and then explains why it is rejected."""
+    out = []
+    for q in range(5, 101, 5):
+        for i in range(5, 101, 5):
+            s_ = 100 - q - i - bmnr
+            if s_ < sgov_min: continue
+            w = {'QQQ': q, 'IEMG': i, 'SGOV': s_, 'BMNR': bmnr}
+            out.append((w, stats(w, regime)))
+    return sorted(out, key=lambda x: -x[1]['sharpe'])
+
+def cash_line(regime='normalized'):
+    """Substituting QQQ for SGOV traces a straight capital-allocation line:
+    return-per-drawdown is invariant, so the cash weight is a preference."""
+    rows = []
+    for q, s_ in ((35,20),(30,25),(25,30),(20,35),(15,40)):
+        w = {'QQQ': q, 'IEMG': 40, 'SGOV': s_, 'BMNR': 5}
+        st = stats(w, regime)
+        rows.append((w, st['cagr_d'], st['dd'],
+                     (st['cagr_d'] - A[RF_LABEL]['net']) / st['dd']))
+    return rows
+
+if __name__ == '__main__':
+    print('\n== FRONTIER (top 3, each regime) ==')
+    for r in REGIME:
+        print(f'  {r}:')
+        for w, st in frontier(r)[:3]:
+            print(f"    QQQ {w['QQQ']:>3} IEMG {w['IEMG']:>3} SGOV {w['SGOV']:>3} BMNR {w['BMNR']:>2}"
+                  f"  CAGR {st['cagr_d']:.2f}%  sigma {st['vol']:.2f}%  Sharpe {st['sharpe']:.3f}")
+    print('\n== CASH LINE (QQQ <-> SGOV, IEMG fixed at 40) ==')
+    for w, c, dd, r in cash_line():
+        print(f"  {w['QQQ']:>3}/40/{w['SGOV']:<3}/5   CAGR {c:>5.2f}%  maxDD -{dd:>5.1f}%  ret/DD {r:.3f}")
+    ratios = [round(r, 3) for _, _, _, r in cash_line()]
+    print(f"  ratios {ratios} -> invariant: {len(set(ratios)) == 1}")
