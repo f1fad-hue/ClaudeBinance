@@ -16,7 +16,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 ## Sections
 
 1. **Macro** — composite driver gauge (1–5) over six weighted inputs, plus correlated transmission into each sleeve.
-2. **Regions** — US / Europe / Asia-EM ranked at 3, 6, 12 months and 10 years.
+2. **Regions** — US / Europe / Asia-EM ranked 1–5 at 3, 6, 12 months and 10 years.
 3. **Volatility** — VIX term-structure math, portfolio σ and VaR by horizon, risk decomposition, 10-year regime view.
 4. **Sleeves** — one swipeable slide per holding with net-of-fee 10-year CAGR and expected drawdown.
 5. **Portfolios** — baseline vs optimized donuts, forecast comparison, rationale.
@@ -95,8 +95,21 @@ Scored 1–5, where 3 is neutral. Current composite reading is **2.7/5**.
 
 Converting a 1–10 score to 1–5 is `1 + (x-1) * 4/9`, not division by two, since both
 scales floor at 1. The arc fills on `(score-1)/4` so the scale's floor sits at the left
-stop rather than at zero. Regional rankings deliberately remain on their own 1–10 scale;
-they are a separate instrument.
+stop rather than at zero.
+
+### Regional rankings
+
+Same 1–5 scale, same mapping, bars filling on `(score-1)/4`:
+
+| Bloc | 3 mo | 6 mo | 12 mo | 10 yr | Mean |
+|---|---|---|---|---|---|
+| Asia / EM | 3.4 | 3.7 | 3.9 | 3.9 | 3.7 |
+| United States | 2.8 | 3.0 | 3.4 | 3.7 | 3.2 |
+| Europe | 2.1 | 2.3 | 2.6 | 2.8 | 2.4 |
+
+Point gaps shrink by the 4/9 factor — the Asia-US lead reads 0.7 at 3 months and 0.2 at
+10 years — but no ordering changes at any horizon, so the allocation conclusion is
+untouched. Bars are drawn from unrounded values while cells display one decimal.
 
 ## Volatility regime
 
