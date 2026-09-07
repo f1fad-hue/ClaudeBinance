@@ -128,7 +128,7 @@ for reg in ('calm','normalized'):
     ck(f'frontier winner {reg}', (w['QQQ'],w['IEMG'],w['SGOV'],w['BMNR']) == (5,85,5,5),
        (w['QQQ'],w['IEMG'],w['SGOV'],w['BMNR']), (5,85,5,5))
 present('frontier stated in prose', 'QQQ 5 / IEMG 85 / SGOV 5 / BMNR 5')
-present('frontier Sharpe stated', '0.287')
+present('frontier Sharpe stated', f"{M.frontier('calm', sgov_min=5)[0][1]['sharpe']:.3f}")
 ratios = [round(r,3) for *_ , r in M.cash_line()]
 ck('cash line invariant', len(set(ratios)) == 1, ratios, 'all equal')
 present('cash line ratio stated', f'{ratios[0]:.3f}')
@@ -144,9 +144,12 @@ for stale, why in (('16.00%','old optimized sigma'), ('27.2%','old optimized max
     ck(f'no superseded value ({why})', stale not in body_only, stale, 'absent outside log')
 
 # ── no stale scale or revision markers ───────────────────────────────────────
-for bad, why in (('/10</small>', 'gauge must be /5'),
-                 ('Rev. 2 ·', 'revision stamp is stale')):
+for bad, why in (('/10</small>', 'gauge must be /5'),):
     ck(f'no stale: {why}', bad not in html, bad, 'absent')
+# exactly one revision stamp, and it is the newest one
+revs = re.findall(r'<span>Rev\. (\d+) ·', html)
+ck('single revision stamp', len(revs) == 1, revs, 'one')
+ck('revision stamp is current', revs == ['6'], revs, ['6'])
 
 print(f'{checks} checks, {len(fails)} failed')
 for f in fails: print('  FAIL', f)

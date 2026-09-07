@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model. 139 checks, exits non-zero on drift. |
+| `validate.py` | Asserts the page matches the model. 140 checks, exits non-zero on drift. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
 ```bash
@@ -54,7 +54,7 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 
 | Metric | Baseline | Optimized |
 |---|---|---|
-| Net 10-yr CAGR | 7.21% | 7.07% |
+| Net 10-yr CAGR | 7.13% | 6.94% |
 | Weighted fee | 0.126% | 0.108% |
 | σ — calm (today) | 16.59% | 15.05% |
 | σ — vol normalized | 22.41% | 20.38% |
@@ -64,7 +64,7 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.14 points of CAGR to buy 3.5 points of drawdown.
+it gives up 0.19 points of CAGR to buy 3.5 points of drawdown.
 
 ## Method
 
@@ -76,14 +76,16 @@ reproduced by hand from the components shown.
 |---|---|---|
 | Dividend yield | +0.65 | +2.29 |
 | Earnings growth | +9.50 | +7.50 |
-| Valuation change | −1.79 | +0.74 |
+| Valuation change | −1.79 | +0.42 |
 | Currency drag | — | −1.50 |
-| **Gross** | **8.36** | **9.03** |
+| **Gross** | **8.36** | **8.71** |
 | Expense ratio | −0.18 | −0.09 |
-| **Net** | **8.18** | **8.94** |
+| **Net** | **8.18** | **8.62** |
 
 Valuation change annualises the forward multiple moving from its observed level
-(QQQ 25.2×, IEMG 11.6×) to an assumed terminal level (21×, 12.5×) over ten years.
+(QQQ 25.2×, IEMG 11.7×) to an assumed terminal level (21×, 12.2×) over ten years. IEMG's
+terminal is its own 10-year average multiple: 11.7× is below that 12.2× average but level
+with the 20-year average, so the discount is to developed markets, not to its own history.
 BMNR is modelled separately: 9.0% ETH appreciation, +2.58% staking on 85.9% of the
 treasury, −0.20% mNAV normalisation, −1.40% corporate and dilution drag.
 
@@ -113,7 +115,7 @@ correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
 Two findings constrained the answer:
 
 - **The cash line is straight.** Substituting QQQ for SGOV from 35/20 through 15/40 gives
-  an identical return-per-drawdown ratio of 0.113 at every step, because an uncorrelated
+  an identical return-per-drawdown ratio of 0.109 at every step, because an uncorrelated
   near-zero-volatility asset traces a capital-allocation line. The optimizer cannot pick
   the cash weight; 30% is a stated drawdown budget, not a model output.
 - **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
@@ -122,15 +124,32 @@ Two findings constrained the answer:
   and discarded rather than published.
 
 Subject only to the brief's floor of 5% per sleeve, the highest return-per-unit-risk mix
-is QQQ 5 / IEMG 85 / SGOV 5 / BMNR 5 (Sharpe 0.287 vs the recommended book's 0.260). It is
+is QQQ 5 / IEMG 85 / SGOV 5 / BMNR 5 (Sharpe 0.273 vs the recommended book's 0.251). It is
 rejected: it over-fits the two least reliable inputs and carries a −43.6% normalised
 drawdown. The 40% cap keeps most of the benefit while staying robust to those assumptions
 being wrong.
 
 ## Verification
 
-Twenty corrections have been recorded across three verification passes. The most
+Twenty-eight corrections have been recorded across four verification passes. The most
 consequential:
+
+- A premise had gone stale. The page rested the EM sleeve partly on a Fed that *held*
+  rather than hiked, capping dollar strength. The 4 September payrolls print — 162,000
+  against a 53,000 consensus — moved futures to a ~58–62% chance of a September hike, so
+  that premise no longer holds. The overweight now stands on the ten-year valuation gap
+  alone, the Asia 3-month score was cut, and one of the page's own stated revisit triggers
+  is marked as fired.
+- The EM terminal multiple was too aggressive. 11.7× forward sits below the 10-year average
+  of 12.2× but level with the 20-year average of 11.7×, so the assumed 12.5× exceeded both
+  anchors. Re-anchoring to 12.2× cuts IEMG's forecast by 0.32 points and narrows its edge
+  over QQQ from 0.76 to 0.44. The 40% tilt survives — a sensitivity sweep shows IEMG still
+  improving return and drawdown together from 25% to 50% — but on a thinner margin.
+- BMNR's capital policy reversed. The company authorised a $4B buyback and repurchased ~3M
+  shares while its weekly ETH purchase fell to the smallest of 2026, so the page's
+  "severe dilution as equity is issued to buy ETH" narrative was out of date. The −1.40%/yr
+  corporate drag is unchanged, since less issuance is offset by a slower ETH-per-share
+  engine.
 
 - The page asserted both that the VIX "sits near its 10-year average" and that the average
   was near 19 — a direct self-contradiction. The 2016–2023 mean is 18.9, so spot at 14.32

@@ -19,7 +19,7 @@ def r2h(x):
 # ── observed inputs ──────────────────────────────────────────────────────────
 OBS = {
     'QQQ' : dict(er=0.18, fwd_pe=25.17, div=0.65, eps=9.50, pe_end=21.0,  fx=0.0),
-    'IEMG': dict(er=0.09, fwd_pe=11.61, div=2.29, eps=7.50, pe_end=12.5,  fx=-1.50),
+    'IEMG': dict(er=0.09, fwd_pe=11.70, div=2.29, eps=7.50, pe_end=12.2,  fx=-1.50),
 }
 SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.63%)
 SGOV_ER    = 0.09
@@ -102,10 +102,10 @@ def fill(v):
     """Bar/arc fill for a 1-5 score: the floor sits at the left stop, not at zero."""
     return (v - 1) / 4 * 100
 
-DRIVERS = [('Growth momentum',7.0,.25), ('Inflation trajectory',4.0,.15),
-           ('Monetary policy',3.5,.20), ('Liquidity & credit',6.0,.15),
+DRIVERS = [('Growth momentum',7.5,.25), ('Inflation trajectory',4.0,.15),
+           ('Monetary policy',3.0,.20), ('Liquidity & credit',6.0,.15),
            ('Valuation & positioning',3.5,.15), ('Geopolitical risk',3.0,.10)]
-REGIONS = {'Asia / EM':[6.5,7.0,7.5,7.5], 'United States':[5.0,5.5,6.5,7.0],
+REGIONS = {'Asia / EM':[6.0,7.0,7.5,7.5], 'United States':[5.0,5.5,6.5,7.0],
            'Europe':[3.5,4.0,4.5,5.0]}
 
 def gauge():
