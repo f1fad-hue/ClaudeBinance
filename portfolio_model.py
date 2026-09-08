@@ -25,7 +25,8 @@ SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.6
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.859, stake_yield=3.00, mnav=1.02, drag=1.40)
 
-VIX_SPOT, VIX_MEAN = 14.32, 18.9      # 2016-2023 mean of annual closes
+REVISION = 7                          # bump when publishing; validate.py enforces it
+VIX_SPOT, VIX_MEAN = 15.30, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
 
@@ -102,11 +103,11 @@ def fill(v):
     """Bar/arc fill for a 1-5 score: the floor sits at the left stop, not at zero."""
     return (v - 1) / 4 * 100
 
-DRIVERS = [('Growth momentum',7.5,.25), ('Inflation trajectory',4.0,.15),
-           ('Monetary policy',3.0,.20), ('Liquidity & credit',6.0,.15),
-           ('Valuation & positioning',3.5,.15), ('Geopolitical risk',3.0,.10)]
-REGIONS = {'Asia / EM':[6.0,7.0,7.5,7.5], 'United States':[5.0,5.5,6.5,7.0],
-           'Europe':[3.5,4.0,4.5,5.0]}
+DRIVERS = [('Growth momentum',7.0,.25), ('Inflation trajectory',3.0,.15),
+           ('Monetary policy',2.5,.20), ('Liquidity & credit',5.5,.15),
+           ('Valuation & positioning',4.0,.15), ('Geopolitical risk',2.0,.10)]
+REGIONS = {'Asia / EM':[5.5,6.5,7.0,7.5], 'United States':[5.0,5.5,6.5,7.0],
+           'Europe':[3.0,3.5,4.0,5.0]}
 
 def gauge():
     assert abs(sum(w for _,_,w in DRIVERS) - 1.0) < 1e-9, 'driver weights must sum to 1'
@@ -149,7 +150,7 @@ def export():
         vix=dict(spot=VIX_SPOT, mean=VIX_MEAN,
                  below=round((VIX_SPOT-VIX_MEAN)/VIX_MEAN*100,1),
                  term={h: round(VIX_SPOT*math.sqrt(h),2) for h in (1/252,0.25,0.5,1.0)}),
-        uplift=round(UPLIFT,4),
+        uplift=round(UPLIFT,4), revision=REVISION,
     )
 
 if __name__ == '__main__':
@@ -201,9 +202,26 @@ def frontier(regime, bmnr=5, sgov_min=15):
             out.append((w, stats(w, regime)))
     return sorted(out, key=lambda x: -x[1]['sharpe'])
 
+def cal_line(regime='normalized', mix=(25, 40, 5)):
+    """A TRUE capital-allocation line: hold the risky mix in exact proportion and
+    scale it against cash. Return-per-drawdown is then invariant to machine
+    precision when cash has zero variance -- which is why no optimizer can pick
+    the cash weight. Continuous weights, so the 5% grid does not blur it."""
+    q, i, b = mix; tot = q + i + b
+    prop = {'QQQ': q/tot, 'IEMG': i/tot, 'BMNR': b/tot}
+    V, R = REGIME[regime]['vol'], REGIME[regime]['rho']
+    rf, out = A[RF_LABEL]['net'], []
+    for a in (0.80, 0.75, 0.70, 0.65, 0.60):
+        w = {k: v*a for k, v in prop.items()}; w['SGOV'] = 1 - a
+        mu  = sum(w[k]*A[k]['net'] for k in w)
+        sd  = math.sqrt(sum(w[x]*w[y]*V[x]*V[y]*rho(R,x,y) for x in w for y in w))
+        out.append((round(a*100), (mu-rf)/(sd*DD_MULT)))
+    return out
+
 def cash_line(regime='normalized'):
-    """Substituting QQQ for SGOV traces a straight capital-allocation line:
-    return-per-drawdown is invariant, so the cash weight is a preference."""
+    """The illustration shown on the page: QQQ traded against SGOV with IEMG
+    pinned at 40. NOT a pure CAL -- pinning IEMG changes the risky mix as well as
+    its scale -- so the ratio drifts slightly instead of holding exactly."""
     rows = []
     for q, s_ in ((35,20),(30,25),(25,30),(20,35),(15,40)):
         w = {'QQQ': q, 'IEMG': 40, 'SGOV': s_, 'BMNR': 5}
@@ -222,5 +240,9 @@ if __name__ == '__main__':
     print('\n== CASH LINE (QQQ <-> SGOV, IEMG fixed at 40) ==')
     for w, c, dd, r in cash_line():
         print(f"  {w['QQQ']:>3}/40/{w['SGOV']:<3}/5   CAGR {c:>5.2f}%  maxDD -{dd:>5.1f}%  ret/DD {r:.3f}")
-    ratios = [round(r, 3) for _, _, _, r in cash_line()]
-    print(f"  ratios {ratios} -> invariant: {len(set(ratios)) == 1}")
+    rs = [r for _, _, _, r in cash_line()]
+    print(f"  spread {max(rs)-min(rs):.4f} -> drifts, because pinning IEMG changes the risky mix")
+    print('\n== TRUE CAL (risky mix fixed in exact proportion, scaled against cash) ==')
+    cal = cal_line()
+    for a, r in cal: print(f"  {a:>3}% risky   ret/DD {r:.6f}")
+    print(f"  spread {max(r for _,r in cal)-min(r for _,r in cal):.2e} -> invariant, as theory requires")

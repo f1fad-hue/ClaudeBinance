@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model. 140 checks, exits non-zero on drift. |
+| `validate.py` | Asserts the page matches the model. 152 checks, exits non-zero on drift. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
 ```bash
@@ -57,9 +57,9 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 | Net 10-yr CAGR | 7.13% | 6.94% |
 | Weighted fee | 0.126% | 0.108% |
 | σ — calm (today) | 16.59% | 15.05% |
-| σ — vol normalized | 22.41% | 20.38% |
+| σ — vol normalized | 21.29% | 19.38% |
 | Max drawdown — calm | −28.2% | −25.6% |
-| Max drawdown — normalized | −38.1% | −34.6% |
+| Max drawdown — normalized | −36.2% | −33.0% |
 | Correlated-stress drawdown | −30.6% | −27.5% |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
@@ -96,28 +96,31 @@ Converting a 1–10 score is `1 + (x-1) * 4/9`, not division by two, since both 
 floor at 1. Arcs and bars fill on `(score-1)/4` so the scale's floor sits at the left
 stop rather than at zero.
 
-Composite reads **2.7/5**. Regional means: Asia/EM 3.7, US 3.2, Europe 2.4 — ordering
+Composite reads **2.5/5**. Regional means: Asia/EM 3.5, US 3.2, Europe 2.3 — ordering
 preserved at every horizon, which is the check that the rescale is presentational only.
 
 ## Volatility regime
 
-Weights are sized to *normalized* volatility, not today's calm. Spot VIX of 14.32 sits
-~24% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled by 1.32 and
+Weights are sized to *normalized* volatility, not today's level. Spot VIX of 15.30 sits
+~19% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled by 1.24 and
 correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
-| QQQ | 21.0% | 27.7% |
-| IEMG | 18.0% | 23.8% |
+| QQQ | 21.0% | 25.9% |
+| IEMG | 18.0% | 22.2% |
 | SGOV | 0.5% | 0.5% |
 | BMNR | 95% | 109% |
 
 Two findings constrained the answer:
 
-- **The cash line is straight.** Substituting QQQ for SGOV from 35/20 through 15/40 gives
-  an identical return-per-drawdown ratio of 0.109 at every step, because an uncorrelated
-  near-zero-volatility asset traces a capital-allocation line. The optimizer cannot pick
-  the cash weight; 30% is a stated drawdown budget, not a model output.
+- **The cash line is straight.** Scaling a fixed risky mix against cash holds
+  return-per-drawdown at 0.1147 regardless of the cash weight — invariant to 2.8e-17,
+  since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
+  The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
+  output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
+  IEMG; that is *not* a pure CAL (the risky mix changes, not just its scale) and drifts
+  0.115 → 0.114. `cal_line()` now carries the theorem, `cash_line()` the illustration.
 - **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
   volatility implies a 69.6% arithmetic mean, which nobody would forecast. A Booth-Fama
   rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
@@ -131,8 +134,18 @@ being wrong.
 
 ## Verification
 
-Twenty-eight corrections have been recorded across four verification passes. The most
+Thirty-five corrections have been recorded across five verification passes. The most
 consequential:
+
+- An energy supply shock arrived. Iran-aligned strikes halted Saudi output, Brent reached
+  $99.16, and September hike odds rose to 68%. Four of six drivers fell and the composite
+  moved 2.7 → **2.5**, its first real move in four passes. It cuts against the EM tilt from
+  a new direction — Asia imports most of its energy — so the 3-, 6- and 12-month Asia
+  scores were cut; only the 10-year score stands.
+- The cash-line claim was overstated. The page asserted an identical return-per-drawdown
+  ratio at every step of the QQQ↔SGOV substitution. Pinning IEMG changes the risky mix, not
+  merely its scale, so it drifts 0.115 → 0.114. The underlying theorem holds exactly for a
+  true CAL, and the demonstration was replaced with one that shows it.
 
 - A premise had gone stale. The page rested the EM sleeve partly on a Fed that *held*
   rather than hiked, capping dollar strength. The 4 September payrolls print — 162,000

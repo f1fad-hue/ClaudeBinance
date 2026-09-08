@@ -69,6 +69,26 @@ present('baseline Sharpe calm',  f"{E['portfolios']['baseline']['calm']['sharpe'
 for k, v in E['portfolios']['optimized']['normalized']['rc'].items():
     present(f'risk contrib {k}', f"{v:.1f}%")
 
+# ── the comparison table's own cells, not merely 'value appears somewhere' ────
+cmp_rows = {
+ 'Net 10-yr CAGR':      (f"{E['portfolios']['baseline']['calm']['cagr_d']:.2f}%",
+                         f"{E['portfolios']['optimized']['calm']['cagr_d']:.2f}%"),
+ 'σ — calm (today)':    (f"{E['portfolios']['baseline']['calm']['vol']:.2f}%",
+                         f"{E['portfolios']['optimized']['calm']['vol']:.2f}%"),
+ 'σ — vol normalized':  (f"{E['portfolios']['baseline']['normalized']['vol']:.2f}%",
+                         f"{E['portfolios']['optimized']['normalized']['vol']:.2f}%"),
+ 'Max DD — calm':       (f"−{E['portfolios']['baseline']['calm']['dd']:.1f}%",
+                         f"−{E['portfolios']['optimized']['calm']['dd']:.1f}%"),
+ 'Max DD — normalized': (f"−{E['portfolios']['baseline']['normalized']['dd']:.1f}%",
+                         f"−{E['portfolios']['optimized']['normalized']['dd']:.1f}%"),
+}
+for label, (b_want, o_want) in cmp_rows.items():
+    m = re.search(r'<td>%s</td>((?:<td class="n[^"]*">[^<]+</td>){2})' % re.escape(label), html)
+    ck(f'cmp row present: {label}', m is not None, bool(m), True)
+    if m:
+        cells = re.findall(r'<td class="n[^"]*">([^<]+)</td>', m.group(1))
+        ck(f'cmp row {label}', cells == [b_want, o_want], cells, [b_want, o_want])
+
 # ── gauge ────────────────────────────────────────────────────────────────────
 g = E['gauge']
 present('gauge display', f'>{g["display"]}<small>/5</small>')
@@ -129,13 +149,19 @@ for reg in ('calm','normalized'):
        (w['QQQ'],w['IEMG'],w['SGOV'],w['BMNR']), (5,85,5,5))
 present('frontier stated in prose', 'QQQ 5 / IEMG 85 / SGOV 5 / BMNR 5')
 present('frontier Sharpe stated', f"{M.frontier('calm', sgov_min=5)[0][1]['sharpe']:.3f}")
-ratios = [round(r,3) for *_ , r in M.cash_line()]
-ck('cash line invariant', len(set(ratios)) == 1, ratios, 'all equal')
-present('cash line ratio stated', f'{ratios[0]:.3f}')
+# the theorem: a true CAL (risky mix fixed, scaled against cash) is invariant
+cal = [r for _, r in M.cal_line()]
+ck('CAL invariant', max(cal) - min(cal) < 1e-4, f'{max(cal)-min(cal):.2e}', '<1e-4')
+present('CAL ratio stated', f'{cal[0]:.4f}')
+# the illustration only approximates it, and the page must not claim otherwise
+ill = [r for *_, r in M.cash_line()]
+ck('illustration drifts', max(ill) - min(ill) > 1e-4, f'{max(ill)-min(ill):.2e}', '>1e-4')
 
 # ── values from superseded revisions must not survive outside the change log ──
 log_start = html.index('Verification log')
 body_only = html[:log_start]
+ck('no exact-invariance claim', 'identical return-per-drawdown ratio' not in body_only,
+   'claim present outside log', 'absent')
 for stale, why in (('16.00%','old optimized sigma'), ('27.2%','old optimized maxDD'),
                    ('7.32%','old optimized CAGR'),  ('0.112%','old optimized fee'),
                    ('36.9%','old normalized maxDD'),('20.39%','pre-fix sigma'),
@@ -149,7 +175,7 @@ for bad, why in (('/10</small>', 'gauge must be /5'),):
 # exactly one revision stamp, and it is the newest one
 revs = re.findall(r'<span>Rev\. (\d+) ·', html)
 ck('single revision stamp', len(revs) == 1, revs, 'one')
-ck('revision stamp is current', revs == ['6'], revs, ['6'])
+ck('revision stamp is current', revs == [str(M.REVISION)], revs, [str(M.REVISION)])
 
 print(f'{checks} checks, {len(fails)} failed')
 for f in fails: print('  FAIL', f)
