@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model. 152 checks, exits non-zero on drift. |
+| `validate.py` | Asserts the page matches the model. 151 checks, exits non-zero on drift. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
@@ -57,24 +57,25 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 
 | Sleeve | Baseline | Optimized |
 |---|---|---|
-| QQQ  | 45% | 25% |
-| IEMG | 25% | 40% |
+| QQQ  | 45% | 30% |
+| IEMG | 25% | 35% |
 | SGOV | 25% | 30% |
 | BMNR |  5% |  5% |
 
 | Metric | Baseline | Optimized |
 |---|---|---|
-| Net 10-yr CAGR | 7.13% | 6.94% |
-| Weighted fee | 0.126% | 0.108% |
-| σ — calm (today) | 16.59% | 15.05% |
-| σ — vol normalized | 21.29% | 19.38% |
-| Max drawdown — calm | −28.2% | −25.6% |
-| Max drawdown — normalized | −36.2% | −33.0% |
-| Correlated-stress drawdown | −30.6% | −27.5% |
+| Net 10-yr CAGR | 7.50% | 7.16% |
+| Weighted fee | 0.126% | 0.112% |
+| σ — calm (today) | 16.59% | 15.20% |
+| σ — vol normalized | 21.29% | 19.58% |
+| Max drawdown — calm | −28.2% | −25.8% |
+| Max drawdown — normalized | −36.2% | −33.3% |
+| Correlated-stress drawdown | −30.6% | −27.9% |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.19 points of CAGR to buy 3.5 points of drawdown.
+it gives up 0.34 points of CAGR to buy 2.9 points of drawdown, and the risk-adjusted
+margin is now thin (0.263 against 0.262).
 
 ## Method
 
@@ -84,18 +85,19 @@ reproduced by hand from the components shown.
 
 | Component | QQQ | IEMG |
 |---|---|---|
-| Dividend yield | +0.65 | +2.29 |
+| Dividend yield | +0.65 | +2.26 |
 | Earnings growth | +9.50 | +7.50 |
-| Valuation change | −1.79 | +0.42 |
+| Valuation change | −0.94 | +0.42 |
 | Currency drag | — | −1.50 |
-| **Gross** | **8.36** | **8.71** |
+| **Gross** | **9.21** | **8.68** |
 | Expense ratio | −0.18 | −0.09 |
-| **Net** | **8.18** | **8.62** |
+| **Net** | **9.03** | **8.59** |
 
 Valuation change annualises the forward multiple moving from its observed level
-(QQQ 25.2×, IEMG 11.7×) to an assumed terminal level (21×, 12.2×) over ten years. IEMG's
-terminal is its own 10-year average multiple: 11.7× is below that 12.2× average but level
-with the 20-year average, so the discount is to developed markets, not to its own history.
+(QQQ 25.2×, IEMG 11.7×) to **that index's own 10-year average** (NDX 22.9×, MSCI EM 12.2×)
+over ten years. One rule governs both sleeves. An earlier revision used a hand-picked 21×
+for QQQ — below its own average — while holding IEMG only to its average; that asymmetry
+favoured the EM sleeve and has been removed.
 BMNR is modelled separately: 9.0% ETH appreciation, +2.58% staking on 85.9% of the
 treasury, −0.20% mNAV normalisation, −1.40% corporate and dilution drag.
 
@@ -125,7 +127,7 @@ correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
 Two findings constrained the answer:
 
 - **The cash line is straight.** Scaling a fixed risky mix against cash holds
-  return-per-drawdown at 0.1147 regardless of the cash weight — invariant to 2.8e-17,
+  return-per-drawdown at 0.1208 regardless of the cash weight — invariant to 2.8e-17,
   since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
   The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
   output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
@@ -144,8 +146,19 @@ being wrong.
 
 ## Verification
 
-Thirty-five corrections have been recorded across five verification passes. The most
+Forty-two corrections have been recorded across six verification passes. The most
 consequential:
+
+- **The terminal multiples were asymmetric — the largest error found.** IEMG's terminal
+  multiple was anchored to its own 10-year average (12.2×); QQQ's was hand-set at 21×,
+  *below* its own 10-year average of 22.9×. One sleeve was held to its history and the
+  other marked down past it, and the asymmetry favoured the EM tilt, which is the page's
+  central recommendation. Applying one rule to both adds 0.85 points to QQQ and reverses
+  the ranking: QQQ now out-earns IEMG, 9.03% vs 8.59%. The claim that IEMG improved return
+  and risk together is withdrawn; the tilt survives on risk-adjusted grounds only and was
+  trimmed 40% → 35%.
+- September hike odds of 68% were an outlier. CME FedWatch read 58.7% on 7 September and
+  ~59% on 9 September, swinging 55–68% inside a week.
 
 - An energy supply shock arrived. Iran-aligned strikes halted Saudi output, Brent reached
   $99.16, and September hike odds rose to 68%. Four of six drivers fell and the composite

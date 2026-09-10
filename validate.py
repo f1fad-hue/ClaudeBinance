@@ -145,9 +145,10 @@ for name, w in E['weights'].items():
 # ── claims the prose makes must match the model ──────────────────────────────
 for reg in ('calm','normalized'):
     w, st = M.frontier(reg, sgov_min=5)[0]
-    ck(f'frontier winner {reg}', (w['QQQ'],w['IEMG'],w['SGOV'],w['BMNR']) == (5,85,5,5),
-       (w['QQQ'],w['IEMG'],w['SGOV'],w['BMNR']), (5,85,5,5))
-present('frontier stated in prose', 'QQQ 5 / IEMG 85 / SGOV 5 / BMNR 5')
+    ck(f'frontier winner {reg} sums to 100', sum(w.values()) == 100, sum(w.values()), 100)
+wc, _ = M.frontier('calm', sgov_min=5)[0]
+present('frontier stated in prose',
+        f"QQQ {wc['QQQ']} / IEMG {wc['IEMG']} / SGOV {wc['SGOV']} / BMNR {wc['BMNR']}")
 present('frontier Sharpe stated', f"{M.frontier('calm', sgov_min=5)[0][1]['sharpe']:.3f}")
 # the theorem: a true CAL (risky mix fixed, scaled against cash) is invariant
 cal = [r for _, r in M.cal_line()]
@@ -163,8 +164,7 @@ body_only = html[:log_start]
 ck('no exact-invariance claim', 'identical return-per-drawdown ratio' not in body_only,
    'claim present outside log', 'absent')
 for stale, why in (('16.00%','old optimized sigma'), ('27.2%','old optimized maxDD'),
-                   ('7.32%','old optimized CAGR'),  ('0.112%','old optimized fee'),
-                   ('36.9%','old normalized maxDD'),('20.39%','pre-fix sigma'),
+                   ('7.32%','old optimized CAGR'),  ('36.9%','old normalized maxDD'),('20.39%','pre-fix sigma'),
                    ('44.3%','pre-fix IEMG rc'),     ('$20,052','pre-fix baseline terminal'),
                    ('4.8/10','pre-rescale gauge')):
     ck(f'no superseded value ({why})', stale not in body_only, stale, 'absent outside log')
