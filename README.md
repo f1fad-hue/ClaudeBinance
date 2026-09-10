@@ -12,7 +12,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
 | `validate.py` | Asserts the page matches the model. 152 checks, exits non-zero on drift. |
-| `checklist.py` | Runs the original brief as an acceptance test. PASS / FAIL / CONFLICT per requirement. |
+| `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
 ```bash
@@ -23,9 +23,12 @@ python3 validate.py          # verify allocation.html against it
 ```
 
 `checklist.py` encodes each requirement from the brief as a check, so the deliverable is
-re-auditable rather than eyeballed. It currently reports **15 pass, 0 fail, 1 conflict** —
-the conflict being the gauge scale, where the brief says 1–10 and a later instruction asked
-for 1–5. Conflicts are surfaced, never silently resolved.
+re-auditable rather than eyeballed. It currently reports **16 pass, 0 fail**.
+
+One item carries `PASS*`: the brief asked for a 1–10 gauge, while later instructions asked
+for 1–5 and then for the regional rankings to match. The user confirmed 1–5, so the item
+passes but is marked as deviating from the brief's literal wording. Unresolved conflicts are
+surfaced as `CONFLICT` and never silently settled.
 
 This repo is the source of truth. `sync-artifact.sh` copies one way only —
 copying back from the publish path once silently reverted a fix that had

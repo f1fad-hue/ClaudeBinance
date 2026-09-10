@@ -18,8 +18,10 @@ rows = []
 def req(n, text, ok, note=''):
     rows.append((n, text, 'PASS' if ok else 'FAIL', note))
 
-def conflict(n, text, note):
-    rows.append((n, text, 'CONFLICT', note))
+def superseded(n, text, ok, note):
+    """The brief said one thing, a later explicit instruction said another, and the
+    user has settled it. Passes, but records the deviation rather than hiding it."""
+    rows.append((n, text, 'PASS*' if ok else 'FAIL', note))
 
 # 1 ── live https url, android, bottom tabs, light theme
 tabs = re.search(r'\.tabs\{position:fixed;bottom:0', html)
@@ -55,11 +57,12 @@ cagr_dd = all('Net 10-yr CAGR' in sl and 'Expected max DD' in sl for sl in slide
 req(5, 'A slide per fund/ETF/stock with net 10-yr CAGR and expected drawdown',
     len(slides) == 4 and have and cagr_dd, f'{len(slides)} swipeable slides, each with both figures')
 
-# 6 ── the sentiment gauge
-scale = '/5</small>' in html
-conflict(6, 'Gauge of overall macro driver sentiment, 1 to 10',
-         f'brief says 1-10; page is on 1-5 (reads {E["gauge"]["display"]}/5) because a later '
-         f'instruction asked for 1-5, then asked regional rankings to match. Needs a decision.')
+# 6 ── the sentiment gauge (brief said 1-10; user later chose 1-5, twice, then confirmed)
+scale_ok = '/5</small>' in html and 1 <= E['gauge']['score5'] <= 5
+regions_match = all(1 <= x <= 5 for v in E['regions'].values() for x in v['scores'])
+superseded(6, 'Gauge of overall macro driver sentiment (brief: 1-10)', scale_ok and regions_match,
+           f'on 1-5 by explicit later instruction, confirmed by the user; reads '
+           f'{E["gauge"]["display"]}/5 and the regional rankings share the scale')
 
 # 7 ── rationale report
 req(7, 'Rationale report for the optimized allocation',
@@ -125,9 +128,11 @@ print('-' * (w + 16))
 for n, t, r, note in rows:
     print(f"{n:>3}  {t:<{w}}  {r}")
     if note: print(f"{'':>3}  {'':<{w}}  └─ {note}")
-p = sum(1 for *_, r, _ in rows if r == 'PASS')
+p = sum(1 for *_, r, _ in rows if r.startswith('PASS'))
 f = sum(1 for *_, r, _ in rows if r == 'FAIL')
-c = sum(1 for *_, r, _ in rows if r == 'CONFLICT')
+sup = sum(1 for *_, r, _ in rows if r == 'PASS*')
 print('-' * (w + 16))
-print(f"{p} pass, {f} fail, {c} conflict  (of {len(rows)})")
+print(f"{p} pass, {f} fail  (of {len(rows)})")
+if sup: print(f"PASS* = met, but deviates from the brief's literal wording by a later "
+              f"instruction the user confirmed ({sup} item{'s' if sup > 1 else ''}).")
 sys.exit(1 if f else 0)
