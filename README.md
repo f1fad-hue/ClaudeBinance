@@ -12,13 +12,20 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
 | `validate.py` | Asserts the page matches the model. 152 checks, exits non-zero on drift. |
+| `checklist.py` | Runs the original brief as an acceptance test. PASS / FAIL / CONFLICT per requirement. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
 ```bash
 python3 portfolio_model.py   # readable report of every figure
 python3 validate.py          # verify allocation.html against it
+./checklist.py               # audit the deliverable against the original brief
 ./sync-artifact.sh           # validate, then push to the publish path
 ```
+
+`checklist.py` encodes each requirement from the brief as a check, so the deliverable is
+re-auditable rather than eyeballed. It currently reports **15 pass, 0 fail, 1 conflict** —
+the conflict being the gauge scale, where the brief says 1–10 and a later instruction asked
+for 1–5. Conflicts are surfaced, never silently resolved.
 
 This repo is the source of truth. `sync-artifact.sh` copies one way only —
 copying back from the publish path once silently reverted a fix that had

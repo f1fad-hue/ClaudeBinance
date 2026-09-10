@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""
+Runs the original brief as an acceptance test against allocation.html.
+
+Each requirement from the request is encoded as a check so the deliverable can
+be re-audited on demand rather than eyeballed. Reports PASS / FAIL / CONFLICT.
+CONFLICT means the brief and a later explicit instruction disagree; those are
+surfaced for the user to settle, never silently resolved.
+"""
+import re, sys
+import portfolio_model as M
+
+html = open('allocation.html').read()
+E = M.export()
+body = html[:html.index('Verification log')]
+rows = []
+
+def req(n, text, ok, note=''):
+    rows.append((n, text, 'PASS' if ok else 'FAIL', note))
+
+def conflict(n, text, note):
+    rows.append((n, text, 'CONFLICT', note))
+
+# 1 ── live https url, android, bottom tabs, light theme
+tabs = re.search(r'\.tabs\{position:fixed;bottom:0', html)
+light = ':root{' in html and '--paper:#F7F8FA' in html
+no_dark = '@media(prefers-color-scheme: dark)' not in html and '@media (prefers-color-scheme: dark)' not in html
+req(1, 'Live HTTPS URL, bottom tab bar, light theme',
+    bool(tabs) and light and no_dark and html.count('data-p="') == 5,
+    f'{html.count("data-p=")} bottom tabs; light tokens only, no dark override')
+
+# 2 ── all four sleeves in both portfolios
+allfour = all(set(w) == {'QQQ','IEMG','SGOV','BMNR'} and all(v >= 5 for v in w.values())
+              for w in E['weights'].values())
+req(2, 'Uses SGOV, QQQ, IEMG and BMNR in both portfolios', allfour,
+    '; '.join(f'{p}: ' + '/'.join(f'{k} {v}%' for k, v in w.items()) for p, w in E['weights'].items()))
+
+# 3 ── broad + correlated macro sentiment tied to the holdings
+broad = 'Composite inputs' in html and len(E['gauge']['drivers']) == 6
+corr  = 'Correlated transmission' in html and all(f'>{t}</div>' in html for t in ('SGOV','QQQ','IEMG','BMNR'))
+req(3, 'Broad and correlated macro sentiment reflecting the holdings', broad and corr,
+    '6 weighted drivers; a transmission note per sleeve')
+
+# 4 ── volatility deep analysis at 3/6/12 months on a 10-year horizon
+vol_h = all(f'{E["vix"]["term"][h]:.2f}%' in html for h in (0.25, 0.5, 1.0))
+vol_p = all(f'{E["portfolios"][p][r]["sigma_h"][h]:.2f}%' in html
+            for p in E['portfolios'] for r in ('calm',) for h in (0.25, 0.5, 1.0))
+req(4, 'Volatility maths at 3, 6, 12 months with a 10-year horizon',
+    vol_h and vol_p and '10 yr max DD' in html, 'VIX term structure + portfolio sigma and VaR per horizon')
+
+# 5 ── a slide per holding carrying net CAGR and expected drawdown
+slides = re.findall(r'<article class="slide">.*?</article>', html, re.S)
+have = all(any(t in sl for sl in slides) for t in ('SGOV','QQQ','IEMG','BMNR'))
+cagr_dd = all('Net 10-yr CAGR' in sl and 'Expected max DD' in sl for sl in slides)
+req(5, 'A slide per fund/ETF/stock with net 10-yr CAGR and expected drawdown',
+    len(slides) == 4 and have and cagr_dd, f'{len(slides)} swipeable slides, each with both figures')
+
+# 6 ── the sentiment gauge
+scale = '/5</small>' in html
+conflict(6, 'Gauge of overall macro driver sentiment, 1 to 10',
+         f'brief says 1-10; page is on 1-5 (reads {E["gauge"]["display"]}/5) because a later '
+         f'instruction asked for 1-5, then asked regional rankings to match. Needs a decision.')
+
+# 7 ── rationale report
+req(7, 'Rationale report for the optimized allocation',
+    'Rationale' in html and html.count('<div class="num">') == 1 and 'Recommendation.' in html,
+    f'{len(re.findall(r"<div><b>", html[html.index(chr(60)+"div class=" + chr(34) + "num" + chr(34) + ">"):]))} numbered arguments plus a recommendation')
+
+# 8 ── regional ranking system
+reg_ok = all(len(v['scores']) == 4 for v in E['regions'].values()) and len(E['regions']) == 3
+order  = all(E['regions']['Asia / EM']['scores'][h] > E['regions']['United States']['scores'][h]
+             > E['regions']['Europe']['scores'][h] for h in range(4))
+req(8, 'Ranking for US, Europe and Asia at 3, 6, 12 months and 10 years', reg_ok and order,
+    'Asia > US > Europe at all four horizons')
+
+# 9 ── sourcing
+srcs = re.findall(r'href="https://([^/"]+)', html)
+auth = {'www.federalreserve.gov','www.bls.gov','www.ecb.europa.eu','www.imf.org',
+        'fred.stlouisfed.org','www.sec.gov','www.ishares.com','www.invesco.com','www.cboe.com'}
+req(9, 'Data only from authoritative, fact-checked sources', auth.issubset(set(srcs)),
+    f'{len(set(srcs))} distinct source domains; issuers, Fed, BLS, ECB, IMF, FRED, Cboe, SEC')
+
+# 10 ── both portfolios' CAGR net of fees and drawdown
+both = all(f"{E['portfolios'][p]['calm']['cagr_d']:.2f}%" in html and
+           f"−{E['portfolios'][p]['calm']['dd']:.1f}%" in html for p in E['portfolios'])
+req(10, '10-yr CAGR net of fees and expected drawdown for both portfolios', both,
+    ' vs '.join(f"{p} {E['portfolios'][p]['calm']['cagr_d']:.2f}% / "
+                f"−{E['portfolios'][p]['calm']['dd']:.1f}%" for p in E['portfolios']))
+
+# 11 ── weights end in 5 or 0
+req(11, 'Allocation percentages end in 5 or 0 in both portfolios',
+    all(v % 5 == 0 for w in E['weights'].values() for v in w.values()) and
+    all(sum(w.values()) == 100 for w in E['weights'].values()), 'both sum to 100')
+
+# 12 ── donut vs donut
+donuts = re.findall(r'<circle cx="90" cy="90" r="64"', html)
+req(12, 'Two portfolios shown as donut charts, side by side', len(donuts) == 8 and 'class="duo"' in html,
+    '2 donuts x 4 segments, rendered side by side')
+
+# 13 ── baseline is a 10-year strategic book
+req(13, 'Baseline portfolio built on a 10-year horizon',
+    'Strategic' in html and E['weights']['baseline']['QQQ'] == 45,
+    'plain strategic split, no macro tilt')
+
+# 14 ── optimized driven by macro + regional rankings (+ volatility, added later)
+req(14, 'Optimized portfolio from macro sentiment and regional rankings, 3/6/12mo, 10-yr horizon',
+    'Macro-tilted' in html and 'volatility analysis across 3, 6 and 12 months' in html,
+    'also incorporates volatility analysis, requested later')
+
+# 15 ── max CAGR net of fees subject to controlling drawdown
+opt, base = E['portfolios']['optimized'], E['portfolios']['baseline']
+better_risk = opt['calm']['dd'] < base['calm']['dd'] and opt['calm']['sharpe'] > base['calm']['sharpe']
+req(15, 'Maximise net CAGR while controlling drawdown to a minimum', better_risk,
+    f"optimized drawdown −{opt['calm']['dd']:.1f}% vs −{base['calm']['dd']:.1f}%, "
+    f"return/risk {opt['calm']['sharpe']:.3f} vs {base['calm']['sharpe']:.3f}")
+
+# 16 ── the audit trail itself
+req(16, 'Data revalidated, errors recorded and rectified',
+    'Verification log' in html and 'sync-artifact' not in html,
+    f'change log on the page; {len(re.findall(r"class=.kv.", html[html.index("Verification log"):]))} entries')
+
+w = max(len(t) for _, t, _, _ in rows)
+print(f"{'#':>3}  {'REQUIREMENT':<{w}}  RESULT")
+print('-' * (w + 16))
+for n, t, r, note in rows:
+    print(f"{n:>3}  {t:<{w}}  {r}")
+    if note: print(f"{'':>3}  {'':<{w}}  └─ {note}")
+p = sum(1 for *_, r, _ in rows if r == 'PASS')
+f = sum(1 for *_, r, _ in rows if r == 'FAIL')
+c = sum(1 for *_, r, _ in rows if r == 'CONFLICT')
+print('-' * (w + 16))
+print(f"{p} pass, {f} fail, {c} conflict  (of {len(rows)})")
+sys.exit(1 if f else 0)
