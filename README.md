@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 176 checks. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 175 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
@@ -61,33 +61,35 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 
 | Sleeve | Baseline | Optimized |
 |---|---|---|
-| QQQ  | 45% | 30% |
-| IEMG | 25% | 35% |
+| QQQ  | 45% | 35% |
+| IEMG | 25% | 30% |
 | SGOV | 25% | 30% |
 | BMNR |  5% |  5% |
 
 | Metric | Baseline | Optimized |
 |---|---|---|
-| Net 10-yr CAGR | 7.50% | 7.16% |
-| Weighted fee | 0.126% | 0.112% |
-| σ — calm (today) | 16.59% | 15.20% |
-| σ — vol normalized | 21.29% | 19.58% |
-| Max drawdown — calm | −28.2% | −25.8% |
-| Max drawdown — normalized | −36.2% | −33.3% |
-| Correlated-stress drawdown | −30.6% | −27.9% |
+| Net 10-yr CAGR | 8.02% | 7.59% |
+| Weighted fee | 0.126% | 0.117% |
+| σ — calm (today) | 16.59% | 15.38% |
+| σ — vol normalized | 21.29% | 19.79% |
+| Max drawdown — calm | −28.2% | −26.1% |
+| Max drawdown — normalized | −36.2% | −33.6% |
+| Correlated-stress drawdown | −30.6% | −28.2% |
+| Return / risk (calm) | **0.293** | 0.288 |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.34 points of CAGR to buy 2.9 points of drawdown, and the risk-adjusted
-margin is now thin (0.263 against 0.262).
+it gives up 0.43 points of CAGR to buy 2.6 points of drawdown, and it no longer leads on
+risk-adjusted return either. It is the lower-drawdown point on the frontier, not the
+better book.
 
 ## Is the recommendation efficient?
 
 Exhaustively: all 969 allocations the brief permits (four sleeves, multiples of 5, none
-below 5%) plotted by net CAGR against normalised drawdown. The optimized book sits **on**
-the efficient frontier — nothing beats it on both axes at once. The baseline does not: it
-is dominated by three allocations, e.g. QQQ 15 / IEMG 60 / SGOV 20 / BMNR 5 earns 0.14
-points more at slightly *less* drawdown.
+below 5%) plotted by net CAGR against normalised drawdown. **Both** books sit on the efficient frontier — nothing beats either on both axes at once.
+The baseline moved onto the frontier this pass when QQQ's stale multiple was corrected; it
+had been dominated. The optimized book is therefore no longer an improvement on the
+baseline, only a lower-drawdown point on the same curve.
 
 Two limits are stated rather than glossed. "Best" is a curve, not a point — 103
 allocations are efficient and the right one depends on the drawdown actually tolerated.
@@ -106,14 +108,14 @@ reproduced by hand from the components shown.
 |---|---|---|
 | Dividend yield | +0.65 | +2.26 |
 | Earnings growth | +9.50 | +7.50 |
-| Valuation change | −0.94 | +0.42 |
+| Valuation change | +0.22 | +0.42 |
 | Currency drag | — | −1.50 |
-| **Gross** | **9.21** | **8.68** |
+| **Gross** | **10.37** | **8.68** |
 | Expense ratio | −0.18 | −0.09 |
-| **Net** | **9.03** | **8.59** |
+| **Net** | **10.19** | **8.59** |
 
 Valuation change annualises the forward multiple moving from its observed level
-(QQQ 25.2×, IEMG 11.7×) to **that index's own 10-year average** (NDX 22.9×, MSCI EM 12.2×)
+(QQQ 22.4×, IEMG 11.7×) to **that index's own 10-year average** (NDX 22.9×, MSCI EM 12.2×)
 over ten years. One rule governs both sleeves. An earlier revision used a hand-picked 21×
 for QQQ — below its own average — while holding IEMG only to its average; that asymmetry
 favoured the EM sleeve and has been removed.
@@ -146,7 +148,7 @@ correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
 Two findings constrained the answer:
 
 - **The cash line is straight.** Scaling a fixed risky mix against cash holds
-  return-per-drawdown at 0.1208 regardless of the cash weight — invariant to 2.8e-17,
+  return-per-drawdown at 0.1296 regardless of the cash weight — invariant to 2.8e-17,
   since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
   The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
   output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
@@ -165,8 +167,16 @@ being wrong.
 
 ## Verification
 
-Forty-two corrections have been recorded across six verification passes. The most
+Forty-eight corrections have been recorded across eight verification passes. The most
 consequential:
+
+- **QQQ's forward P/E was stale, and fixing it reversed the recommendation's rationale.**
+  25.2× (Siblis, 1 July) was flagged as the weakest input for three passes. Three routes
+  agree it is wrong: two secondary sources put the Nasdaq-100 at 20.8–22.4× in late August,
+  and the trailing multiple fell 19% over the same window (35.24 → 28.55), which drags the
+  forward figure to ~20.4× on its own. Corrected to 22.4×, QQQ's forecast rises 1.16 points
+  to 10.19% — ahead of IEMG on raw *and* risk-adjusted return. The EM tilt's last
+  justification is gone; it is now a drawdown-reduction lever that costs return.
 
 - **The terminal multiples were asymmetric — the largest error found.** IEMG's terminal
   multiple was anchored to its own 10-year average (12.2×); QQQ's was hand-set at 21×,

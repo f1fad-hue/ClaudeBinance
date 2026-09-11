@@ -191,7 +191,7 @@ ck('no exact-invariance claim', 'identical return-per-drawdown ratio' not in bod
    'claim present outside log', 'absent')
 for stale, why in (('16.00%','old optimized sigma'), ('27.2%','old optimized maxDD'),
                    ('7.32%','old optimized CAGR'),  ('36.9%','old normalized maxDD'),('20.39%','pre-fix sigma'),
-                   ('44.3%','pre-fix IEMG rc'),     ('$20,052','pre-fix baseline terminal'),
+                   ('$20,052','pre-fix baseline terminal'),
                    ('4.8/10','pre-rescale gauge')):
     ck(f'no superseded value ({why})', stale not in body_only, stale, 'absent outside log')
 

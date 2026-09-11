@@ -23,14 +23,14 @@ def r2h(x):
 # while marking IEMG up only as far as its average -- an asymmetry that favoured
 # the EM sleeve, which is the page's central recommendation.
 OBS = {
-    'QQQ' : dict(er=0.18, fwd_pe=25.17, div=0.65, eps=9.50, pe_end=22.9,  fx=0.0),
+    'QQQ' : dict(er=0.18, fwd_pe=22.40, div=0.65, eps=9.50, pe_end=22.9,  fx=0.0),
     'IEMG': dict(er=0.09, fwd_pe=11.70, div=2.26, eps=7.50, pe_end=12.2,  fx=-1.50),
 }
 SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.63%)
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.859, stake_yield=3.00, mnav=1.02, drag=1.40)
 
-REVISION = 9                          # bump when publishing; validate.py enforces it
+REVISION = 10                          # bump when publishing; validate.py enforces it
 VIX_SPOT, VIX_MEAN = 15.30, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
@@ -71,7 +71,7 @@ REGIME = {
 
 PORTFOLIOS = {
  'baseline':  {'QQQ':45,'IEMG':25,'SGOV':25,'BMNR':5},
- 'optimized': {'QQQ':30,'IEMG':35,'SGOV':30,'BMNR':5},
+ 'optimized': {'QQQ':35,'IEMG':30,'SGOV':30,'BMNR':5},
 }
 
 def rho(R, x, y):

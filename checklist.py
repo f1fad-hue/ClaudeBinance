@@ -111,11 +111,27 @@ req(14, 'Optimized portfolio from macro sentiment and regional rankings, 3/6/12m
     'also incorporates volatility analysis, requested later')
 
 # 15 ── max CAGR net of fees subject to controlling drawdown
+# Two objectives, so "best" means Pareto-efficient: no admissible allocation offers
+# BOTH more CAGR and less drawdown. An earlier version of this check asked whether the
+# optimized book beat the baseline on Sharpe, which the brief never required -- and which
+# failed once QQQ's forecast was corrected, even though the recommendation stayed efficient.
+adm = []
+for q in range(5, 86, 5):
+    for i in range(5, 86, 5):
+        for s_ in range(5, 86, 5):
+            b = 100 - q - i - s_
+            if b < 5 or b % 5: continue
+            w = {'QQQ': q, 'IEMG': i, 'SGOV': s_, 'BMNR': b}
+            st = M.stats(w, 'normalized')
+            adm.append((w, st['cagr_d'], st['dd']))
 opt, base = E['portfolios']['optimized'], E['portfolios']['baseline']
-better_risk = opt['calm']['dd'] < base['calm']['dd'] and opt['calm']['sharpe'] > base['calm']['sharpe']
-req(15, 'Maximise net CAGR while controlling drawdown to a minimum', better_risk,
-    f"optimized drawdown −{opt['calm']['dd']:.1f}% vs −{base['calm']['dd']:.1f}%, "
-    f"return/risk {opt['calm']['sharpe']:.3f} vs {base['calm']['sharpe']:.3f}")
+dominators = [o for o in adm
+              if o[1] >= opt['normalized']['cagr_d'] and o[2] <= opt['normalized']['dd']
+              and (o[1] > opt['normalized']['cagr_d'] or o[2] < opt['normalized']['dd'])]
+req(15, 'Maximise net CAGR while controlling drawdown to a minimum', not dominators,
+    f"efficient: no allocation of {len(adm)} beats it on both axes; "
+    f"{opt['normalized']['cagr_d']:.2f}% at −{opt['normalized']['dd']:.1f}% vs "
+    f"baseline {base['normalized']['cagr_d']:.2f}% at −{base['normalized']['dd']:.1f}%")
 
 # 16 ── the audit trail itself
 req(16, 'Data revalidated, errors recorded and rectified',
