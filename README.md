@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model. 151 checks, exits non-zero on drift. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 176 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
@@ -38,7 +38,11 @@ If a number changes in the model, the page is wrong until it changes there too.
 `validate.py` covers sleeve figures, building blocks, both portfolios in both
 volatility regimes, risk contributions, gauge and regional scores with their bar
 fills, donut geometry, VIX term structure, the frontier and cash-line claims made
-in the prose, and the brief's own weight constraints.
+in the prose, and the brief's own weight constraints. It also asserts the model is
+internally coherent regardless of the page: risk contributions sum to 100, portfolio
+sigma sits between the min and max sleeve sigma, VaR worsens monotonically with
+horizon, normalized sigma exceeds calm, forecast components sum to their gross, and
+driver weights sum to one.
 
 ## Sections
 
@@ -108,7 +112,7 @@ Converting a 1–10 score is `1 + (x-1) * 4/9`, not division by two, since both 
 floor at 1. Arcs and bars fill on `(score-1)/4` so the scale's floor sits at the left
 stop rather than at zero.
 
-Composite reads **2.5/5**. Regional means: Asia/EM 3.5, US 3.2, Europe 2.3 — ordering
+Composite reads **2.4/5**. Regional means: Asia/EM 3.5, US 3.2, Europe 2.3 — ordering
 preserved at every horizon, which is the check that the rescale is presentational only.
 
 ## Volatility regime
@@ -157,8 +161,13 @@ consequential:
   the ranking: QQQ now out-earns IEMG, 9.03% vs 8.59%. The claim that IEMG improved return
   and risk together is withdrawn; the tilt survives on risk-adjusted grounds only and was
   trimmed 40% → 35%.
-- September hike odds of 68% were an outlier. CME FedWatch read 58.7% on 7 September and
-  ~59% on 9 September, swinging 55–68% inside a week.
+- Two forward-looking claims resolved. August CPI landed 11 September at 3.4% headline and
+  2.4% core, but core rose 0.3% m/m against 0.2% expected and hike odds jumped from ~70% to
+  **90%** — the figure has swung 55–90% inside a fortnight. The ECB hiked to 2.50%
+  unanimously on 10 September, and the "terminal hike" expectation this page had recorded
+  was overtaken within the week: investors now price further increases. Worth noting the
+  August CPI window closes *before* the 8 September Saudi strikes, so the sharpest part of
+  the energy shock is not in that data at all.
 
 - An energy supply shock arrived. Iran-aligned strikes halted Saudi output, Brent reached
   $99.16, and September hike odds rose to 68%. Four of six drivers fell and the composite

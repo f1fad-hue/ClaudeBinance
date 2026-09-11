@@ -30,7 +30,7 @@ SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.6
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.859, stake_yield=3.00, mnav=1.02, drag=1.40)
 
-REVISION = 8                          # bump when publishing; validate.py enforces it
+REVISION = 9                          # bump when publishing; validate.py enforces it
 VIX_SPOT, VIX_MEAN = 15.30, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
@@ -109,7 +109,7 @@ def fill(v):
     return (v - 1) / 4 * 100
 
 DRIVERS = [('Growth momentum',7.0,.25), ('Inflation trajectory',3.0,.15),
-           ('Monetary policy',2.5,.20), ('Liquidity & credit',5.5,.15),
+           ('Monetary policy',2.0,.20), ('Liquidity & credit',5.5,.15),
            ('Valuation & positioning',4.0,.15), ('Geopolitical risk',2.0,.10)]
 REGIONS = {'Asia / EM':[5.5,6.5,7.0,7.5], 'United States':[5.0,5.5,6.5,7.0],
            'Europe':[3.0,3.5,4.0,5.0]}

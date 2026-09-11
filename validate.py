@@ -20,6 +20,32 @@ def present(label, needle):
 
 E = M.export()
 
+# ── model self-consistency, independent of the page ──────────────────────────
+for pname, w in M.PORTFOLIOS.items():
+    ck(f'{pname} weights sum to 100', sum(w.values()) == 100, sum(w.values()), 100)
+    for reg in M.REGIME:
+        st = M.stats(w, reg)
+        ck(f'{pname}/{reg} risk contribs sum to 100',
+           abs(sum(st['rc'].values()) - 100) < 1e-6, sum(st['rc'].values()), 100)
+        ck(f'{pname}/{reg} sigma within sleeve bounds',
+           min(M.REGIME[reg]['vol'].values()) < st['vol'] < max(M.REGIME[reg]['vol'].values()),
+           st['vol'], 'between min and max sleeve sigma')
+        ck(f'{pname}/{reg} VaR worsens with horizon',
+           st['var'][0.25] > st['var'][0.5] > st['var'][1.0], list(st['var'].values()), 'monotone')
+    ck(f'{pname} normalized sigma exceeds calm',
+       M.stats(w,'normalized')['vol'] > M.stats(w,'calm')['vol'], '', 'norm > calm')
+for k, c in E['components'].items():
+    ck(f'{k} components sum to gross',
+       abs(c['div']+c['eps']+c['val']+c['fx']-c['gross']) < 0.005, c, 'sums')
+    ck(f'{k} gross minus fee equals net', abs(c['gross']-c['er']-c['net']) < 0.005, c, 'nets')
+ck('driver weights sum to 1', abs(sum(x for _,_,x in M.DRIVERS) - 1) < 1e-9)
+for k, v_ in E['regions'].items():
+    ck(f'{k} mean matches its scores',
+       abs(sum(M.to5(x) for x in M.REGIONS[k])/4 - v_['mean']) < 0.05, v_['mean'], 'mean')
+ck('optimized drawdown beats baseline in both regimes',
+   all(M.stats(M.PORTFOLIOS['optimized'],r)['dd'] < M.stats(M.PORTFOLIOS['baseline'],r)['dd']
+       for r in M.REGIME), '', 'optimized lower')
+
 # ── structure ────────────────────────────────────────────────────────────────
 for tag in ('section','div','table','article','svg','nav','script','style',
             'p','tr','td','th','span','button','a','circle','text','path','line'):
