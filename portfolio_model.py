@@ -30,7 +30,7 @@ SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.6
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.859, stake_yield=3.00, mnav=1.02, drag=1.40)
 
-REVISION = 10                          # bump when publishing; validate.py enforces it
+REVISION = 11                          # bump when publishing; validate.py enforces it
 VIX_SPOT, VIX_MEAN = 15.30, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
@@ -59,12 +59,12 @@ def build():
     return a
 
 A = build()
-DD  = {'QQQ': 40.0, 'IEMG': 33.0, 'SGOV': 0.3, 'BMNR': 85.0}
+DD  = {'QQQ': 40.0, 'IEMG': 39.0, 'SGOV': 0.3, 'BMNR': 85.0}
 UPLIFT = VIX_MEAN / VIX_SPOT
 
 REGIME = {
  'calm':       dict(vol={'QQQ':21.0,'IEMG':18.0,'SGOV':0.5,'BMNR':95.0},
-                    rho={('QQQ','IEMG'):0.72,('QQQ','BMNR'):0.65,('IEMG','BMNR'):0.55}),
+                    rho={('QQQ','IEMG'):0.66,('QQQ','BMNR'):0.65,('IEMG','BMNR'):0.55}),
  'normalized': dict(vol={'QQQ':21.0*UPLIFT,'IEMG':18.0*UPLIFT,'SGOV':0.5,'BMNR':95.0*1.15},
                     rho={('QQQ','IEMG'):0.85,('QQQ','BMNR'):0.80,('IEMG','BMNR'):0.72}),
 }

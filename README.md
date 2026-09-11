@@ -70,12 +70,12 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 |---|---|---|
 | Net 10-yr CAGR | 8.02% | 7.59% |
 | Weighted fee | 0.126% | 0.117% |
-| σ — calm (today) | 16.59% | 15.38% |
+| σ — calm (today) | 16.44% | 15.22% |
 | σ — vol normalized | 21.29% | 19.79% |
-| Max drawdown — calm | −28.2% | −26.1% |
+| Max drawdown — calm | −27.9% | −25.9% |
 | Max drawdown — normalized | −36.2% | −33.6% |
-| Correlated-stress drawdown | −30.6% | −28.2% |
-| Return / risk (calm) | **0.293** | 0.288 |
+| Correlated-stress drawdown | −32.1% | −30.0% |
+| Return / risk (calm) | **0.296** | 0.291 |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
@@ -136,7 +136,7 @@ preserved at every horizon, which is the check that the rescale is presentationa
 
 Weights are sized to *normalized* volatility, not today's level. Spot VIX of 15.30 sits
 ~19% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled by 1.24 and
-correlations stressed toward crisis levels (QQQ·IEMG 0.72 → 0.85):
+correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85):
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
@@ -167,8 +167,16 @@ being wrong.
 
 ## Verification
 
-Forty-eight corrections have been recorded across eight verification passes. The most
+Fifty-two corrections have been recorded across nine verification passes. The most
 consequential:
+
+- **Two unsourced risk assumptions, replaced with data.** The QQQ·IEMG correlation was set
+  at 0.72 by judgement; the pair's actual figure is 0.66 all-time (0.82 over one year,
+  which supports the 0.85 stressed case). And IEMG's maximum drawdown was assumed at −33%
+  when its realised worst since inception is −38.71%. Over the window both funds have
+  existed, IEMG drew down *more* than QQQ, not seven points less — the same asymmetry as
+  the terminal multiples, favouring the same sleeve. Corrected to −39%, IEMG's "shallower
+  drawdown" advantage shrinks from seven points to one.
 
 - **QQQ's forward P/E was stale, and fixing it reversed the recommendation's rationale.**
   25.2× (Siblis, 1 July) was flagged as the weakest input for three passes. Three routes

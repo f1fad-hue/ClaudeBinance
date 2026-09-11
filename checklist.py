@@ -57,12 +57,11 @@ cagr_dd = all('Net 10-yr CAGR' in sl and 'Expected max DD' in sl for sl in slide
 req(5, 'A slide per fund/ETF/stock with net 10-yr CAGR and expected drawdown',
     len(slides) == 4 and have and cagr_dd, f'{len(slides)} swipeable slides, each with both figures')
 
-# 6 ── the sentiment gauge (brief said 1-10; user later chose 1-5, twice, then confirmed)
+# 6 ── the sentiment gauge; the brief now specifies 1-5, matching the page
 scale_ok = '/5</small>' in html and 1 <= E['gauge']['score5'] <= 5
 regions_match = all(1 <= x <= 5 for v in E['regions'].values() for x in v['scores'])
-superseded(6, 'Gauge of overall macro driver sentiment (brief: 1-10)', scale_ok and regions_match,
-           f'on 1-5 by explicit later instruction, confirmed by the user; reads '
-           f'{E["gauge"]["display"]}/5 and the regional rankings share the scale')
+req(6, 'Gauge of overall macro driver sentiment, 1 to 5', scale_ok and regions_match,
+    f'reads {E["gauge"]["display"]}/5; regional rankings share the scale')
 
 # 7 ── rationale report
 req(7, 'Rationale report for the optimized allocation',
