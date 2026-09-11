@@ -81,6 +81,21 @@ analysis across 3, 6 and 12 months. It does not dominate the baseline on every a
 it gives up 0.34 points of CAGR to buy 2.9 points of drawdown, and the risk-adjusted
 margin is now thin (0.263 against 0.262).
 
+## Is the recommendation efficient?
+
+Exhaustively: all 969 allocations the brief permits (four sleeves, multiples of 5, none
+below 5%) plotted by net CAGR against normalised drawdown. The optimized book sits **on**
+the efficient frontier — nothing beats it on both axes at once. The baseline does not: it
+is dominated by three allocations, e.g. QQQ 15 / IEMG 60 / SGOV 20 / BMNR 5 earns 0.14
+points more at slightly *less* drawdown.
+
+Two limits are stated rather than glossed. "Best" is a curve, not a point — 103
+allocations are efficient and the right one depends on the drawdown actually tolerated.
+And the curve flattens at the recommendation: one more point of drawdown buys only 0.06
+points of CAGR, against 0.16 further down. Beyond BMNR 45% the frontier returns drawdowns
+worse than −100%, which is impossible — the variance model fails exactly where this repo
+already documents it failing, so the curve is drawn only where BMNR stays at 5%.
+
 ## Method
 
 Equity forecasts are built from observable components rather than asserted. Components
