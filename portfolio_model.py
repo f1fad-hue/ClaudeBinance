@@ -28,10 +28,14 @@ OBS = {
 }
 SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.63%)
 SGOV_ER    = 0.09
-BMNR = dict(eth=9.00, stake_share=0.859, stake_yield=3.00, mnav=1.02, drag=1.40)
+BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
+# stake_share 5,067,309 / 5,929,198 staked tokens; stake_yield is the company's own
+# reported 7-day annualised figure (8-K 8 Sep 2026: $330M on $12.6B staked = 2.62%),
+# not an assumption. mnav uses the crypto-only reading (mkt cap $15.39B / ETH $14.79B),
+# the conservative one: against total NAV of $15.7B the stock trades at 0.98x.
 
-REVISION = 11                          # bump when publishing; validate.py enforces it
-VIX_SPOT, VIX_MEAN = 15.30, 18.9      # 2016-2023 mean of annual closes
+REVISION = 13                          # bump when publishing; validate.py enforces it
+VIX_SPOT, VIX_MEAN = 15.84, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
 
@@ -251,3 +255,153 @@ if __name__ == '__main__':
     cal = cal_line()
     for a, r in cal: print(f"  {a:>3}% risky   ret/DD {r:.6f}")
     print(f"  spread {max(r for _,r in cal)-min(r for _,r in cal):.2e} -> invariant, as theory requires")
+
+# ── efficient frontier, generated so the chart cannot drift from the model ────
+FR_X = (15.0, 50.0,  60.0, 284.0)      # max drawdown %  -> svg x
+FR_Y = ( 4.0, 10.0, 148.0,  22.0)      # net CAGR %      -> svg y
+
+def fr_x(dd): lo, hi, a, b = FR_X; return a + (b - a) * (dd - lo) / (hi - lo)
+def fr_y(c):  lo, hi, a, b = FR_Y; return a + (b - a) * (c  - lo) / (hi - lo)
+
+def admissible(bmnr=None):
+    """Every allocation the brief permits: four sleeves, multiples of 5, none under 5."""
+    out = []
+    for q in range(5, 101, 5):
+        for i in range(5, 101, 5):
+            for s in range(5, 101, 5):
+                b = 100 - q - i - s
+                if b < 5 or b % 5: continue
+                if bmnr is not None and b != bmnr: continue
+                out.append({'QQQ': q, 'IEMG': i, 'SGOV': s, 'BMNR': b})
+    return out
+
+def efficient(regime='normalized', bmnr=5):
+    """Allocations nothing else beats on both return and drawdown at once."""
+    pts = [(stats(w, regime)['dd'], stats(w, regime)['cagr'], w) for w in admissible(bmnr)]
+    eff = [p for p in pts
+           if not any(d <= p[0] and c >= p[1] and (d < p[0] or c > p[1]) for d, c, _ in pts)]
+    return sorted(eff), len(pts)
+
+def frontier_svg(regime='normalized'):
+    """The whole chart, emitted from the model. Axes auto-label over FR_X/FR_Y."""
+    eff, _ = efficient(regime)
+    g = ['<svg viewBox="0 0 300 172" role="img" aria-label="Efficient frontier of net CAGR '
+         'against maximum drawdown, with both portfolios on the frontier">']
+    g.append('<line x1="44" y1="148" x2="288" y2="148" stroke="#DFE4EB" stroke-width="1"/>')
+    g.append('<line x1="44" y1="22" x2="44" y2="148" stroke="#DFE4EB" stroke-width="1"/>')
+    for c in range(int(FR_Y[0]) + 1, int(FR_Y[1]) + 1):
+        y = fr_y(c)
+        g.append(f'<line x1="44" y1="{y:.1f}" x2="288" y2="{y:.1f}" stroke="#EDF0F4" stroke-width="1"/>'
+                 f'<text x="38" y="{y+3:.1f}" fill="#8A94A6" font-family="IBM Plex Mono, monospace" '
+                 f'font-size="8" text-anchor="end">{c}%</text>')
+    for dd in range(int(FR_X[0]), int(FR_X[1]) + 1, 5):
+        g.append(f'<text x="{fr_x(dd):.1f}" y="160" fill="#8A94A6" font-family="IBM Plex Mono, '
+                 f'monospace" font-size="8" text-anchor="middle">&#8722;{dd}%</text>')
+    pts = ' '.join(f'{fr_x(dd):.1f},{fr_y(c):.1f}' for dd, c, _ in eff)
+    g.append(f'<polyline points="{pts}" fill="none" stroke="#0F5E63" stroke-width="1.8" '
+             f'stroke-linejoin="round"/>')
+    b = stats(PORTFOLIOS['baseline'], regime); o = stats(PORTFOLIOS['optimized'], regime)
+    g.append(f'<circle cx="{fr_x(b["dd"]):.1f}" cy="{fr_y(b["cagr"]):.1f}" r="4" fill="#FFFFFF" '
+             f'stroke="#B3402F" stroke-width="2"/>'
+             f'<text x="{fr_x(b["dd"])+8:.1f}" y="{fr_y(b["cagr"])+3:.1f}" fill="#B3402F" '
+             f'font-family="Public Sans, sans-serif" font-size="8.5" text-anchor="start" '
+             f'font-weight="600">Baseline</text>')
+    g.append(f'<circle cx="{fr_x(o["dd"]):.1f}" cy="{fr_y(o["cagr"]):.1f}" r="4.5" fill="#0F5E63"/>'
+             f'<text x="{fr_x(o["dd"])-8:.1f}" y="{fr_y(o["cagr"])+3:.1f}" fill="#0F5E63" '
+             f'font-family="Public Sans, sans-serif" font-size="8.5" text-anchor="end" '
+             f'font-weight="600">Optimized</text>')
+    g.append('<text x="166" y="171" fill="#8A94A6" font-family="Public Sans, sans-serif" '
+             'font-size="8" text-anchor="middle" letter-spacing="0.4">MAX DRAWDOWN, VOLATILITY '
+             'NORMALIZED</text>')
+    g.append('<text x="12" y="88" fill="#8A94A6" font-family="Public Sans, sans-serif" '
+             'font-size="8" text-anchor="middle" letter-spacing="0.4" transform="rotate(-90 12 88)">'
+             'NET CAGR</text>')
+    return ''.join(g) + '</svg>'
+
+def fr_slope(regime='normalized'):
+    """CAGR points bought per extra point of drawdown, locally, at the recommendation."""
+    eff, _ = efficient(regime); d0 = stats(PORTFOLIOS['optimized'], regime)['dd']
+    lo = [p for p in eff if p[0] < d0][-1]; hi = [p for p in eff if p[0] > d0][0]
+    return (hi[1] - lo[1]) / (hi[0] - lo[0])
+
+# ── how much of this is signal ───────────────────────────────────────────────
+def tracking(w1, w2, regime='calm'):
+    """Annualised sigma of (w1 - w2). The error on a *difference* between two
+    overlapping books is far smaller than the error on either level."""
+    reg = REGIME[regime]; V, R = reg['vol'], reg['rho']; ks = list(w1)
+    d = {k: w1[k] - w2[k] for k in ks}
+    return math.sqrt(max(sum((d[x]/100)*(d[y]/100)*V[x]*V[y]*rho(R, x, y)
+                             for x in ks for y in ks), 0.0))
+
+def calibration(w1, w2, regime='calm', years=10):
+    """Is the gap between two books distinguishable from noise inside the horizon?"""
+    g  = sum(w1[k]/100*A[k]['net'] for k in w1) - sum(w2[k]/100*A[k]['net'] for k in w2)
+    t  = tracking(w1, w2, regime)
+    ir = g / t                                   # information ratio of the switch
+    z  = ir * math.sqrt(years)
+    return dict(gap=g, te=t, ir=ir, z=z, se=t/math.sqrt(years),
+                p=0.5*(1 + math.erf(z/math.sqrt(2))), years95=(1.96/ir)**2)
+
+def separable(regime='calm', years=10, conf=1.96):
+    """How many admissible allocations differ from the recommendation by more than noise."""
+    rec = PORTFOLIOS['optimized']; sep = 0; tot = 0
+    for w in admissible():
+        if w == rec: continue
+        t = tracking(w, rec, regime)
+        if t < 1e-9: continue
+        tot += 1
+        c = calibration(w, rec, regime, years)
+        if abs(c['z']) > conf: sep += 1
+    return sep, tot
+
+def se_level(name, regime='calm', years=10):
+    """Standard error on the *level* of a book's realised CAGR over the horizon."""
+    return stats(PORTFOLIOS[name], regime)['vol'] / math.sqrt(years)
+
+# ── which input should you argue with first ──────────────────────────────────
+import copy as _copy
+
+def build_with(**over):
+    """Rebuild the sleeve table with one input overridden, through the same code
+    path as build(), so a sensitivity is computed rather than asserted."""
+    OBS_ = _copy.deepcopy(OBS); BM = dict(BMNR); sg, sger = SGOV_GROSS, SGOV_ER
+    for key, v in over.items():
+        tk, f = key.split('_', 1)
+        if   tk in OBS_: OBS_[tk][f] = v
+        elif tk == 'BMNR': BM[f] = v
+        elif tk == 'SGOV': sg = v
+        else: raise KeyError(key)
+    a = {}
+    for k, o in OBS_.items():
+        val   = r2h(annualised(o['fwd_pe'], o['pe_end']))
+        gross = r2h(o['div'] + o['eps'] + val + o['fx'])
+        a[k]  = dict(net=r2h(gross - o['er']), er=o['er'])
+    a['SGOV'] = dict(net=r2h(sg - sger), er=sger)
+    mn = r2h(annualised(BM['mnav'], 1.00)); st = r2h(BM['stake_share'] * BM['stake_yield'])
+    a['BMNR'] = dict(net=r2h(BM['eth'] + st + mn - BM['drag']), er=0.0)
+    return a
+
+SENS = (('QQQ earnings growth',  '9.5%',   'QQQ_eps',          8.50),
+        ('IEMG currency drag',   '−1.50%', 'IEMG_fx',         -0.50),
+        ('SGOV gross yield',     '3.25%',  'SGOV_gross',       4.25),
+        ('IEMG earnings growth', '7.5%',   'IEMG_eps',         6.50),
+        ('IEMG forward P/E',     '11.7×',  'IEMG_fwd_pe',     12.70),
+        ('IEMG terminal P/E',    '12.2×',  'IEMG_pe_end',     13.20),
+        ('QQQ terminal P/E',     '22.9×',  'QQQ_pe_end',      21.90),
+        ('QQQ forward P/E',      '22.4×',  'QQQ_fwd_pe',      23.40),
+        ('BMNR ETH return',      '9.0%',   'BMNR_eth',         8.00),
+        ('BMNR staking yield',   '2.61%',  'BMNR_stake_yield', 1.61))
+
+def sensitivity():
+    """Effect of moving each input by one unit on the optimized book's CAGR and on
+    the baseline-minus-optimized gap that decides the recommendation."""
+    def figs(a):
+        c = lambda w: sum(w[k]/100 * a[k]['net'] for k in w)
+        o = c(PORTFOLIOS['optimized'])
+        return o, c(PORTFOLIOS['baseline']) - o
+    o0, g0 = figs(build_with())
+    rows = []
+    for label, now, key, val in SENS:
+        o, g = figs(build_with(**{key: val}))
+        rows.append(dict(label=label, now=now, d_cagr=o - o0, d_gap=g - g0))
+    return sorted(rows, key=lambda r: -abs(r['d_cagr'])), o0, g0

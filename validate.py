@@ -184,15 +184,100 @@ present('CAL ratio stated', f'{cal[0]:.4f}')
 ill = [r for *_, r in M.cash_line()]
 ck('illustration drifts', max(ill) - min(ill) > 1e-4, f'{max(ill)-min(ill):.2e}', '>1e-4')
 
-# ── values from superseded revisions must not survive outside the change log ──
-log_start = html.index('Verification log')
-body_only = html[:log_start]
+# ── the frontier chart is generated, so the page must carry it verbatim ───────
+present('frontier svg matches model', M.frontier_svg())
+eff, _ = M.efficient()
+present('efficient count stated', f'{len(eff)} allocations are efficient')
+present('frontier local slope', f"{M.fr_slope():.2f} points of CAGR")
+
+# ── calibration: every figure in "How much to trust this" ────────────────────
+O, B = M.PORTFOLIOS['optimized'], M.PORTFOLIOS['baseline']
+cal = M.calibration(B, O)
+sep, _ = M.separable()
+for reg in ('calm', 'normalized'):
+    se = M.se_level('optimized', reg); c = M.stats(O, reg)['cagr_d']
+    present(f'SE stated {reg}', f'±{se:.2f}')
+    present(f'68% band {reg}', f'{c-se:.1f} to {c+se:.1f}')
+    present(f'95% band {reg}', f'\u2212{abs(c-1.96*se):.1f} to {c+1.96*se:.1f}')
+    z = lambda x: 0.5*(1+math.erf(((x-c)/se)/math.sqrt(2)))*100
+    present(f'P(negative) {reg}', f'{z(0):.1f}%')
+    present(f'P(below T-bills) {reg}', f'{z(M.A["SGOV"]["net"]):.1f}%')
+present('separable count stated', f'at 95% over ten years is <b>{sep}</b>')
+present('information ratio stated', f"information ratio of {cal['ir']:.2f}")
+present('z at ten years stated', f"z = {cal['z']:.2f}")
+present('years to prove stated', f"<b>{cal['years95']:.0f} years</b>")
+present('years vs T-bills stated',
+        f"<b>{(1.96/M.stats(O,'calm')['sharpe'])**2:.0f}</b>")
+present('tracking sigma stated', f"just {cal['te']:.2f}%/yr")
+present('tracking SE stated', f"±{cal['se']:.2f} pts")
+present('ranking probability stated', f"{cal['p']*100:.0f}% chance the baseline ends ahead")
+best = max((M.calibration(w, O) | {'w': w} for w in M.admissible() if M.tracking(w, O) > 1e-9),
+           key=lambda d: d['ir'])
+present('most separable alternative',
+        f"QQQ {best['w']['QQQ']} / IEMG {best['w']['IEMG']} / SGOV {best['w']['SGOV']} "
+        f"/ BMNR {best['w']['BMNR']} — would still need {best['years95']:.0f}")
+ck('ranking is likelier than a coin flip', cal['p'] > 0.5, cal['p'], '>0.5')
+ck('comparison SE beats level SE', cal['se'] < M.se_level('optimized'),
+   cal['se'], f"< {M.se_level('optimized'):.2f}")
+ck('nothing is separable inside the horizon', sep == 0, sep, 0)
+
+# ── the sensitivity table is computed, so every cell must match ──────────────
+_rows, _o0, _g0 = M.sensitivity()
+for r in _rows:
+    sign = lambda x, p: ('\u2212' if x < 0 else '+') + f'{abs(x):.{p}f}'
+    present(f"sens row {r['label']}",
+            f'<td>{r["label"]}</td><td class="n">{r["now"]}</td>'
+            f'<td class="n">{sign(r["d_cagr"], 2)}</td><td class="n">{sign(r["d_gap"], 3)}</td>')
+ck('sensitivity rows ordered by effect',
+   _rows == sorted(_rows, key=lambda r: -abs(r['d_cagr'])), 'unsorted', 'descending')
+ck('QQQ earnings growth is the most sensitive input',
+   _rows[0]['label'] == 'QQQ earnings growth', _rows[0]['label'], 'QQQ earnings growth')
+ck('BMNR cannot move the choice',
+   all(abs(r['d_gap']) < 5e-4 for r in _rows if r['label'].startswith('BMNR')),
+   [r['d_gap'] for r in _rows if r['label'].startswith('BMNR')], 'zero')
+present('most sensitive input named', f"{_rows[0]['now']} earnings-growth assumption")
+ck('baseline sensitivity run reproduces the model',
+   abs(_o0 - M.stats(M.PORTFOLIOS['optimized'], 'calm')['cagr']) < 1e-9, _o0, 'same CAGR')
+
+# ── BMNR is built from its filing, not from assumptions ──────────────────────
+b = M.A['BMNR']
+present('BMNR staking contribution', f"+{b['stake']:.2f}% staking")
+present('BMNR mNAV normalisation', f"\u2212{abs(b['mnav']):.2f}% mNAV")
+ck('BMNR components sum to net',
+   abs(b['eth'] + b['stake'] + b['mnav'] + b['drag'] - b['net']) < 0.005, b, 'sums')
+ck('BMNR staked share matches token counts',
+   abs(M.BMNR['stake_share'] - 5_067_309/5_929_198) < 0.0005,
+   M.BMNR['stake_share'], round(5_067_309/5_929_198, 4))
+
+# ── the two correction counts on the page must agree with each other ─────────
+_log  = html[html.index('Verification log'):]
+_card = _log[_log.index('<div class="card">'):_log.index('<p class="sl-role"')]
+_rows = _card.count('<div class="kv">')
+_words = {70: 'Seventy', 71: 'Seventy-one', 72: 'Seventy-two', 73: 'Seventy-three',
+          74: 'Seventy-four', 75: 'Seventy-five', 76: 'Seventy-six', 77: 'Seventy-seven',
+          78: 'Seventy-eight', 79: 'Seventy-nine', 80: 'Eighty'}
+ck('log count in words matches rows', f'{_words.get(_rows, "?")} corrections recorded' in html,
+   _rows, _words.get(_rows))
+ck('calibration card quotes the same count',
+   f'<span class="k">Corrections that changed a number</span><span class="v"><b>{_rows}</b></span>' in html,
+   _rows, 'same figure in both places')
+
+# ── values from superseded revisions must not survive outside the self-audit ──
+# Everything from 'How much to trust this' on is where the page quotes its own
+# superseded figures deliberately, so the blacklist stops there.
+body_only = html[:html.index('How much to trust this')]
 ck('no exact-invariance claim', 'identical return-per-drawdown ratio' not in body_only,
    'claim present outside log', 'absent')
 for stale, why in (('16.00%','old optimized sigma'), ('27.2%','old optimized maxDD'),
                    ('7.32%','old optimized CAGR'),  ('36.9%','old normalized maxDD'),('20.39%','pre-fix sigma'),
                    ('$20,052','pre-fix baseline terminal'),
-                   ('4.8/10','pre-rescale gauge')):
+                   ('4.8/10','pre-rescale gauge'),
+                   ('VIX 15.30','pre-CPI VIX'),      ('Brent $100','pre-settle Brent'),
+                   ('0.112%','wrong optimized fee'), ('24.5%','pre-fix BMNR risk contrib'),
+                   ('44.3%','pre-fix QQQ risk contrib'), ('85.9%','pre-filing staked share'),
+                   ('0.1296','pre-fix CAL ratio'),   ('86 allocations','pre-fix efficient count'),
+                   ('75%-risk-asset','wrong risk-asset share'),
+                   ('2.58% staking','pre-filing staking yield')):
     ck(f'no superseded value ({why})', stale not in body_only, stale, 'absent outside log')
 
 # ── no stale scale or revision markers ───────────────────────────────────────
@@ -202,6 +287,10 @@ for bad, why in (('/10</small>', 'gauge must be /5'),):
 revs = re.findall(r'<span>Rev\. (\d+) ·', html)
 ck('single revision stamp', len(revs) == 1, revs, 'one')
 ck('revision stamp is current', revs == [str(M.REVISION)], revs, [str(M.REVISION)])
+
+# ── last check: the page must state this file's own assertion count ──────────
+ck('assertion count on page is current', f'{checks + 1} assertions' in html,
+   re.search(r'(\d+) assertions', html).group(1), checks + 1)
 
 print(f'{checks} checks, {len(fails)} failed')
 for f in fails: print('  FAIL', f)

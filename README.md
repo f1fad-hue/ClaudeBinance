@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 175 checks. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 232 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
@@ -25,10 +25,13 @@ python3 validate.py          # verify allocation.html against it
 `checklist.py` encodes each requirement from the brief as a check, so the deliverable is
 re-auditable rather than eyeballed. It currently reports **16 pass, 0 fail**.
 
-One item carries `PASS*`: the brief asked for a 1–10 gauge, while later instructions asked
-for 1–5 and then for the regional rankings to match. The user confirmed 1–5, so the item
-passes but is marked as deviating from the brief's literal wording. Unresolved conflicts are
-surfaced as `CONFLICT` and never silently settled.
+Item 6 reads the gauge requirement as 1–5: the brief first asked for 1–10, later
+instructions asked for 1–5 and then for the regional rankings to match, and the user
+confirmed 1–5. Item 15 tests Pareto efficiency over all 969 admissible allocations rather
+than "beats the baseline on Sharpe" — the earlier criterion, which the brief never asked
+for and which QQQ's correction broke. The old criterion is kept in a comment so the change
+reads as a fix, not as moved goalposts. Unresolved conflicts surface as `CONFLICT` and are
+never silently settled.
 
 This repo is the source of truth. `sync-artifact.sh` copies one way only —
 copying back from the publish path once silently reverted a fix that had
@@ -42,7 +45,8 @@ in the prose, and the brief's own weight constraints. It also asserts the model 
 internally coherent regardless of the page: risk contributions sum to 100, portfolio
 sigma sits between the min and max sleeve sigma, VaR worsens monotonically with
 horizon, normalized sigma exceeds calm, forecast components sum to their gross, and
-driver weights sum to one.
+driver weights sum to one. Since this pass it also regenerates the frontier chart and
+the sensitivity table and requires the page to carry them verbatim, so neither can drift.
 
 ## Sections
 
@@ -68,18 +72,18 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 
 | Metric | Baseline | Optimized |
 |---|---|---|
-| Net 10-yr CAGR | 8.02% | 7.59% |
+| Net 10-yr CAGR | 7.99% | 7.56% |
 | Weighted fee | 0.126% | 0.117% |
 | σ — calm (today) | 16.44% | 15.22% |
-| σ — vol normalized | 21.29% | 19.79% |
+| σ — vol normalized | 20.73% | 19.28% |
 | Max drawdown — calm | −27.9% | −25.9% |
-| Max drawdown — normalized | −36.2% | −33.6% |
+| Max drawdown — normalized | −35.2% | −32.8% |
 | Correlated-stress drawdown | −32.1% | −30.0% |
-| Return / risk (calm) | **0.296** | 0.291 |
+| Return / risk (calm) | **0.294** | 0.289 |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.43 points of CAGR to buy 2.6 points of drawdown, and it no longer leads on
+it gives up 0.43 points of CAGR to buy 2.5 points of drawdown, and it no longer leads on
 risk-adjusted return either. It is the lower-drawdown point on the frontier, not the
 better book.
 
@@ -91,10 +95,11 @@ The baseline moved onto the frontier this pass when QQQ's stale multiple was cor
 had been dominated. The optimized book is therefore no longer an improvement on the
 baseline, only a lower-drawdown point on the same curve.
 
-Two limits are stated rather than glossed. "Best" is a curve, not a point — 103
+Two limits are stated rather than glossed. "Best" is a curve, not a point — 90
 allocations are efficient and the right one depends on the drawdown actually tolerated.
-And the curve flattens at the recommendation: one more point of drawdown buys only 0.06
-points of CAGR, against 0.16 further down. Beyond BMNR 45% the frontier returns drawdowns
+And the curve is nearly straight: at the recommendation, one more point of drawdown buys
+0.16 points of CAGR, and that ratio barely changes along it — which is the
+frontier telling you the same thing the capital-allocation line does. Beyond BMNR 45% the frontier returns drawdowns
 worse than −100%, which is impossible — the variance model fails exactly where this repo
 already documents it failing, so the curve is drawn only where BMNR stays at 5%.
 
@@ -119,8 +124,10 @@ Valuation change annualises the forward multiple moving from its observed level
 over ten years. One rule governs both sleeves. An earlier revision used a hand-picked 21×
 for QQQ — below its own average — while holding IEMG only to its average; that asymmetry
 favoured the EM sleeve and has been removed.
-BMNR is modelled separately: 9.0% ETH appreciation, +2.58% staking on 85.9% of the
-treasury, −0.20% mNAV normalisation, −1.40% corporate and dilution drag.
+BMNR is modelled separately: 9.0% ETH appreciation, +2.23% staking on 85.5% of the
+treasury, −0.39% mNAV normalisation, −1.40% corporate and dilution drag. The staking
+figure is the company's own reported 2.61% seven-day annualised yield ($330M on $12.6B
+staked, 8-K of 8 September), replacing a 3.00% assumption carried for four revisions.
 
 ## Sentiment scales
 
@@ -134,41 +141,139 @@ preserved at every horizon, which is the check that the rescale is presentationa
 
 ## Volatility regime
 
-Weights are sized to *normalized* volatility, not today's level. Spot VIX of 15.30 sits
-~19% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled by 1.24 and
-correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85):
+Weights are sized to *normalized* volatility, not today's level. Spot VIX of 15.84
+sits 16.2% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
+by 1.19 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85):
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
-| QQQ | 21.0% | 25.9% |
-| IEMG | 18.0% | 22.2% |
+| QQQ | 21.0% | 25.1% |
+| IEMG | 18.0% | 21.5% |
 | SGOV | 0.5% | 0.5% |
 | BMNR | 95% | 109% |
 
 Two findings constrained the answer:
 
 - **The cash line is straight.** Scaling a fixed risky mix against cash holds
-  return-per-drawdown at 0.1296 regardless of the cash weight — invariant to 2.8e-17,
+  return-per-drawdown at 0.1322 regardless of the cash weight — invariant to 2.8e-17,
   since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
   The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
   output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
   IEMG; that is *not* a pure CAL (the risky mix changes, not just its scale) and drifts
-  0.115 → 0.114. `cal_line()` now carries the theorem, `cash_line()` the illustration.
+  0.137 → 0.126. `cal_line()` now carries the theorem, `cash_line()` the illustration.
 - **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
   volatility implies a 69.6% arithmetic mean, which nobody would forecast. A Booth-Fama
   rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
   and discarded rather than published.
 
 Subject only to the brief's floor of 5% per sleeve, the highest return-per-unit-risk mix
-is QQQ 5 / IEMG 85 / SGOV 5 / BMNR 5 (Sharpe 0.273 vs the recommended book's 0.251). It is
-rejected: it over-fits the two least reliable inputs and carries a −43.6% normalised
-drawdown. The 40% cap keeps most of the benefit while staying robust to those assumptions
-being wrong.
+is QQQ 60 / IEMG 30 / SGOV 5 / BMNR 5 (Sharpe 0.306 vs the recommended book's
+0.289). It is rejected: it over-fits the two least reliable inputs and holds only 5% in
+reserve, which is not a drawdown budget anyone would choose. Note which way this has moved —
+the same search wanted 85% in emerging markets two passes ago and wants 60% in the
+Nasdaq-100 now. That instability is the subject of the calibration section below.
+
+## How much to trust it
+
+Every figure above is a point estimate, so the page now carries the distribution around it.
+
+| Optimized book, 10 yr | Calm | Normalized |
+|---|---|---|
+| Net CAGR | 7.56% | 7.56% |
+| Standard error, σ/√10 | ±4.81 | ±6.10 |
+| 95% band | −1.9 to 17.0 | −4.4 to 19.5 |
+
+The headline result is uncomfortable and worth stating plainly: **of the 969 admissible
+allocations, 0 are statistically distinguishable from the recommendation at 95% over ten
+years.** For two books drawn from the same four sleeves, `z ≈ IR × √T`; an information ratio
+of 0.26 gives `z = 0.83` where 1.96 is needed. Proving the baseline out-returns the
+recommendation would take **56 years**; proving the recommended book beats T-bills would
+take **46**; the most separable alternative in the whole set still needs 31.
+
+What saves the exercise from being pointless is that a *comparison* is far better determined
+than a *level*. The two books share three of four sleeves, so their difference is a 10-point
+switch with a tracking volatility of 1.65%/yr — a standard error of 0.52 points against
+±4.81 on either book alone. The 0.43-point gap is 0.83 SE, an **80% chance the baseline ends
+ahead on return**. An earlier pass reported that as 53% by dividing the gap by the error on
+the level; that is the wrong denominator, since errors common to both books cancel.
+
+`calibration()`, `separable()`, `tracking()` and `se_level()` in the model compute all of it;
+`validate.py` asserts the page's figures against them.
+
+### Which input to argue with first
+
+Each input moved one unit and rebuilt through the same code path as `build()`.
+
+| Input | Now | Δ CAGR | Δ gap |
+|---|---|---|---|
+| QQQ earnings growth | 9.5% | -0.35 | -0.100 |
+| SGOV gross yield | 3.25% | +0.30 | -0.050 |
+| IEMG earnings growth | 7.5% | -0.30 | +0.050 |
+| IEMG currency drag | −1.50% | +0.30 | -0.050 |
+| IEMG forward P/E | 11.7× | -0.25 | +0.041 |
+| IEMG terminal P/E | 12.2× | +0.24 | -0.039 |
+| QQQ terminal P/E | 22.9× | -0.16 | -0.045 |
+| QQQ forward P/E | 22.4× | -0.15 | -0.044 |
+| BMNR ETH return | 9.0% | -0.05 | +0.000 |
+| BMNR staking yield | 2.61% | -0.04 | +0.000 |
+
+This corrected a claim the page had backwards. The disclaimer named IEMG's valuation
+reversion and currency drag as the most sensitive inputs and said a one-point change in
+either would move the recommended tilt. The most load-bearing input is in fact **QQQ's 9.5%
+earnings-growth assumption** — 0.35 of CAGR and 0.100 of the gap per point, roughly
+double anything else — and it is the one number on the page that extrapolates a cycle across
+a decade rather than observing it. A point off IEMG's currency drag moves the gap by 0.05;
+closing the 0.43-point gap that way would take more than eight points of it. BMNR's inputs
+move the level and nothing about the choice, since both books hold exactly 5%.
 
 ## Verification
 
-Fifty-two corrections have been recorded across nine verification passes. The most
+Seventy-two corrections have been recorded across ten verification passes. The most
 consequential:
+
+- **BMNR was modelled on an assumption where a filed number existed.** The staking yield had
+  been set at 3.00% by judgement. BitMine's 8-K of 8 September reports $330M annualised
+  staking revenue on $12.6B staked — a 2.61% seven-day annualised yield — and gives exact
+  token counts, so the staked share is 5,067,309 / 5,929,198 = 85.5%, not the 85.9% carried.
+  The sleeve's staking contribution falls from +2.58% to +2.23%. mNAV also moved: at the
+  11 September close the stock trades at 0.98× total NAV of $15.7B and 1.04× against crypto
+  alone, against 1.02× / 1.10× before. Taking the conservative crypto-only reading turns the
+  mNAV term from −0.20% to −0.39%. Net effect: BMNR's forecast drops 9.98% → **9.44%**, and
+  both portfolios lose 0.03 points of CAGR.
+
+- **The forecast had no error bar, which for a ten-year projection is itself a defect.** Added
+  a calibration section: ±4.81 points of standard error on the level, a 95% band of −1.9% to
+  17.0%, and the finding that none of the 969 admissible allocations is separable from the
+  recommendation inside ten years. Also corrected this page's own arithmetic — the
+  baseline-versus-optimized ranking had been quoted at 53% confidence using the error on the
+  level instead of the tracking error of the difference; it is 80%.
+
+- **The most-sensitive-input claim was wrong in both directions.** The disclaimer named IEMG's
+  valuation reversion and currency drag. Measured, the answer is QQQ's earnings-growth
+  assumption, at roughly double the effect of anything else, and a one-point move in IEMG's
+  currency drag shifts the decision gap by 0.05 — not enough to move the tilt as claimed.
+  A `sensitivity()` function now computes the whole table and the validator asserts every
+  cell of it.
+
+- **The verification log contradicted itself.** Its "Still open" note carried QQQ's 25.2×
+  multiple as an unresolved question in the same card that recorded it resolved to 22.4×.
+  Rewritten to name what is genuinely open: BMNR's 9%/yr ETH assumption, the 1.70 × σ
+  drawdown multiplier, and QQQ's decade of 9.5% earnings growth.
+
+- **Market data re-verified to the 11 September close.** VIX 15.30 → **15.84** (−11.21% on the
+  day, after the week's highest close and first above 17 in 28 sessions). Brent $100 →
+  **$104.61** settle, −2.8% on the day but +8.7% on the week. August CPI landed at 3.4%
+  headline and 2.4% core year-on-year — the lowest core since March 2021 — while core rose
+  0.3% on the month against 0.2% expected; CME FedWatch moved from 70% to 90% priced for a
+  hike on the release. The page had described this as simply "a hot core CPI print", which
+  misses that the annual core rate fell to a five-year low and that equities read it as
+  relief. Both readings are now stated.
+
+- The frontier chart is now generated by the model rather than hand-maintained, after its
+  axes were found to be too narrow for the recalculated curve. `frontier_svg()` emits the
+  whole SVG and `validate.py` requires the page to carry it verbatim. The efficient count
+  also disagreed between page (86) and README (103); both are now derived, and the answer
+  is 90.
 
 - **Two unsourced risk assumptions, replaced with data.** The QQQ·IEMG correlation was set
   at 0.72 by judgement; the pair's actual figure is 0.66 all-time (0.82 over one year,
@@ -258,5 +363,5 @@ the page displayed a rounded one).
 
 Not investment advice. Forward figures are modelled estimates that depend on earnings
 growth, terminal valuation, currency, volatility and correlation assumptions which will not
-hold exactly. Market data is as of 4 September 2026. BMNR carries single-issuer, dilution
+hold exactly. Market data is as of 11 September 2026. BMNR carries single-issuer, dilution
 and crypto-price risk that can result in total loss of that position.
