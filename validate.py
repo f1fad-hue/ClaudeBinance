@@ -200,8 +200,12 @@ for reg in ('calm', 'normalized'):
     present(f'68% band {reg}', f'{c-se:.1f} to {c+se:.1f}')
     present(f'95% band {reg}', f'\u2212{abs(c-1.96*se):.1f} to {c+1.96*se:.1f}')
     z = lambda x: 0.5*(1+math.erf(((x-c)/se)/math.sqrt(2)))*100
-    present(f'P(negative) {reg}', f'{z(0):.1f}%')
-    present(f'P(below T-bills) {reg}', f'{z(M.A["SGOV"]["net"]):.1f}%')
+    col = 2 if reg == 'calm' else 3
+    for lab, val in (('P(CAGR &lt; 0)', z(0)), ('P(&lt; T-bills)', z(M.A['SGOV']['net']))):
+        row = re.search(rf'<td>{re.escape(lab)}</td>((?:<td class="n">[^<]*</td>)+)', html)
+        cells = re.findall(r'<td class="n">([^<]*)</td>', row.group(1)) if row else []
+        ck(f'{lab} {reg}', len(cells) >= col - 1 and cells[col-2] == f'{val:.1f}%',
+           cells[col-2] if len(cells) >= col - 1 else None, f'{val:.1f}%')
 present('separable count stated', f'at 95% over ten years is <b>{sep}</b>')
 present('information ratio stated', f"information ratio of {cal['ir']:.2f}")
 present('z at ten years stated', f"z = {cal['z']:.2f}")
@@ -239,6 +243,36 @@ present('most sensitive input named', f"{_rows[0]['now']} earnings-growth assump
 ck('baseline sensitivity run reproduces the model',
    abs(_o0 - M.stats(M.PORTFOLIOS['optimized'], 'calm')['cagr']) < 1e-9, _o0, 'same CAGR')
 
+# ── the CAL must follow the book the page recommends, not a stale mix ────────
+ck('CAL uses the recommended risky mix',
+   M.risky_mix() == tuple(M.PORTFOLIOS['optimized'][k] for k in ('QQQ','IEMG','BMNR')),
+   M.risky_mix(), 'optimized QQQ/IEMG/BMNR')
+_ill = M.cash_line()
+ck('illustration holds IEMG at the recommended weight',
+   all(w['IEMG'] == M.PORTFOLIOS['optimized']['IEMG'] for w, *_ in _ill),
+   sorted({w['IEMG'] for w, *_ in _ill}), M.PORTFOLIOS['optimized']['IEMG'])
+ck('illustration brackets the recommendation',
+   any(w == M.PORTFOLIOS['optimized'] for w, *_ in _ill), 'absent', 'present')
+present('cash-line drift stated',
+        f"drifts from {[x for *_, x in _ill][0]:.3f} to {[x for *_, x in _ill][-1]:.3f}")
+
+# ── dividend yields are trailing distributions, and the page must show them ──
+for k in ('QQQ', 'IEMG'):
+    present(f'{k} dividend yield shown', f'<span class="v">{M.OBS[k]["div"]:.2f}%</span>')
+    sv = (M.A[k]['net'] - M.A['SGOV']['net']) / M.REGIME['calm']['vol'][k]
+    ck(f'{k} return-per-vol is positive', sv > 0, sv, '>0')
+_q = (M.A['QQQ']['net'] - M.A['SGOV']['net']) / M.REGIME['calm']['vol']['QQQ']
+_i = (M.A['IEMG']['net'] - M.A['SGOV']['net']) / M.REGIME['calm']['vol']['IEMG']
+present('QQQ return-per-vol stated', f'{_q:.2f} per unit of volatility against {_i:.2f}')
+ck('prose ranks the sleeves the way the model does', _q > _i, (_q, _i), 'QQQ ahead')
+
+# ── the frontier chart must fit inside the axes it draws ─────────────────────
+_eff, _ = M.efficient()
+ck('frontier fits its own axes',
+   all(M.FR_X[0] <= d <= M.FR_X[1] and M.FR_Y[0] <= c <= M.FR_Y[1] for d, c, _w in _eff),
+   (min(d for d, *_ in _eff), max(d for d, *_ in _eff),
+    min(c for _, c, _w in _eff), max(c for _, c, _w in _eff)), (M.FR_X[:2], M.FR_Y[:2]))
+
 # ── BMNR is built from its filing, not from assumptions ──────────────────────
 b = M.A['BMNR']
 present('BMNR staking contribution', f"+{b['stake']:.2f}% staking")
@@ -253,9 +287,12 @@ ck('BMNR staked share matches token counts',
 _log  = html[html.index('Verification log'):]
 _card = _log[_log.index('<div class="card">'):_log.index('<p class="sl-role"')]
 _rows = _card.count('<div class="kv">')
-_words = {70: 'Seventy', 71: 'Seventy-one', 72: 'Seventy-two', 73: 'Seventy-three',
-          74: 'Seventy-four', 75: 'Seventy-five', 76: 'Seventy-six', 77: 'Seventy-seven',
-          78: 'Seventy-eight', 79: 'Seventy-nine', 80: 'Eighty'}
+_words = dict(zip(range(70, 100),
+    'Seventy Seventy-one Seventy-two Seventy-three Seventy-four Seventy-five Seventy-six '
+    'Seventy-seven Seventy-eight Seventy-nine Eighty Eighty-one Eighty-two Eighty-three '
+    'Eighty-four Eighty-five Eighty-six Eighty-seven Eighty-eight Eighty-nine Ninety '
+    'Ninety-one Ninety-two Ninety-three Ninety-four Ninety-five Ninety-six Ninety-seven '
+    'Ninety-eight Ninety-nine'.split()))
 ck('log count in words matches rows', f'{_words.get(_rows, "?")} corrections recorded' in html,
    _rows, _words.get(_rows))
 ck('calibration card quotes the same count',

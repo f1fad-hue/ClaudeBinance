@@ -6,7 +6,7 @@ Run directly for a readable report; `python3 validate.py` checks the published
 page against whatever this file computes. If a number changes here, the page is
 wrong until it is changed there too.
 
-Market data as of 4 September 2026. Sources are linked on the page itself.
+Market data as of 11 September 2026. Sources are linked on the page itself.
 """
 import math, json
 from decimal import Decimal, ROUND_HALF_UP
@@ -23,8 +23,14 @@ def r2h(x):
 # while marking IEMG up only as far as its average -- an asymmetry that favoured
 # the EM sleeve, which is the page's central recommendation.
 OBS = {
-    'QQQ' : dict(er=0.18, fwd_pe=22.40, div=0.65, eps=9.50, pe_end=22.9,  fx=0.0),
-    'IEMG': dict(er=0.09, fwd_pe=11.70, div=2.26, eps=7.50, pe_end=12.2,  fx=-1.50),
+    'QQQ' : dict(er=0.18, fwd_pe=22.40, div=0.42, eps=9.50, pe_end=22.9,  fx=0.0),
+    'IEMG': dict(er=0.09, fwd_pe=11.70, div=2.16, eps=7.50, pe_end=12.2,  fx=-1.50),
+}
+# div is the trailing-12-month distribution over the 11 Sep 2026 close, not an
+# estimate: QQQ $3.03 / $714.88 = 0.42%, IEMG $1.80 over a price near $83 = 2.16%
+# (secondary sources spread 2.13-2.16%). QQQ had carried 0.65% and IEMG 2.26%,
+# both of which priced the distribution against a lower share price than today's.
+_ = {
 }
 SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.63%)
 SGOV_ER    = 0.09
@@ -34,7 +40,7 @@ BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
 # not an assumption. mnav uses the crypto-only reading (mkt cap $15.39B / ETH $14.79B),
 # the conservative one: against total NAV of $15.7B the stock trades at 0.98x.
 
-REVISION = 13                          # bump when publishing; validate.py enforces it
+REVISION = 14                          # bump when publishing; validate.py enforces it
 VIX_SPOT, VIX_MEAN = 15.84, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
@@ -211,12 +217,18 @@ def frontier(regime, bmnr=5, sgov_min=15):
             out.append((w, stats(w, regime)))
     return sorted(out, key=lambda x: -x[1]['sharpe'])
 
-def cal_line(regime='normalized', mix=(25, 40, 5)):
+def risky_mix(name='optimized'):
+    """The recommended book's risky sleeves, in weight order. Derived, because a
+    hardcoded mix here silently went three revisions stale."""
+    w = PORTFOLIOS[name]
+    return (w['QQQ'], w['IEMG'], w['BMNR'])
+
+def cal_line(regime='normalized', mix=None):
     """A TRUE capital-allocation line: hold the risky mix in exact proportion and
     scale it against cash. Return-per-drawdown is then invariant to machine
     precision when cash has zero variance -- which is why no optimizer can pick
     the cash weight. Continuous weights, so the 5% grid does not blur it."""
-    q, i, b = mix; tot = q + i + b
+    q, i, b = mix or risky_mix(); tot = q + i + b
     prop = {'QQQ': q/tot, 'IEMG': i/tot, 'BMNR': b/tot}
     V, R = REGIME[regime]['vol'], REGIME[regime]['rho']
     rf, out = A[RF_LABEL]['net'], []
@@ -228,12 +240,15 @@ def cal_line(regime='normalized', mix=(25, 40, 5)):
     return out
 
 def cash_line(regime='normalized'):
-    """The illustration shown on the page: QQQ traded against SGOV with IEMG
-    pinned at 40. NOT a pure CAL -- pinning IEMG changes the risky mix as well as
-    its scale -- so the ratio drifts slightly instead of holding exactly."""
+    """The illustration shown on the page: QQQ traded against SGOV with IEMG held
+    at the recommended weight. NOT a pure CAL -- pinning IEMG changes the risky mix
+    as well as its scale -- so the ratio drifts slightly instead of holding exactly."""
     rows = []
-    for q, s_ in ((35,20),(30,25),(25,30),(20,35),(15,40)):
-        w = {'QQQ': q, 'IEMG': 40, 'SGOV': s_, 'BMNR': 5}
+    iemg = PORTFOLIOS['optimized']['IEMG']
+    span = [(PORTFOLIOS['optimized']['QQQ'] + d, 95 - iemg - PORTFOLIOS['optimized']['QQQ'] - d)
+            for d in (10, 5, 0, -5, -10)]
+    for q, s_ in span:
+        w = {'QQQ': q, 'IEMG': iemg, 'SGOV': s_, 'BMNR': 5}
         st = stats(w, regime)
         rows.append((w, st['cagr_d'], st['dd'],
                      (st['cagr_d'] - A[RF_LABEL]['net']) / st['dd']))
@@ -257,7 +272,7 @@ if __name__ == '__main__':
     print(f"  spread {max(r for _,r in cal)-min(r for _,r in cal):.2e} -> invariant, as theory requires")
 
 # ── efficient frontier, generated so the chart cannot drift from the model ────
-FR_X = (15.0, 50.0,  60.0, 284.0)      # max drawdown %  -> svg x
+FR_X = (10.0, 50.0,  58.0, 286.0)      # max drawdown %  -> svg x
 FR_Y = ( 4.0, 10.0, 148.0,  22.0)      # net CAGR %      -> svg y
 
 def fr_x(dd): lo, hi, a, b = FR_X; return a + (b - a) * (dd - lo) / (hi - lo)
@@ -277,7 +292,8 @@ def admissible(bmnr=None):
 
 def efficient(regime='normalized', bmnr=5):
     """Allocations nothing else beats on both return and drawdown at once."""
-    pts = [(stats(w, regime)['dd'], stats(w, regime)['cagr'], w) for w in admissible(bmnr)]
+    pts = [(s['dd'], s['cagr'], w)
+           for w, s in ((w, stats(w, regime)) for w in admissible(bmnr))]
     eff = [p for p in pts
            if not any(d <= p[0] and c >= p[1] and (d < p[0] or c > p[1]) for d, c, _ in pts)]
     return sorted(eff), len(pts)
@@ -285,6 +301,8 @@ def efficient(regime='normalized', bmnr=5):
 def frontier_svg(regime='normalized'):
     """The whole chart, emitted from the model. Axes auto-label over FR_X/FR_Y."""
     eff, _ = efficient(regime)
+    assert all(FR_X[0] <= dd <= FR_X[1] and FR_Y[0] <= c <= FR_Y[1] for dd, c, _ in eff), \
+        f'frontier runs outside the plotted axes: widen FR_X/FR_Y'
     g = ['<svg viewBox="0 0 300 172" role="img" aria-label="Efficient frontier of net CAGR '
          'against maximum drawdown, with both portfolios on the frontier">']
     g.append('<line x1="44" y1="148" x2="288" y2="148" stroke="#DFE4EB" stroke-width="1"/>')
@@ -294,7 +312,8 @@ def frontier_svg(regime='normalized'):
         g.append(f'<line x1="44" y1="{y:.1f}" x2="288" y2="{y:.1f}" stroke="#EDF0F4" stroke-width="1"/>'
                  f'<text x="38" y="{y+3:.1f}" fill="#8A94A6" font-family="IBM Plex Mono, monospace" '
                  f'font-size="8" text-anchor="end">{c}%</text>')
-    for dd in range(int(FR_X[0]), int(FR_X[1]) + 1, 5):
+    step = 5 if (FR_X[1] - FR_X[0]) / 5 <= 8 else 10
+    for dd in range(int(FR_X[0]), int(FR_X[1]) + 1, step):
         g.append(f'<text x="{fr_x(dd):.1f}" y="160" fill="#8A94A6" font-family="IBM Plex Mono, '
                  f'monospace" font-size="8" text-anchor="middle">&#8722;{dd}%</text>')
     pts = ' '.join(f'{fr_x(dd):.1f},{fr_y(c):.1f}' for dd, c, _ in eff)
@@ -321,7 +340,9 @@ def frontier_svg(regime='normalized'):
 def fr_slope(regime='normalized'):
     """CAGR points bought per extra point of drawdown, locally, at the recommendation."""
     eff, _ = efficient(regime); d0 = stats(PORTFOLIOS['optimized'], regime)['dd']
-    lo = [p for p in eff if p[0] < d0][-1]; hi = [p for p in eff if p[0] > d0][0]
+    below = [p for p in eff if p[0] < d0]; above = [p for p in eff if p[0] > d0]
+    assert below and above, 'recommendation sits at an end of the frontier; no local slope'
+    lo, hi = below[-1], above[0]
     return (hi[1] - lo[1]) / (hi[0] - lo[0])
 
 # ── how much of this is signal ───────────────────────────────────────────────
@@ -337,6 +358,7 @@ def calibration(w1, w2, regime='calm', years=10):
     """Is the gap between two books distinguishable from noise inside the horizon?"""
     g  = sum(w1[k]/100*A[k]['net'] for k in w1) - sum(w2[k]/100*A[k]['net'] for k in w2)
     t  = tracking(w1, w2, regime)
+    assert t > 1e-9, 'identical books have no tracking error to divide by'
     ir = g / t                                   # information ratio of the switch
     z  = ir * math.sqrt(years)
     return dict(gap=g, te=t, ir=ir, z=z, se=t/math.sqrt(years),
@@ -367,9 +389,14 @@ def build_with(**over):
     OBS_ = _copy.deepcopy(OBS); BM = dict(BMNR); sg, sger = SGOV_GROSS, SGOV_ER
     for key, v in over.items():
         tk, f = key.split('_', 1)
-        if   tk in OBS_: OBS_[tk][f] = v
-        elif tk == 'BMNR': BM[f] = v
-        elif tk == 'SGOV': sg = v
+        if   tk in OBS_:
+            assert f in OBS_[tk], f'unknown field {key}'
+            OBS_[tk][f] = v
+        elif tk == 'BMNR':
+            assert f in BM, f'unknown field {key}'
+            BM[f] = v
+        elif key == 'SGOV_gross': sg = v
+        elif key == 'SGOV_er':    sger = v
         else: raise KeyError(key)
     a = {}
     for k, o in OBS_.items():
@@ -403,5 +430,7 @@ def sensitivity():
     rows = []
     for label, now, key, val in SENS:
         o, g = figs(build_with(**{key: val}))
-        rows.append(dict(label=label, now=now, d_cagr=o - o0, d_gap=g - g0))
+        # clamp float dust so a zero effect never renders as "-0.000"
+        z = lambda x: 0.0 if abs(x) < 5e-4 else x
+        rows.append(dict(label=label, now=now, d_cagr=z(o - o0), d_gap=z(g - g0)))
     return sorted(rows, key=lambda r: -abs(r['d_cagr'])), o0, g0
