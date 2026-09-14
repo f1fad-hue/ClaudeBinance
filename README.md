@@ -11,14 +11,16 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 261 checks. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 262 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
+| `mutate.py` | Mutation-tests the validator: corrupts one model input at a time and checks validate.py fails. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
 ```bash
 python3 portfolio_model.py   # readable report of every figure
 python3 validate.py          # verify allocation.html against it
 ./checklist.py               # audit the deliverable against the original brief
+python3 mutate.py            # prove validate.py actually fails when the model changes
 ./sync-artifact.sh           # validate, then push to the publish path
 ```
 
@@ -75,15 +77,15 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 | Net 10-yr CAGR | 7.87% | 7.45% |
 | Weighted fee | 0.126% | 0.117% |
 | σ — calm (today) | 16.44% | 15.22% |
-| σ — vol normalized | 20.73% | 19.28% |
+| σ — vol normalized | 19.12% | 17.82% |
 | Max drawdown — calm | −27.9% | −25.9% |
-| Max drawdown — normalized | −35.2% | −32.8% |
+| Max drawdown — normalized | −32.5% | −30.3% |
 | Correlated-stress drawdown | −32.1% | −30.0% |
 | Return / risk (calm) | **0.286** | 0.282 |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.41 points of CAGR to buy 2.5 points of drawdown, and it no longer leads on
+it gives up 0.41 points of CAGR to buy 2.2 points of drawdown, and it no longer leads on
 risk-adjusted return either. It is the lower-drawdown point on the frontier, not the
 better book.
 
@@ -95,10 +97,10 @@ The baseline moved onto the frontier this pass when QQQ's stale multiple was cor
 had been dominated. The optimized book is therefore no longer an improvement on the
 baseline, only a lower-drawdown point on the same curve.
 
-Two limits are stated rather than glossed. "Best" is a curve, not a point — 90
+Two limits are stated rather than glossed. "Best" is a curve, not a point — 91
 allocations are efficient and the right one depends on the drawdown actually tolerated.
 And the curve is nearly straight: at the recommendation, one more point of drawdown buys
-0.15 points of CAGR, and that ratio barely changes along it — which is the
+0.16 points of CAGR, and that ratio barely changes along it — which is the
 frontier telling you the same thing the capital-allocation line does. Beyond BMNR 45% the frontier returns drawdowns
 worse than −100%, which is impossible — the variance model fails exactly where this repo
 already documents it failing, so the curve is drawn only where BMNR stays at 5%.
@@ -145,26 +147,29 @@ preserved at every horizon, which is the check that the rescale is presentationa
 
 ## Volatility regime
 
-Weights are sized to *normalized* volatility, not today's level. Spot VIX of 15.84
-sits 16.2% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
-by 1.19 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85):
+Weights are sized to *normalized* volatility, not today's level. Spot VIX of 17.62
+sits 6.8% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
+by 1.07 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85). That uplift has
+collapsed from 1.24 in early September as the VIX rose: the two regimes have nearly
+converged, and the repo's own revisit trigger — a sustained VIX above 18.9 — is 1.28 points
+away, at which point 30% cash becomes a candidate to spend toward 25%.
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
-| QQQ | 21.0% | 25.1% |
-| IEMG | 18.0% | 21.5% |
+| QQQ | 21.0% | 22.5% |
+| IEMG | 18.0% | 19.3% |
 | SGOV | 0.5% | 0.5% |
 | BMNR | 95% | 109% |
 
 Two findings constrained the answer:
 
 - **The cash line is straight.** Scaling a fixed risky mix against cash holds
-  return-per-drawdown at 0.1310 regardless of the cash weight — invariant to 2.8e-17,
+  return-per-drawdown at 0.1417 regardless of the cash weight — invariant to 2.8e-17,
   since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
   The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
   output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
   IEMG; that is *not* a pure CAL (the risky mix changes, not just its scale) and drifts
-  0.135 → 0.126. `cal_line()` now carries the theorem, `cash_line()` the illustration.
+  0.146 → 0.136. `cal_line()` now carries the theorem, `cash_line()` the illustration.
 - **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
   volatility implies a 69.6% arithmetic mean, which nobody would forecast. A Booth-Fama
   rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
@@ -184,8 +189,8 @@ Every figure above is a point estimate, so the page now carries the distribution
 | Optimized book, 10 yr | Calm | Normalized |
 |---|---|---|
 | Net CAGR | 7.45% | 7.45% |
-| Standard error, σ/√10 | ±4.81 | ±6.10 |
-| 95% band | −2.0 to 16.9 | −4.5 to 19.4 |
+| Standard error, σ/√10 | ±4.81 | ±5.64 |
+| 95% band | −2.0 to 16.9 | −3.6 to 18.5 |
 
 The headline result is uncomfortable and worth stating plainly: **of the 969 admissible
 allocations, 0 are statistically distinguishable from the recommendation at 95% over ten
@@ -249,8 +254,10 @@ Fidelity puts US *growth* stocks, the closest published proxy for the Nasdaq-100
 2.3–4.3%. Three of the four rank emerging markets *above* the US, which is the ranking this
 repo reversed two passes ago; Vanguard is the exception and sits on this page's side. The EM
 sleeve is unremarkable by comparison, bracketed by J.P. Morgan's 7.8% and Fidelity's 8.1%.
-J.P. Morgan also puts EM volatility at 20.9% against the 18.0% used here in the calm regime
-and 21.5% normalised — the normalised regime is the one a professional would recognise.
+J.P. Morgan also puts EM volatility at 20.9%, which as of the 14 September VIX exceeds *both*
+regimes used here — 18.0% calm and 19.3% normalised. When this comparison was first written the
+normalised figure was 21.5% and sat above theirs; the VIX rising pulled the uplift factor down and
+took it below. On their number the EM sleeve is under-risked here either way.
 
 `scenario()` re-runs the whole comparison on a different set of sleeve returns with every
 risk input untouched, so it isolates how much of the answer rests on this repo's own
@@ -262,7 +269,7 @@ forecasts:
 | Optimized CAGR | 7.45% | 6.01% |
 | Baseline's lead | +0.41 | +0.11 |
 | Best-Sharpe book | 55/35/5/5 | 5/85/5/5 |
-| Efficient allocations | 90 | 17 |
+| Efficient allocations | 91 | 17 |
 | Both books efficient | yes | neither |
 
 The sizing survives and the baseline still leads, but the margin collapses from 0.41 to 0.11
@@ -275,8 +282,32 @@ who trusts J.P. Morgan over this page should hold *more* emerging markets, not l
 
 ## Verification
 
-Ninety-one corrections have been recorded across twelve verification passes. The most
+Ninety-nine corrections have been recorded across thirteen verification passes. The most
 consequential:
+
+- **The validator is now mutation-tested, and it holds.** More than half its checks are
+  `present()`, which only asserts that a string appears somewhere in the page — weak by
+  construction, and last pass one of them passed on a false statement. `mutate.py` corrupts
+  one model input at a time (39 of them: every return component, every volatility and
+  correlation, both portfolios' weights, the drawdown multiplier, the driver and regional
+  scores, the published house forecasts, the revision stamp) and re-runs `validate.py`,
+  restoring the file afterwards. **39 run, 0 survived.** Every figure the model produces is
+  genuinely policed. The page states that count and `validate.py` checks the claim against
+  `mutate.py` itself, so the two cannot drift apart.
+
+- **Market data re-verified to the 14 September close, and the volatility premise has nearly
+  run out.** The VIX rose 11.24% to **17.62**, reversing Friday's identically-sized 11.21%
+  fall, as AI stocks sold off, Brent hit a four-month high of **$108.24** on a Saudi pipeline
+  shutdown, and the 10-year Treasury broke **5.01%** — its first print above 5% since October
+  2023. The repo had carried 4.80%. The uplift factor separating the two volatility regimes
+  has collapsed from 1.24 in early September to **1.07**: the normalised drawdown on the
+  recommended book improves from −32.8% to **−30.3%**, and the gap between regimes is now 4.4
+  points rather than 7.3. The revisit trigger this repo wrote for itself is 1.28 points away.
+
+- BMNR's risk contribution rose 25.2% → **27.4%** without any of its inputs changing: equity
+  volatility fell toward its average while a 109% crypto vol did not, so the same 5% weight
+  now carries a 5.5× risk-to-weight ratio. The mechanism the page cites for the 5% cap,
+  showing up unprompted.
 
 - **The page's central conclusion is one assumption deep.** Measured against four published
   ten-year forecasts, this repo's US sleeve sits above every one of them and its US-over-EM

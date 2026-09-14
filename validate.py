@@ -244,6 +244,13 @@ ck('baseline sensitivity run reproduces the model',
    abs(_o0 - M.stats(M.PORTFOLIOS['optimized'], 'calm')['cagr']) < 1e-9, _o0, 'same CAGR')
 
 # ── the outside check: published forecasts, and the scenario they imply ──────
+_emvol = 20.9   # J.P. Morgan LTCMA 2026 EM equity volatility
+ck('EM volatility comparison states the right side of the line',
+   ('exceeds\n' not in html) and
+   (('exceeds <em>both</em>' in html) == (_emvol > M.REGIME['normalized']['vol']['IEMG'])),
+   (M.REGIME['calm']['vol']['IEMG'], M.REGIME['normalized']['vol']['IEMG']), f'vs {_emvol}')
+present('normalized EM vol in the house comparison',
+        f"18.0% calm and {M.REGIME['normalized']['vol']['IEMG']:.1f}% normalised")
 for _name, _d in M.INSTITUTIONAL.items():
     present(f'house row {_name}',
             f'<td>{_name}</td><td class="n">{_d["us"]:.1f}%</td><td class="n">{_d["em"]:.1f}%</td>')
@@ -334,12 +341,12 @@ ck('BMNR staked share matches token counts',
 _log  = html[html.index('Verification log'):]
 _card = _log[_log.index('<div class="card">'):_log.index('<p class="sl-role"')]
 _rows = _card.count('<div class="kv">')
-_words = dict(zip(range(70, 100),
-    'Seventy Seventy-one Seventy-two Seventy-three Seventy-four Seventy-five Seventy-six '
-    'Seventy-seven Seventy-eight Seventy-nine Eighty Eighty-one Eighty-two Eighty-three '
-    'Eighty-four Eighty-five Eighty-six Eighty-seven Eighty-eight Eighty-nine Ninety '
-    'Ninety-one Ninety-two Ninety-three Ninety-four Ninety-five Ninety-six Ninety-seven '
-    'Ninety-eight Ninety-nine'.split()))
+_words = dict(zip(range(70, 121),
+    ('Seventy Seventy-one Seventy-two Seventy-three Seventy-four Seventy-five Seventy-six '
+     'Seventy-seven Seventy-eight Seventy-nine Eighty Eighty-one Eighty-two Eighty-three '
+     'Eighty-four Eighty-five Eighty-six Eighty-seven Eighty-eight Eighty-nine Ninety '
+     'Ninety-one Ninety-two Ninety-three Ninety-four Ninety-five Ninety-six Ninety-seven '
+     'Ninety-eight Ninety-nine One-hundred').split()))
 ck('log count in words matches rows', f'{_words.get(_rows, "?")} corrections recorded' in html,
    _rows, _words.get(_rows))
 ck('calibration card quotes the same count',
@@ -371,6 +378,14 @@ for bad, why in (('/10</small>', 'gauge must be /5'),):
 revs = re.findall(r'<span>Rev\. (\d+) ·', html)
 ck('single revision stamp', len(revs) == 1, revs, 'one')
 ck('revision stamp is current', revs == [str(M.REVISION)], revs, [str(M.REVISION)])
+
+# ── the page's claim about the mutation harness must match mutate.py ────────
+_mut = open('mutate.py').read()
+_n_mut = _mut.count('\n ("')
+ck('mutation count on page matches mutate.py',
+   f'{_n_mut} deliberate corruptions' in html and f'all {_n_mut} were caught' in html,
+   (re.search(r'(\d+) deliberate corruptions', html) or [None, 'absent'])[1],
+   _n_mut)
 
 # ── last check: the page must state this file's own assertion count ──────────
 ck('assertion count on page is current', f'{checks + 1} assertions' in html,

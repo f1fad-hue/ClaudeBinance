@@ -38,8 +38,8 @@ BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
 # not an assumption. mnav uses the crypto-only reading (mkt cap $15.39B / ETH $14.79B),
 # the conservative one: against total NAV of $15.7B the stock trades at 0.98x.
 
-REVISION = 14                          # bump when publishing; validate.py enforces it
-VIX_SPOT, VIX_MEAN = 15.84, 18.9      # 2016-2023 mean of annual closes
+REVISION = 15                          # bump when publishing; validate.py enforces it
+VIX_SPOT, VIX_MEAN = 17.62, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
 
