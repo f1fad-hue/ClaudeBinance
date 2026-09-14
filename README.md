@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 243 checks. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 261 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
@@ -230,10 +230,75 @@ a decade rather than observing it. A point off IEMG's currency drag moves the ga
 closing the 0.41-point gap that way would take more than eight points of it. BMNR's inputs
 move the level and nothing about the choice, since both books hold exactly 5%.
 
+### Against the professionals
+
+The sensitivity table says QQQ's earnings-growth assumption carries the page, so this pass
+put it against the firms that publish ten-year forecasts for a living. Ten-to-fifteen-year,
+USD, total return, gross of fund fees — the same basis as this repo's figures.
+
+| Source | US | EM | Note |
+|---|---|---|---|
+| J.P. Morgan LTCMA 2026 | 6.7% | 7.8% | US large cap; EM vol 20.9% |
+| Fidelity | 4.4% | 8.1% | US large cap midpoint 3.4-5.4; US growth 2.3-4.3 |
+| Vanguard | 5.2% | 4.3% | midpoints of 4.2-6.2 and 3.3-5.3 |
+| BlackRock | 5.0% | 7.1% | EM figure is non-US broadly |
+| **This page** | **10.14%** | **8.58%** | building blocks, see Method |
+
+The US figure is above every one of them — 3.4 points above J.P. Morgan's US large cap, and
+Fidelity puts US *growth* stocks, the closest published proxy for the Nasdaq-100, at
+2.3–4.3%. Three of the four rank emerging markets *above* the US, which is the ranking this
+repo reversed two passes ago; Vanguard is the exception and sits on this page's side. The EM
+sleeve is unremarkable by comparison, bracketed by J.P. Morgan's 7.8% and Fidelity's 8.1%.
+J.P. Morgan also puts EM volatility at 20.9% against the 18.0% used here in the calm regime
+and 21.5% normalised — the normalised regime is the one a professional would recognise.
+
+`scenario()` re-runs the whole comparison on a different set of sleeve returns with every
+risk input untouched, so it isolates how much of the answer rests on this repo's own
+forecasts:
+
+| | This page | J.P. Morgan inputs |
+|---|---|---|
+| Baseline CAGR | 7.87% | 6.12% |
+| Optimized CAGR | 7.45% | 6.01% |
+| Baseline's lead | +0.41 | +0.11 |
+| Best-Sharpe book | 55/35/5/5 | 5/85/5/5 |
+| Efficient allocations | 90 | 17 |
+| Both books efficient | yes | neither |
+
+The sizing survives and the baseline still leads, but the margin collapses from 0.41 to 0.11
+and the best risk-adjusted book flips from QQQ 55 / IEMG 35 to the largest EM tilt the brief
+allows. So "QQQ leads and the EM overweight costs return" is not a finding about the market;
+it is a consequence of one assumption — 9.5%/yr of Nasdaq-100 earnings growth for a decade —
+that three of four houses implicitly reject. The repo keeps its own arithmetic, because a
+building-block forecast can be checked line by line and a house forecast cannot, but a reader
+who trusts J.P. Morgan over this page should hold *more* emerging markets, not less.
+
 ## Verification
 
-Eighty-three corrections have been recorded across eleven verification passes. The most
+Ninety-one corrections have been recorded across twelve verification passes. The most
 consequential:
+
+- **The page's central conclusion is one assumption deep.** Measured against four published
+  ten-year forecasts, this repo's US sleeve sits above every one of them and its US-over-EM
+  ranking is the opposite of three. Substituting J.P. Morgan's figures — risk inputs
+  untouched — cuts the baseline's lead from 0.41 points to 0.11, flips the best risk-adjusted
+  book from QQQ 55 / IEMG 35 to QQQ 5 / IEMG 85, and leaves neither of this repo's books
+  efficient. Published in full on the page rather than noted here, with the 1–10 confidence
+  scores cut to match: the level 3 → 2, overall 5 → 4, and a new line for the sleeve ranking
+  at 3.
+
+- **A validator check that proved a claim instead of testing it.** The page said "all four
+  houses rank emerging markets at or above the US". Three do; Vanguard does not. The check
+  written alongside it excluded Vanguard by name, so it passed on a false statement — the
+  worst failure mode available to this repo, since the harness exists precisely to catch
+  that. Both the sentence and the check are corrected, and the check now counts the houses
+  rather than asserting a number.
+
+- House cleanup: `portfolio_model.py` had two `if __name__ == '__main__'` blocks left
+  interleaved with function definitions, and an empty `_ = {}` dict stranded by an earlier
+  edit. One runnable report now sits at the bottom of the file, after every definition, and
+  it prints the outside-forecast comparison. The `SGOV_GROSS` comment still quoted the old
+  3.63% spot yield.
 
 - **Both dividend yields were priced against stale share prices.** QQQ's income term carried
   0.65% and IEMG's 2.26%. Against the 11 September closes they are **0.42%** ($3.03 trailing

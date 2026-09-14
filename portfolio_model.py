@@ -30,9 +30,7 @@ OBS = {
 # estimate: QQQ $3.03 / $714.88 = 0.42%, IEMG $1.80 over a price near $83 = 2.16%
 # (secondary sources spread 2.13-2.16%). QQQ had carried 0.65% and IEMG 2.26%,
 # both of which priced the distribution against a lower share price than today's.
-_ = {
-}
-SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.63%)
+SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.74%)
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
 # stake_share 5,067,309 / 5,929,198 staked tokens; stake_yield is the company's own
@@ -168,42 +166,6 @@ def export():
         uplift=round(UPLIFT,4), revision=REVISION,
     )
 
-if __name__ == '__main__':
-    g10, g5 = gauge()
-    print('== SLEEVES (10yr, net of fund fees) ==')
-    for k,v in A.items():
-        print(f"  {k:<5} gross {v['gross']:>5.2f} - fee {v['er']:.2f} = net {v['net']:>5.2f}%"
-              f"   maxDD -{DD[k]:>4.1f}%   $10k -> ${10000*(1+v['net']/100)**10:>8,.0f}")
-    print('\n== BUILDING BLOCKS ==')
-    for k in ('QQQ','IEMG'):
-        c=A[k]; print(f"  {k:<5} div {c['div']:+.2f}  eps {c['eps']:+.2f}  val {c['val']:+.2f}"
-                      f"  fx {c['fx']:+.2f}  = gross {c['gross']:.2f}  net {c['net']:.2f}")
-    print(f"\n== VOL REGIMES ==  uplift {VIX_MEAN}/{VIX_SPOT} = {UPLIFT:.4f}")
-    for r in REGIME:
-        print(f"  {r:<11}" + "  ".join(f"{k} {REGIME[r]['vol'][k]:.1f}%" for k in DD))
-    for p,w in PORTFOLIOS.items():
-        print(f"\n== {p.upper()} {w} ==")
-        for r in REGIME:
-            s = stats(w,r)
-            print(f"  {r:<11} CAGR {s['cagr_d']:.2f}%  fee {s['fee']:.3f}%  sigma {s['vol']:.2f}%"
-                  f"  maxDD -{s['dd']:.1f}%  Sharpe {s['sharpe']:.3f}")
-            print(f"              3mo s {s['sigma_h'][0.25]:.2f}% VaR {s['var'][0.25]:+.1f}% | "
-                  f"6mo s {s['sigma_h'][0.5]:.2f}% VaR {s['var'][0.5]:+.1f}% | "
-                  f"12mo s {s['sigma_h'][1.0]:.2f}% VaR {s['var'][1.0]:+.1f}%")
-        s = stats(w,'normalized')
-        print(f"  naive-stress -{s['naive']:.1f}%   $10k -> ${s['terminal']:,.0f}"
-              f"   fee drag ${s['fee_drag']:,.0f}")
-        print("  risk contrib (normalized): " + "  ".join(f"{k} {s['rc'][k]:.1f}%" for k in w))
-    print(f"\n== GAUGE ==  {g10:.4f}/10 -> {g5:.4f}/5 (displays {g5:.1f}), arc fill {fill(g5):.1f}%")
-    for n,s,wt in DRIVERS:
-        print(f"  {n:<26} {s:>4.1f}/10 -> {to5(s):.2f}/5  bar {fill(to5(s)):.1f}%  w {wt:.0%}")
-    print('\n== REGIONS (1-5) ==')
-    for k,v in REGIONS.items():
-        n=[to5(x) for x in v]
-        print(f"  {k:<14} " + " ".join(f"{x:.1f}" for x in n) + f"   mean {sum(n)/4:.1f}")
-    print('\nJSON export OK:', len(json.dumps(export(), default=str)), 'bytes')
-
-
 # ── claims the page makes that must stay reproducible ────────────────────────
 def frontier(regime, bmnr=5, sgov_min=15):
     """Every 5%-increment allocation, ranked by Sharpe. The page states the
@@ -254,22 +216,43 @@ def cash_line(regime='normalized'):
                      (st['cagr_d'] - A[RF_LABEL]['net']) / st['dd']))
     return rows
 
-if __name__ == '__main__':
-    print('\n== FRONTIER (top 3, each regime) ==')
-    for r in REGIME:
-        print(f'  {r}:')
-        for w, st in frontier(r)[:3]:
-            print(f"    QQQ {w['QQQ']:>3} IEMG {w['IEMG']:>3} SGOV {w['SGOV']:>3} BMNR {w['BMNR']:>2}"
-                  f"  CAGR {st['cagr_d']:.2f}%  sigma {st['vol']:.2f}%  Sharpe {st['sharpe']:.3f}")
-    print('\n== CASH LINE (QQQ <-> SGOV, IEMG fixed at 40) ==')
-    for w, c, dd, r in cash_line():
-        print(f"  {w['QQQ']:>3}/40/{w['SGOV']:<3}/5   CAGR {c:>5.2f}%  maxDD -{dd:>5.1f}%  ret/DD {r:.3f}")
-    rs = [r for _, _, _, r in cash_line()]
-    print(f"  spread {max(rs)-min(rs):.4f} -> drifts, because pinning IEMG changes the risky mix")
-    print('\n== TRUE CAL (risky mix fixed in exact proportion, scaled against cash) ==')
-    cal = cal_line()
-    for a, r in cal: print(f"  {a:>3}% risky   ret/DD {r:.6f}")
-    print(f"  spread {max(r for _,r in cal)-min(r for _,r in cal):.2e} -> invariant, as theory requires")
+# ── what the professionals publish, as an outside check ──────────────────────
+# Ten-to-fifteen-year, USD, total return, gross of fund fees. These are other
+# people's numbers, quoted to be disagreed with in the open -- not inputs.
+INSTITUTIONAL = {
+    'J.P. Morgan LTCMA 2026': dict(us=6.70, em=7.80, note='US large cap; EM vol 20.9%'),
+    'Fidelity':               dict(us=4.40, em=8.10, note='US large cap midpoint 3.4-5.4; US growth 2.3-4.3'),
+    'Vanguard':               dict(us=5.20, em=4.30, note='midpoints of 4.2-6.2 and 3.3-5.3'),
+    'BlackRock':              dict(us=5.00, em=7.10, note='EM figure is non-US broadly'),
+}
+ALT_SOURCE = 'J.P. Morgan LTCMA 2026'
+
+def alt_nets(source=ALT_SOURCE):
+    """Sleeve net returns if the US and EM sleeves took a published house forecast
+    instead of this page's building blocks. Fund fees still come off; SGOV and BMNR
+    are unchanged, since no house publishes a figure for either."""
+    f = INSTITUTIONAL[source]
+    return {'QQQ':  r2h(f['us'] - OBS['QQQ']['er']),
+            'IEMG': r2h(f['em'] - OBS['IEMG']['er']),
+            'SGOV': A['SGOV']['net'], 'BMNR': A['BMNR']['net']}
+
+def scenario(nets, regime='calm'):
+    """Re-run the whole comparison on a different set of sleeve returns. Risk inputs
+    are unchanged -- only the return assumptions move -- so this isolates how much of
+    the recommendation rests on this page's own forecasts."""
+    cg = lambda w: sum(w[k]/100 * nets[k] for k in w)
+    rows = {}
+    for name, w in PORTFOLIOS.items():
+        st = stats(w, regime)
+        rows[name] = dict(cagr=cg(w), sharpe=(cg(w) - nets['SGOV']) / st['vol'], dd=st['dd'])
+    best = max(((cg(w) - nets['SGOV']) / stats(w, regime)['vol'], w) for w in admissible())
+    pts  = [(stats(w, 'normalized')['dd'], cg(w), w) for w in admissible(5)]
+    eff  = [q for q in pts
+            if not any(d <= q[0] and c >= q[1] and (d < q[0] or c > q[1]) for d, c, _ in pts)]
+    return dict(rows=rows, gap=rows['baseline']['cagr'] - rows['optimized']['cagr'],
+                best_sharpe=best[0], best_w=best[1], n_eff=len(eff),
+                on_frontier={n: any(w == PORTFOLIOS[n] for _, _, w in eff)
+                             for n in PORTFOLIOS})
 
 # ── efficient frontier, generated so the chart cannot drift from the model ────
 FR_X = (10.0, 50.0,  58.0, 286.0)      # max drawdown %  -> svg x
@@ -434,3 +417,66 @@ def sensitivity():
         z = lambda x: 0.0 if abs(x) < 5e-4 else x
         rows.append(dict(label=label, now=now, d_cagr=z(o - o0), d_gap=z(g - g0)))
     return sorted(rows, key=lambda r: -abs(r['d_cagr'])), o0, g0
+
+
+if __name__ == '__main__':
+    g10, g5 = gauge()
+    print('== SLEEVES (10yr, net of fund fees) ==')
+    for k,v in A.items():
+        print(f"  {k:<5} gross {v['gross']:>5.2f} - fee {v['er']:.2f} = net {v['net']:>5.2f}%"
+              f"   maxDD -{DD[k]:>4.1f}%   $10k -> ${10000*(1+v['net']/100)**10:>8,.0f}")
+    print('\n== BUILDING BLOCKS ==')
+    for k in ('QQQ','IEMG'):
+        c=A[k]; print(f"  {k:<5} div {c['div']:+.2f}  eps {c['eps']:+.2f}  val {c['val']:+.2f}"
+                      f"  fx {c['fx']:+.2f}  = gross {c['gross']:.2f}  net {c['net']:.2f}")
+    print(f"\n== VOL REGIMES ==  uplift {VIX_MEAN}/{VIX_SPOT} = {UPLIFT:.4f}")
+    for r in REGIME:
+        print(f"  {r:<11}" + "  ".join(f"{k} {REGIME[r]['vol'][k]:.1f}%" for k in DD))
+    for p,w in PORTFOLIOS.items():
+        print(f"\n== {p.upper()} {w} ==")
+        for r in REGIME:
+            s = stats(w,r)
+            print(f"  {r:<11} CAGR {s['cagr_d']:.2f}%  fee {s['fee']:.3f}%  sigma {s['vol']:.2f}%"
+                  f"  maxDD -{s['dd']:.1f}%  Sharpe {s['sharpe']:.3f}")
+            print(f"              3mo s {s['sigma_h'][0.25]:.2f}% VaR {s['var'][0.25]:+.1f}% | "
+                  f"6mo s {s['sigma_h'][0.5]:.2f}% VaR {s['var'][0.5]:+.1f}% | "
+                  f"12mo s {s['sigma_h'][1.0]:.2f}% VaR {s['var'][1.0]:+.1f}%")
+        s = stats(w,'normalized')
+        print(f"  naive-stress -{s['naive']:.1f}%   $10k -> ${s['terminal']:,.0f}"
+              f"   fee drag ${s['fee_drag']:,.0f}")
+        print("  risk contrib (normalized): " + "  ".join(f"{k} {s['rc'][k]:.1f}%" for k in w))
+    print(f"\n== GAUGE ==  {g10:.4f}/10 -> {g5:.4f}/5 (displays {g5:.1f}), arc fill {fill(g5):.1f}%")
+    for n,s,wt in DRIVERS:
+        print(f"  {n:<26} {s:>4.1f}/10 -> {to5(s):.2f}/5  bar {fill(to5(s)):.1f}%  w {wt:.0%}")
+    print('\n== REGIONS (1-5) ==')
+    for k,v in REGIONS.items():
+        n=[to5(x) for x in v]
+        print(f"  {k:<14} " + " ".join(f"{x:.1f}" for x in n) + f"   mean {sum(n)/4:.1f}")
+    print('\nJSON export OK:', len(json.dumps(export(), default=str)), 'bytes')
+    print('\n== FRONTIER (top 3, each regime) ==')
+    for r in REGIME:
+        print(f'  {r}:')
+        for w, st in frontier(r)[:3]:
+            print(f"    QQQ {w['QQQ']:>3} IEMG {w['IEMG']:>3} SGOV {w['SGOV']:>3} BMNR {w['BMNR']:>2}"
+                  f"  CAGR {st['cagr_d']:.2f}%  sigma {st['vol']:.2f}%  Sharpe {st['sharpe']:.3f}")
+    print('\n== CASH LINE (QQQ <-> SGOV, IEMG fixed at 40) ==')
+    for w, c, dd, r in cash_line():
+        print(f"  {w['QQQ']:>3}/40/{w['SGOV']:<3}/5   CAGR {c:>5.2f}%  maxDD -{dd:>5.1f}%  ret/DD {r:.3f}")
+    rs = [r for _, _, _, r in cash_line()]
+    print(f"  spread {max(rs)-min(rs):.4f} -> drifts, because pinning IEMG changes the risky mix")
+    print('\n== AGAINST THE PROFESSIONALS (10-15yr, USD, gross of fees) ==')
+    for nm, d in INSTITUTIONAL.items():
+        print(f"  {nm:<24} US {d['us']:>5.2f}%  EM {d['em']:>5.2f}%   {d['note']}")
+    print(f"  {'this page':<24} US {A['QQQ']['gross']:>5.2f}%  EM {A['IEMG']['gross']:>5.2f}%")
+    _m = scenario({k: A[k]['net'] for k in A}); _j = scenario(alt_nets())
+    for lbl, sc in (('this page', _m), (ALT_SOURCE, _j)):
+        w = sc['best_w']
+        print(f"  {lbl:<24} baseline {sc['rows']['baseline']['cagr']:.2f}%  optimized "
+              f"{sc['rows']['optimized']['cagr']:.2f}%  lead {sc['gap']:+.2f}  best "
+              f"{w['QQQ']}/{w['IEMG']}/{w['SGOV']}/{w['BMNR']}  efficient {sc['n_eff']}"
+              f"  both on frontier {all(sc['on_frontier'].values())}")
+
+    print('\n== TRUE CAL (risky mix fixed in exact proportion, scaled against cash) ==')
+    cal = cal_line()
+    for a, r in cal: print(f"  {a:>3}% risky   ret/DD {r:.6f}")
+    print(f"  spread {max(r for _,r in cal)-min(r for _,r in cal):.2e} -> invariant, as theory requires")

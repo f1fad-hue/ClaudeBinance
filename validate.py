@@ -243,6 +243,53 @@ present('most sensitive input named', f"{_rows[0]['now']} earnings-growth assump
 ck('baseline sensitivity run reproduces the model',
    abs(_o0 - M.stats(M.PORTFOLIOS['optimized'], 'calm')['cagr']) < 1e-9, _o0, 'same CAGR')
 
+# ── the outside check: published forecasts, and the scenario they imply ──────
+for _name, _d in M.INSTITUTIONAL.items():
+    present(f'house row {_name}',
+            f'<td>{_name}</td><td class="n">{_d["us"]:.1f}%</td><td class="n">{_d["em"]:.1f}%</td>')
+_jpm  = M.scenario(M.alt_nets())
+_mine = M.scenario({k: M.A[k]['net'] for k in M.A})
+ck('scenario reproduces the model on the model\'s own inputs',
+   abs(_mine['rows']['optimized']['cagr'] - M.stats(M.PORTFOLIOS['optimized'], 'calm')['cagr']) < 1e-9,
+   _mine['rows']['optimized']['cagr'], 'same CAGR')
+for _k, _r in (('baseline', 'Baseline CAGR'), ('optimized', 'Optimized CAGR')):
+    present(f'scenario row {_r}',
+            f'<td>{_r}</td><td class="n">{_mine["rows"][_k]["cagr"]:.2f}%</td>'
+            f'<td class="n">{_jpm["rows"][_k]["cagr"]:.2f}%</td>')
+present('scenario gap row',
+        f'<td class="n">+{_mine["gap"]:.2f}</td><td class="n">+{_jpm["gap"]:.2f}</td>')
+present('scenario best-Sharpe row',
+        f'<td class="n">{_mine["best_w"]["QQQ"]}/{_mine["best_w"]["IEMG"]}/{_mine["best_w"]["SGOV"]}/'
+        f'{_mine["best_w"]["BMNR"]}</td><td class="n">{_jpm["best_w"]["QQQ"]}/{_jpm["best_w"]["IEMG"]}/'
+        f'{_jpm["best_w"]["SGOV"]}/{_jpm["best_w"]["BMNR"]}</td>')
+present('scenario efficient counts',
+        f'<td class="n">{_mine["n_eff"]}</td><td class="n">{_jpm["n_eff"]}</td>')
+present('this page\'s own row in the house table',
+        f'<td>This page</td><td class="n">{M.A["QQQ"]["gross"]:.2f}%</td>'
+        f'<td class="n">{M.A["IEMG"]["gross"]:.2f}%</td>')
+present('gap to J.P. Morgan stated',
+        f'{M.A["QQQ"]["gross"] - M.INSTITUTIONAL[M.ALT_SOURCE]["us"]:.1f} points above')
+# the disagreement the page reports must actually be there
+# count the houses rather than assert a number: an earlier revision wrote this
+# check to exclude the one house that disagreed, which made it prove the claim
+# instead of testing it, and the page said "all four" when the answer was three.
+_above = [n for n, d in M.INSTITUTIONAL.items() if d['em'] > d['us']]
+ck('the page states the right number of dissenting houses',
+   f'{len(_above)} of the {len(M.INSTITUTIONAL)} rank emerging markets' in html,
+   len(_above), 'stated on the page')
+ck('at least one house is quoted on each side',
+   0 < len(_above) < len(M.INSTITUTIONAL),
+   {n: (d['us'], d['em']) for n, d in M.INSTITUTIONAL.items()}, 'a real split')
+ck('this page ranks them the other way',
+   M.A['QQQ']['net'] > M.A['IEMG']['net'], (M.A['QQQ']['net'], M.A['IEMG']['net']), 'QQQ ahead')
+ck('the alternative inputs really do flip the best book',
+   _jpm['best_w']['IEMG'] > _mine['best_w']['IEMG'],
+   (_mine['best_w'], _jpm['best_w']), 'EM weight rises')
+ck('neither book is efficient under the alternative inputs',
+   not any(_jpm['on_frontier'].values()), _jpm['on_frontier'], 'both False')
+ck('the baseline still leads under both input sets',
+   _mine['gap'] > 0 and _jpm['gap'] > 0, (_mine['gap'], _jpm['gap']), 'both positive')
+
 # ── the CAL must follow the book the page recommends, not a stale mix ────────
 ck('CAL uses the recommended risky mix',
    M.risky_mix() == tuple(M.PORTFOLIOS['optimized'][k] for k in ('QQQ','IEMG','BMNR')),
