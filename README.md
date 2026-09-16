@@ -11,8 +11,8 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 262 checks. |
-| `checklist.py` | Runs the original brief as an acceptance test. PASS / PASS* / FAIL / CONFLICT per requirement. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 265 checks. |
+| `checklist.py` | Runs the original brief as an acceptance test. PASS / FAIL / CONFLICT per requirement. |
 | `mutate.py` | Mutation-tests the validator: corrupts one model input at a time and checks validate.py fails. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
 
@@ -25,15 +25,22 @@ python3 mutate.py            # prove validate.py actually fails when the model c
 ```
 
 `checklist.py` encodes each requirement from the brief as a check, so the deliverable is
-re-auditable rather than eyeballed. It currently reports **16 pass, 0 fail**.
+re-auditable rather than eyeballed. It currently reports **15 pass, 0 fail, 1 conflict**.
 
 Item 6 reads the gauge requirement as 1–5: the brief first asked for 1–10, later
 instructions asked for 1–5 and then for the regional rankings to match, and the user
 confirmed 1–5. Item 15 tests Pareto efficiency over all 969 admissible allocations rather
 than "beats the baseline on Sharpe" — the earlier criterion, which the brief never asked
 for and which QQQ's correction broke. The old criterion is kept in a comment so the change
-reads as a fix, not as moved goalposts. Unresolved conflicts surface as `CONFLICT` and are
-never silently settled.
+reads as a fix, not as moved goalposts.
+
+Item 9 is the conflict. The brief asks for data only from authoritative sources; every
+observable figure here has one, but three inputs are extrapolations rather than
+observations — QQQ's 9.5%/yr earnings growth, the 1.70 × σ drawdown multiplier, and BMNR's
+9%/yr ETH assumption — and the first is the most load-bearing number on the page. The
+check used to count source domains, which tested whether the page *cites* authorities
+rather than whether its numbers come from them, and passed. It now reports CONFLICT, which
+is surfaced for the user to settle and does not set the exit code.
 
 This repo is the source of truth. `sync-artifact.sh` copies one way only —
 copying back from the publish path once silently reverted a fix that had
@@ -77,15 +84,15 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 | Net 10-yr CAGR | 7.87% | 7.45% |
 | Weighted fee | 0.126% | 0.117% |
 | σ — calm (today) | 16.44% | 15.22% |
-| σ — vol normalized | 19.12% | 17.82% |
+| σ — vol normalized | 19.70% | 18.35% |
 | Max drawdown — calm | −27.9% | −25.9% |
-| Max drawdown — normalized | −32.5% | −30.3% |
+| Max drawdown — normalized | −33.5% | −31.2% |
 | Correlated-stress drawdown | −32.1% | −30.0% |
 | Return / risk (calm) | **0.286** | 0.282 |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.41 points of CAGR to buy 2.2 points of drawdown, and it no longer leads on
+it gives up 0.41 points of CAGR to buy 2.3 points of drawdown, and it no longer leads on
 risk-adjusted return either. It is the lower-drawdown point on the frontier, not the
 better book.
 
@@ -147,29 +154,29 @@ preserved at every horizon, which is the check that the rescale is presentationa
 
 ## Volatility regime
 
-Weights are sized to *normalized* volatility, not today's level. Spot VIX of 17.62
-sits 6.8% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
-by 1.07 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85). That uplift has
-collapsed from 1.24 in early September as the VIX rose: the two regimes have nearly
-converged, and the repo's own revisit trigger — a sustained VIX above 18.9 — is 1.28 points
-away, at which point 30% cash becomes a candidate to spend toward 25%.
+Weights are sized to *normalized* volatility, not today's level. Spot VIX of 16.93
+sits 10.4% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
+by 1.12 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85). That uplift has
+fallen from 1.24 in early September as the VIX rose: most of the premise is spent, and the
+repo's own revisit trigger — a sustained VIX above 18.9 — is 1.97 points away, at which
+point 30% cash becomes a candidate to spend toward 25%.
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
-| QQQ | 21.0% | 22.5% |
-| IEMG | 18.0% | 19.3% |
+| QQQ | 21.0% | 23.4% |
+| IEMG | 18.0% | 20.1% |
 | SGOV | 0.5% | 0.5% |
 | BMNR | 95% | 109% |
 
 Two findings constrained the answer:
 
 - **The cash line is straight.** Scaling a fixed risky mix against cash holds
-  return-per-drawdown at 0.1417 regardless of the cash weight — invariant to 2.8e-17,
+  return-per-drawdown at 0.1376 regardless of the cash weight — invariant to 2.8e-17,
   since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
   The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
   output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
   IEMG; that is *not* a pure CAL (the risky mix changes, not just its scale) and drifts
-  0.146 → 0.136. `cal_line()` now carries the theorem, `cash_line()` the illustration.
+  0.142 → 0.132. `cal_line()` now carries the theorem, `cash_line()` the illustration.
 - **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
   volatility implies a 69.6% arithmetic mean, which nobody would forecast. A Booth-Fama
   rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
@@ -189,8 +196,8 @@ Every figure above is a point estimate, so the page now carries the distribution
 | Optimized book, 10 yr | Calm | Normalized |
 |---|---|---|
 | Net CAGR | 7.45% | 7.45% |
-| Standard error, σ/√10 | ±4.81 | ±5.64 |
-| 95% band | −2.0 to 16.9 | −3.6 to 18.5 |
+| Standard error, σ/√10 | ±4.81 | ±5.80 |
+| 95% band | −2.0 to 16.9 | −3.9 to 18.8 |
 
 The headline result is uncomfortable and worth stating plainly: **of the 969 admissible
 allocations, 0 are statistically distinguishable from the recommendation at 95% over ten
@@ -255,7 +262,7 @@ Fidelity puts US *growth* stocks, the closest published proxy for the Nasdaq-100
 repo reversed two passes ago; Vanguard is the exception and sits on this page's side. The EM
 sleeve is unremarkable by comparison, bracketed by J.P. Morgan's 7.8% and Fidelity's 8.1%.
 J.P. Morgan also puts EM volatility at 20.9%, which as of the 14 September VIX exceeds *both*
-regimes used here — 18.0% calm and 19.3% normalised. When this comparison was first written the
+regimes used here — 18.0% calm and 20.1% normalised. When this comparison was first written the
 normalised figure was 21.5% and sat above theirs; the VIX rising pulled the uplift factor down and
 took it below. On their number the EM sleeve is under-risked here either way.
 
@@ -282,8 +289,41 @@ who trusts J.P. Morgan over this page should hold *more* emerging markets, not l
 
 ## Verification
 
-Ninety-nine corrections have been recorded across thirteen verification passes. The most
+One hundred and seven corrections have been recorded across fourteen verification passes. The most
 consequential:
+
+- **`checklist.py` advertised two statuses it could not produce.** Its docstring and this
+  README both promised a `CONFLICT` result for requirements the deliverable departs from,
+  and a `PASS*` for ones a later instruction superseded. Neither existed in the code: there
+  was no `CONFLICT` path at all, and the `superseded()` helper that emitted `PASS*` was
+  never called. `PASS*` is removed and `CONFLICT` is implemented — and it has a real
+  occupant.
+
+- **Item 9 was testing the wrong thing, and passing.** The brief asks for data only from
+  authoritative, fact-checked sources. The check counted how many authoritative domains the
+  page links to, which measures whether the page *cites* authorities, not whether its
+  numbers come from them. Three inputs are admitted extrapolations — QQQ's 9.5%/yr earnings
+  growth, the 1.70 × σ drawdown multiplier, BMNR's 9%/yr ETH assumption — and the first is
+  the single most load-bearing figure here, contradicted by three of four published house
+  forecasts. Item 9 now reports **CONFLICT** with those three named. Only the user can
+  decide whether it meets the brief; the checklist's job was to stop pretending the
+  question had been settled.
+
+- **A blacklist entry collided with a correct figure.** `validate.py` forbids superseded
+  values from surviving outside the self-audit, and `24.5%` was on that list as an old BMNR
+  risk contribution. When the VIX moved, the baseline's 12-month normalised VaR became
+  −24.5% and the build failed on a number that was right. Bare percentages are not safe
+  patterns: the risk-contribution entries are now anchored to the markup they live in
+  (`width:24.5%;background:var(--bmnr)`), and a meta-check asserts that no blacklist entry
+  matches any figure the model currently emits, so this cannot recur silently.
+
+- Market data to the 15 September close, published hours before the decision it describes.
+  VIX **16.93** after Monday's 11.24% spike to 17.62 and Friday's identically-sized fall to
+  15.84. The 10-year touched **5.04%**, a 19-year high above even the October 2023 peak,
+  closing near 5.01% — the repo had called it "the first print above 5% since October
+  2023", which the new high supersedes. Brent **$107.46**. Hike odds **84–91%** across
+  venues into the meeting. The page now carries a standing notice that it closes before the
+  FOMC announcement and has not been written with knowledge of the outcome.
 
 - **The validator is now mutation-tested, and it holds.** More than half its checks are
   `present()`, which only asserts that a string appears somewhere in the page — weak by

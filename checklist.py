@@ -4,8 +4,10 @@ Runs the original brief as an acceptance test against allocation.html.
 
 Each requirement from the request is encoded as a check so the deliverable can
 be re-audited on demand rather than eyeballed. Reports PASS / FAIL / CONFLICT.
-CONFLICT means the brief and a later explicit instruction disagree; those are
-surfaced for the user to settle, never silently resolved.
+CONFLICT means the deliverable knowingly departs from the brief in a way the page
+discloses; it is surfaced for the user to settle, never silently resolved, and it
+does not set the exit code. An earlier revision advertised this status and a PASS*
+status without implementing either.
 """
 import re, sys
 import portfolio_model as M
@@ -18,10 +20,11 @@ rows = []
 def req(n, text, ok, note=''):
     rows.append((n, text, 'PASS' if ok else 'FAIL', note))
 
-def superseded(n, text, ok, note):
-    """The brief said one thing, a later explicit instruction said another, and the
-    user has settled it. Passes, but records the deviation rather than hiding it."""
-    rows.append((n, text, 'PASS*' if ok else 'FAIL', note))
+def conflict(n, text, note):
+    """The deliverable departs from the brief in a way the page discloses but that
+    only the user can settle. Not a pass and not a failure: it is surfaced so the
+    decision stays theirs. Reported separately and does not set the exit code."""
+    rows.append((n, text, 'CONFLICT', note))
 
 # 1 ── live https url, android, bottom tabs, light theme
 tabs = re.search(r'\.tabs\{position:fixed;bottom:0', html)
@@ -79,8 +82,24 @@ req(8, 'Ranking for US, Europe and Asia at 3, 6, 12 months and 10 years', reg_ok
 srcs = re.findall(r'href="https://([^/"]+)', html)
 auth = {'www.federalreserve.gov','www.bls.gov','www.ecb.europa.eu','www.imf.org',
         'fred.stlouisfed.org','www.sec.gov','www.ishares.com','www.invesco.com','www.cboe.com'}
-req(9, 'Data only from authoritative, fact-checked sources', auth.issubset(set(srcs)),
-    f'{len(set(srcs))} distinct source domains; issuers, Fed, BLS, ECB, IMF, FRED, Cboe, SEC')
+# Counting source domains tested whether the page *cites* authorities, not whether
+# its numbers come from them. Three inputs are admittedly extrapolations, and the
+# page names them; one of those three is its single most load-bearing figure. That
+# is a real departure from the brief's wording, so it is reported as one.
+ASSUMED = ('9.5%/yr earnings growth', '1.70 x sigma drawdown multiplier',
+           "BMNR's 9%/yr ETH appreciation")
+observed = auth.issubset(set(srcs))
+discloses = 'Still open' in html and 'assumptions rather than observations' in html
+if observed and discloses:
+    conflict(9, 'Data only from authoritative, fact-checked sources',
+             f'{len(set(srcs))} authoritative domains cited and every observable figure '
+             f'sourced — but {len(ASSUMED)} inputs are extrapolations, not observations '
+             f'({"; ".join(ASSUMED)}), and the first is the most load-bearing number on '
+             f'the page. Disclosed in "Still open" and in the sensitivity table; only you '
+             f'can decide whether that meets the brief.')
+else:
+    req(9, 'Data only from authoritative, fact-checked sources', False,
+        'authoritative domains missing' if not observed else 'assumptions not disclosed')
 
 # 10 ── both portfolios' CAGR net of fees and drawdown
 both = all(f"{E['portfolios'][p]['calm']['cagr_d']:.2f}%" in html and
@@ -145,9 +164,9 @@ for n, t, r, note in rows:
     if note: print(f"{'':>3}  {'':<{w}}  └─ {note}")
 p = sum(1 for *_, r, _ in rows if r.startswith('PASS'))
 f = sum(1 for *_, r, _ in rows if r == 'FAIL')
-sup = sum(1 for *_, r, _ in rows if r == 'PASS*')
+cf = sum(1 for *_, r, _ in rows if r == 'CONFLICT')
 print('-' * (w + 16))
-print(f"{p} pass, {f} fail  (of {len(rows)})")
-if sup: print(f"PASS* = met, but deviates from the brief's literal wording by a later "
-              f"instruction the user confirmed ({sup} item{'s' if sup > 1 else ''}).")
+print(f"{p} pass, {f} fail, {cf} conflict  (of {len(rows)})")
+if cf: print("CONFLICT = the page departs from the brief and says so on its face; "
+             "only the user can settle it. Not counted as a failure.")
 sys.exit(1 if f else 0)

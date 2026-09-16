@@ -346,7 +346,9 @@ _words = dict(zip(range(70, 121),
      'Seventy-seven Seventy-eight Seventy-nine Eighty Eighty-one Eighty-two Eighty-three '
      'Eighty-four Eighty-five Eighty-six Eighty-seven Eighty-eight Eighty-nine Ninety '
      'Ninety-one Ninety-two Ninety-three Ninety-four Ninety-five Ninety-six Ninety-seven '
-     'Ninety-eight Ninety-nine One-hundred').split()))
+     'Ninety-eight Ninety-nine One-hundred One-hundred-and-one One-hundred-and-two '
+     'One-hundred-and-three One-hundred-and-four One-hundred-and-five One-hundred-and-six '
+     'One-hundred-and-seven One-hundred-and-eight').split()))
 ck('log count in words matches rows', f'{_words.get(_rows, "?")} corrections recorded' in html,
    _rows, _words.get(_rows))
 ck('calibration card quotes the same count',
@@ -359,17 +361,38 @@ ck('calibration card quotes the same count',
 body_only = html[:html.index('How much to trust this')]
 ck('no exact-invariance claim', 'identical return-per-drawdown ratio' not in body_only,
    'claim present outside log', 'absent')
-for stale, why in (('16.00%','old optimized sigma'), ('27.2%','old optimized maxDD'),
-                   ('7.32%','old optimized CAGR'),  ('36.9%','old normalized maxDD'),('20.39%','pre-fix sigma'),
-                   ('$20,052','pre-fix baseline terminal'),
-                   ('4.8/10','pre-rescale gauge'),
-                   ('VIX 15.30','pre-CPI VIX'),      ('Brent $100','pre-settle Brent'),
-                   ('0.112%','wrong optimized fee'), ('24.5%','pre-fix BMNR risk contrib'),
-                   ('44.3%','pre-fix QQQ risk contrib'), ('85.9%','pre-filing staked share'),
-                   ('0.1296','pre-fix CAL ratio'),   ('86 allocations','pre-fix efficient count'),
-                   ('75%-risk-asset','wrong risk-asset share'),
-                   ('2.58% staking','pre-filing staking yield')):
+# Each pattern is anchored to the markup it used to live in. A bare percentage is
+# not safe here: '24.5%' was blacklisted as an old BMNR risk contribution and then
+# collided with a legitimate −24.5% VaR when the VIX moved, failing the build on a
+# figure that was correct. The meta-check below stops that recurring.
+STALE = (('16.00%','old optimized sigma'), ('27.2%','old optimized maxDD'),
+         ('7.32%','old optimized CAGR'),  ('36.9%','old normalized maxDD'),
+         ('20.39%','pre-fix sigma'),      ('$20,052','pre-fix baseline terminal'),
+         ('4.8/10','pre-rescale gauge'),
+         ('VIX 15.30','pre-CPI VIX'),     ('Brent $100','pre-settle Brent'),
+         ('0.112%','wrong optimized fee'),
+         ('width:24.5%;background:var(--bmnr)','pre-fix BMNR risk contrib'),
+         ('width:44.3%;background:var(--qqq)','pre-fix QQQ risk contrib'),
+         ('staked</span><span class="v">85.9%','pre-filing staked share'),
+         ('0.1296','pre-fix CAL ratio'),  ('86 allocations','pre-fix efficient count'),
+         ('75%-risk-asset','wrong risk-asset share'),
+         ('2.58% staking','pre-filing staking yield'))
+for stale, why in STALE:
     ck(f'no superseded value ({why})', stale not in body_only, stale, 'absent outside log')
+
+# meta-check: a blacklist entry must never match something the model currently emits
+_live = set()
+for _p, _w in M.PORTFOLIOS.items():
+    for _r in M.REGIME:
+        _s = M.stats(_w, _r)
+        _live |= {f"{_s['vol']:.2f}%", f"−{_s['dd']:.1f}%", f"{_s['cagr_d']:.2f}%",
+                  f"−${_s['fee_drag']:,.0f}", f"${_s['terminal']:,.0f}", f"{_s['fee']:.3f}%"}
+        _live |= {f"−{abs(_v):.1f}%" for _v in _s['var'].values()}
+        _live |= {f"{_v:.1f}%" for _v in _s['rc'].values()}
+for _k, _a in M.A.items():
+    _live |= {f"{_a['net']:.2f}%", f"{_a['gross']:.2f}%"}
+_collide = [(s, w) for s, w in STALE if s in _live]
+ck('no blacklist entry collides with a live model figure', not _collide, _collide, 'none')
 
 # ── no stale scale or revision markers ───────────────────────────────────────
 for bad, why in (('/10</small>', 'gauge must be /5'),):

@@ -6,7 +6,7 @@ Run directly for a readable report; `python3 validate.py` checks the published
 page against whatever this file computes. If a number changes here, the page is
 wrong until it is changed there too.
 
-Market data as of 11 September 2026. Sources are linked on the page itself.
+Market data as of 15 September 2026. Sources are linked on the page itself.
 """
 import math, json
 from decimal import Decimal, ROUND_HALF_UP
@@ -38,8 +38,8 @@ BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
 # not an assumption. mnav uses the crypto-only reading (mkt cap $15.39B / ETH $14.79B),
 # the conservative one: against total NAV of $15.7B the stock trades at 0.98x.
 
-REVISION = 15                          # bump when publishing; validate.py enforces it
-VIX_SPOT, VIX_MEAN = 17.62, 18.9      # 2016-2023 mean of annual closes
+REVISION = 16                          # bump when publishing; validate.py enforces it
+VIX_SPOT, VIX_MEAN = 16.93, 18.9      # 2016-2023 mean of annual closes
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
 
