@@ -6,7 +6,7 @@ Run directly for a readable report; `python3 validate.py` checks the published
 page against whatever this file computes. If a number changes here, the page is
 wrong until it is changed there too.
 
-Market data as of 15 September 2026. Sources are linked on the page itself.
+Market data as of 16 September 2026. Sources are linked on the page itself.
 """
 import math, json
 from decimal import Decimal, ROUND_HALF_UP
@@ -30,7 +30,12 @@ OBS = {
 # estimate: QQQ $3.03 / $714.88 = 0.42%, IEMG $1.80 over a price near $83 = 2.16%
 # (secondary sources spread 2.13-2.16%). QQQ had carried 0.65% and IEMG 2.26%,
 # both of which priced the distribution against a lower share price than today's.
-SGOV_GROSS = 3.25          # assumed 10yr average bill yield (spot SEC yield 3.74%)
+SGOV_GROSS = 3.875         # midpoint of the target range set on 16 Sep 2026
+# 0-3 month bills track the effective funds rate, so the decade assumption is simply
+# that policy averages where it now sits: the 3.75-4.00% range the FOMC set on
+# 16 September, midpoint 3.875%. That is neutral by construction -- it neither
+# extrapolates the hiking path futures price (about 4.1% by December) nor assumes a
+# return to the 3.25% this file carried, which was below both spot and the curve.
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
 # stake_share 5,067,309 / 5,929,198 staked tokens; stake_yield is the company's own
@@ -38,8 +43,20 @@ BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
 # not an assumption. mnav uses the crypto-only reading (mkt cap $15.39B / ETH $14.79B),
 # the conservative one: against total NAV of $15.7B the stock trades at 0.98x.
 
-REVISION = 16                          # bump when publishing; validate.py enforces it
-VIX_SPOT, VIX_MEAN = 16.93, 18.9      # 2016-2023 mean of annual closes
+REVISION = 17                          # bump when publishing; validate.py enforces it
+# Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
+# the assertion below is why: an earlier revision published 16.93 for 15 September
+# from a source whose own stated change (-0.27, -1.57%) implied a prior close of
+# 17.20 -- not the 17.62 this file already held for 14 September, verified against
+# 11 September's 15.84 at +11.24%. A quoted level whose change does not reconcile
+# with the close already on file is the tell, and it now fails the build.
+VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
+              ('2026-09-15', 17.20), ('2026-09-16', 17.71))
+VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
+VIX_ASOF = VIX_SERIES[-1][0]
+assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIES[1:])), \
+    'a >25% single-session move in the series is a transcription error until proven'
+
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
 
@@ -391,16 +408,26 @@ def build_with(**over):
     a['BMNR'] = dict(net=r2h(BM['eth'] + st + mn - BM['drag']), er=0.0)
     return a
 
-SENS = (('QQQ earnings growth',  '9.5%',   'QQQ_eps',          8.50),
-        ('IEMG currency drag',   '−1.50%', 'IEMG_fx',         -0.50),
-        ('SGOV gross yield',     '3.25%',  'SGOV_gross',       4.25),
-        ('IEMG earnings growth', '7.5%',   'IEMG_eps',         6.50),
-        ('IEMG forward P/E',     '11.7×',  'IEMG_fwd_pe',     12.70),
-        ('IEMG terminal P/E',    '12.2×',  'IEMG_pe_end',     13.20),
-        ('QQQ terminal P/E',     '22.9×',  'QQQ_pe_end',      21.90),
-        ('QQQ forward P/E',      '22.4×',  'QQQ_fwd_pe',      23.40),
-        ('BMNR ETH return',      '9.0%',   'BMNR_eth',         8.00),
-        ('BMNR staking yield',   '2.61%',  'BMNR_stake_yield', 1.61))
+# Built from the live constants, never typed. An earlier revision hardcoded both
+# the displayed level and the perturbed value; when SGOV's assumed yield moved from
+# 3.25% to 3.875% the row went on claiming 3.25% and its "one unit" step quietly
+# shrank to 0.375, understating that input's influence by two thirds.
+def _sens_spec():
+    q, i, b = OBS['QQQ'], OBS['IEMG'], BMNR
+    pct = lambda x: f'{x:.1f}%' if abs(x*10 - round(x*10)) < 1e-9 else f'{x:g}%'
+    mult = lambda x: f'{x:g}\u00d7'
+    return (('QQQ earnings growth',  pct(q['eps']),      'QQQ_eps',          q['eps'] - 1),
+            ('IEMG currency drag',   f"\u2212{abs(i['fx']):.2f}%", 'IEMG_fx', i['fx'] + 1),
+            ('SGOV gross yield',     pct(SGOV_GROSS),    'SGOV_gross',       SGOV_GROSS + 1),
+            ('IEMG earnings growth', pct(i['eps']),      'IEMG_eps',         i['eps'] - 1),
+            ('IEMG forward P/E',     mult(i['fwd_pe']),  'IEMG_fwd_pe',      i['fwd_pe'] + 1),
+            ('IEMG terminal P/E',    mult(i['pe_end']),  'IEMG_pe_end',      i['pe_end'] + 1),
+            ('QQQ terminal P/E',     mult(q['pe_end']),  'QQQ_pe_end',       q['pe_end'] - 1),
+            ('QQQ forward P/E',      mult(q['fwd_pe']),  'QQQ_fwd_pe',       q['fwd_pe'] + 1),
+            ('BMNR ETH return',      pct(b['eth']),      'BMNR_eth',         b['eth'] - 1),
+            ('BMNR staking yield',   pct(b['stake_yield']), 'BMNR_stake_yield', b['stake_yield'] - 1))
+
+SENS = _sens_spec()
 
 def sensitivity():
     """Effect of moving each input by one unit on the optimized book's CAGR and on

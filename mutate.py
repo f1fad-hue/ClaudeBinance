@@ -15,8 +15,10 @@ import subprocess, shutil, re, sys, os
 REPO=os.path.dirname(os.path.abspath(__file__)); SRC=os.path.join(REPO,'portfolio_model.py')
 orig=open(SRC).read()
 _REV=int(re.search(r'REVISION = (\d+)', orig).group(1))
-_m=re.search(r'VIX_SPOT, VIX_MEAN = ([\d.]+), ([\d.]+)', orig)
-_SPOT, _MEAN = float(_m.group(1)), float(_m.group(2))
+_m=re.search(r"\('(\d{4}-\d\d-\d\d)', ([\d.]+)\)\)\n", orig)   # last VIX_SERIES entry
+_LAST, _SPOT = _m.group(1), float(_m.group(2))
+_MEAN = float(re.search(r'VIX_SERIES\[-1\]\[1\], ([\d.]+)', orig).group(1))
+_SGOV = float(re.search(r'SGOV_GROSS = ([\d.]+)', orig).group(1))
 MUT=[
  ("QQQ div",        "div=0.42",                 "div=0.52"),
  ("IEMG div",       "div=2.16",                 "div=2.26"),
@@ -28,15 +30,16 @@ MUT=[
  ("IEMG pe_end",    "pe_end=12.2",              "pe_end=13.2"),
  ("IEMG fx",        "fx=-1.50",                 "fx=-1.00"),
  ("QQQ er",         "er=0.18",                  "er=0.20"),
- ("SGOV_GROSS",     "SGOV_GROSS = 3.25",        "SGOV_GROSS = 3.50"),
+ ("SGOV_GROSS",     f"SGOV_GROSS = {_SGOV:g}",   f"SGOV_GROSS = {_SGOV + 0.25:g}"),
  ("SGOV_ER",        "SGOV_ER    = 0.09",        "SGOV_ER    = 0.12"),
  ("BMNR eth",       "eth=9.00",                 "eth=8.50"),
  ("BMNR stake_sh",  "stake_share=0.855",        "stake_share=0.880"),
  ("BMNR stake_yld", "stake_yield=2.61",         "stake_yield=2.90"),
  ("BMNR mnav",      "mnav=1.04",                "mnav=1.08"),
  ("BMNR drag",      "drag=1.40",                "drag=1.20"),
- ("VIX_SPOT",       f"= {_SPOT}, {_MEAN}",      f"= {_SPOT + 1}, {_MEAN}"),
- ("VIX_MEAN",       f"= {_SPOT}, {_MEAN}",      f"= {_SPOT}, {_MEAN + 0.5}"),
+ ("VIX latest close", f"('{_LAST}', {_SPOT})",  f"('{_LAST}', {_SPOT + 1})"),
+ ("VIX series date", f"('{_LAST}', {_SPOT})",  f"('{_LAST[:-2]}20', {_SPOT})"),
+ ("VIX_MEAN",       f"VIX_SERIES[-1][1], {_MEAN}", f"VIX_SERIES[-1][1], {_MEAN + 0.5}"),
  ("DD_MULT",        "DD_MULT = 1.70",           "DD_MULT = 1.75"),
  ("DD QQQ",         "'QQQ': 40.0",              "'QQQ': 42.0"),
  ("DD IEMG",        "'IEMG': 39.0",             "'IEMG': 36.0"),

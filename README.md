@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 265 checks. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 287 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / FAIL / CONFLICT per requirement. |
 | `mutate.py` | Mutation-tests the validator: corrupts one model input at a time and checks validate.py fails. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
@@ -81,18 +81,18 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 
 | Metric | Baseline | Optimized |
 |---|---|---|
-| Net 10-yr CAGR | 7.87% | 7.45% |
+| Net 10-yr CAGR | 8.02% | 7.64% |
 | Weighted fee | 0.126% | 0.117% |
 | σ — calm (today) | 16.44% | 15.22% |
-| σ — vol normalized | 19.70% | 18.35% |
+| σ — vol normalized | 19.05% | 17.76% |
 | Max drawdown — calm | −27.9% | −25.9% |
-| Max drawdown — normalized | −33.5% | −31.2% |
+| Max drawdown — normalized | −32.4% | −30.2% |
 | Correlated-stress drawdown | −32.1% | −30.0% |
-| Return / risk (calm) | **0.286** | 0.282 |
+| Return / risk (calm) | **0.258** | 0.253 |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.41 points of CAGR to buy 2.3 points of drawdown, and it no longer leads on
+it gives up 0.38 points of CAGR to buy 2.2 points of drawdown, and it no longer leads on
 risk-adjusted return either. It is the lower-drawdown point on the frontier, not the
 better book.
 
@@ -104,7 +104,7 @@ The baseline moved onto the frontier this pass when QQQ's stale multiple was cor
 had been dominated. The optimized book is therefore no longer an improvement on the
 baseline, only a lower-drawdown point on the same curve.
 
-Two limits are stated rather than glossed. "Best" is a curve, not a point — 91
+Two limits are stated rather than glossed. "Best" is a curve, not a point — 92
 allocations are efficient and the right one depends on the drawdown actually tolerated.
 And the curve is nearly straight: at the recommendation, one more point of drawdown buys
 0.16 points of CAGR, and that ratio barely changes along it — which is the
@@ -154,37 +154,42 @@ preserved at every horizon, which is the check that the rescale is presentationa
 
 ## Volatility regime
 
-Weights are sized to *normalized* volatility, not today's level. Spot VIX of 16.93
-sits 10.4% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
-by 1.12 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85). That uplift has
+Weights are sized to *normalized* volatility, not today's level. Spot VIX of 17.71
+sits 6.3% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
+by 1.07 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85). That uplift has
 fallen from 1.24 in early September as the VIX rose: most of the premise is spent, and the
-repo's own revisit trigger — a sustained VIX above 18.9 — is 1.97 points away, at which
+repo's own revisit trigger — a sustained VIX above 18.9 — is 1.19 points away, at which
 point 30% cash becomes a candidate to spend toward 25%.
+
+The VIX is stored as a dated series (`VIX_SERIES`), not a single typed number, and
+`VIX_SPOT` is read from its last entry. A level published from a source whose own stated
+change will not reconcile with the close already on file is now a build failure, because
+that is exactly how a wrong one got through.
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
-| QQQ | 21.0% | 23.4% |
-| IEMG | 18.0% | 20.1% |
+| QQQ | 21.0% | 22.4% |
+| IEMG | 18.0% | 19.2% |
 | SGOV | 0.5% | 0.5% |
 | BMNR | 95% | 109% |
 
 Two findings constrained the answer:
 
 - **The cash line is straight.** Scaling a fixed risky mix against cash holds
-  return-per-drawdown at 0.1376 regardless of the cash weight — invariant to 2.8e-17,
+  return-per-drawdown at 0.1276 regardless of the cash weight — invariant to 2.8e-17,
   since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
   The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
   output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
   IEMG; that is *not* a pure CAL (the risky mix changes, not just its scale) and drifts
-  0.142 → 0.132. `cal_line()` now carries the theorem, `cash_line()` the illustration.
+  0.132 → 0.122. `cal_line()` now carries the theorem, `cash_line()` the illustration.
 - **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
   volatility implies a 69.6% arithmetic mean, which nobody would forecast. A Booth-Fama
   rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
   and discarded rather than published.
 
 Subject only to the brief's floor of 5% per sleeve, the highest return-per-unit-risk mix
-is QQQ 55 / IEMG 35 / SGOV 5 / BMNR 5 (Sharpe 0.297 vs the recommended book's
-0.282). It is rejected: it over-fits the two least reliable inputs and holds only 5% in
+is QQQ 60 / IEMG 30 / SGOV 5 / BMNR 5 (Sharpe 0.268 vs the recommended book's
+0.253). It is rejected: it over-fits the two least reliable inputs and holds only 5% in
 reserve, which is not a drawdown budget anyone would choose. Note which way this has moved —
 the same search wanted 85% in emerging markets two passes ago and wants 60% in the
 Nasdaq-100 now. That instability is the subject of the calibration section below.
@@ -195,21 +200,21 @@ Every figure above is a point estimate, so the page now carries the distribution
 
 | Optimized book, 10 yr | Calm | Normalized |
 |---|---|---|
-| Net CAGR | 7.45% | 7.45% |
-| Standard error, σ/√10 | ±4.81 | ±5.80 |
-| 95% band | −2.0 to 16.9 | −3.9 to 18.8 |
+| Net CAGR | 7.64% | 7.64% |
+| Standard error, σ/√10 | ±4.81 | ±5.62 |
+| 95% band | −1.8 to 17.1 | −3.4 to 18.6 |
 
 The headline result is uncomfortable and worth stating plainly: **of the 969 admissible
 allocations, 0 are statistically distinguishable from the recommendation at 95% over ten
 years.** For two books drawn from the same four sleeves, `z ≈ IR × √T`; an information ratio
-of 0.25 gives `z = 0.79` where 1.96 is needed. Proving the baseline out-returns the
-recommendation would take **61 years**; proving the recommended book beats T-bills would
-take **48**; the most separable alternative in the whole set still needs 33.
+of 0.23 gives `z = 0.73` where 1.96 is needed. Proving the baseline out-returns the
+recommendation would take **72 years**; proving the recommended book beats T-bills would
+take **60**; the most separable alternative in the whole set still needs 41.
 
 What saves the exercise from being pointless is that a *comparison* is far better determined
 than a *level*. The two books share three of four sleeves, so their difference is a 10-point
 switch with a tracking volatility of 1.65%/yr — a standard error of 0.52 points against
-±4.81 on either book alone. The 0.41-point gap is 0.79 SE, a **79% chance the baseline ends
+±4.81 on either book alone. The 0.38-point gap is 0.73 SE, a **77% chance the baseline ends
 ahead on return**. An earlier pass reported that as 53% by dividing the gap by the error on
 the level; that is the wrong denominator, since errors common to both books cancel.
 
@@ -224,7 +229,7 @@ Each input moved one unit and rebuilt through the same code path as `build()`.
 |---|---|---|---|
 | QQQ earnings growth | 9.5% | -0.35 | -0.100 |
 | IEMG currency drag | −1.50% | +0.30 | -0.050 |
-| SGOV gross yield | 3.25% | +0.30 | -0.050 |
+| SGOV gross yield | 3.875% | +0.30 | -0.050 |
 | IEMG earnings growth | 7.5% | -0.30 | +0.050 |
 | IEMG forward P/E | 11.7× | -0.25 | +0.041 |
 | IEMG terminal P/E | 12.2× | +0.24 | -0.040 |
@@ -262,7 +267,7 @@ Fidelity puts US *growth* stocks, the closest published proxy for the Nasdaq-100
 repo reversed two passes ago; Vanguard is the exception and sits on this page's side. The EM
 sleeve is unremarkable by comparison, bracketed by J.P. Morgan's 7.8% and Fidelity's 8.1%.
 J.P. Morgan also puts EM volatility at 20.9%, which as of the 14 September VIX exceeds *both*
-regimes used here — 18.0% calm and 20.1% normalised. When this comparison was first written the
+regimes used here — 18.0% calm and 19.2% normalised. When this comparison was first written the
 normalised figure was 21.5% and sat above theirs; the VIX rising pulled the uplift factor down and
 took it below. On their number the EM sleeve is under-risked here either way.
 
@@ -272,14 +277,14 @@ forecasts:
 
 | | This page | J.P. Morgan inputs |
 |---|---|---|
-| Baseline CAGR | 7.87% | 6.12% |
-| Optimized CAGR | 7.45% | 6.01% |
-| Baseline's lead | +0.41 | +0.11 |
-| Best-Sharpe book | 55/35/5/5 | 5/85/5/5 |
-| Efficient allocations | 91 | 17 |
+| Baseline CAGR | 8.02% | 6.28% |
+| Optimized CAGR | 7.64% | 6.20% |
+| Baseline's lead | +0.38 | +0.08 |
+| Best-Sharpe book | 60/30/5/5 | 5/85/5/5 |
+| Efficient allocations | 92 | 17 |
 | Both books efficient | yes | neither |
 
-The sizing survives and the baseline still leads, but the margin collapses from 0.41 to 0.11
+The sizing survives and the baseline still leads, but the margin collapses from 0.38 to 0.08
 and the best risk-adjusted book flips from QQQ 55 / IEMG 35 to the largest EM tilt the brief
 allows. So "QQQ leads and the EM overweight costs return" is not a finding about the market;
 it is a consequence of one assumption — 9.5%/yr of Nasdaq-100 earnings growth for a decade —
@@ -289,8 +294,37 @@ who trusts J.P. Morgan over this page should hold *more* emerging markets, not l
 
 ## Verification
 
-One hundred and seven corrections have been recorded across fourteen verification passes. The most
+One hundred and fifteen corrections have been recorded across fifteen verification passes. The most
 consequential:
+
+- **The Fed hiked, and two of this repo's assumptions moved with it.** On 16 September the
+  FOMC voted **12-0** to raise the range to **3.75-4.00%** — the first increase since July
+  2023, and unanimous where July's hold had split 9-3 with three dissenting *for* a hike.
+  The dot plot has 16 of 18 participants expecting at least one more this year. `SGOV_GROSS`
+  moves from 3.25% to **3.875%**, the midpoint of the new range held flat: neutral by
+  construction, neither extrapolating the hiking path futures price (~4.1% by December) nor
+  assuming a return to a level that had fallen below both spot and the curve. SGOV's net
+  forecast rises 3.16% → **3.79%**, which lifts both books and, because it is also the
+  risk-free rate, lowers every Sharpe on the page.
+
+- **A VIX close published here yesterday was wrong, and the arithmetic said so at the time.**
+  Rev. 16 carried 16.93 for 15 September, from a source whose own stated change (−0.27,
+  −1.57%) implied a prior close of 17.20 — not the 17.62 this repo already held for
+  14 September, itself verified against 11 September's 15.84 at +11.24%. The correct series
+  is 15.84 / 17.62 / 17.20 / 17.71. The VIX is now a dated series in the model rather than a
+  typed scalar, `VIX_SPOT` reads its last entry, and `validate.py` checks ordering, unique
+  dates, the page's as-of stamp and that no single session moves more than 25%. A quoted
+  level whose change will not reconcile with the close already on file is the tell.
+
+- **The sensitivity table's spec was hardcoded and had gone stale.** Both the displayed
+  level and the perturbed value were literals. When SGOV's assumed yield moved, the row went
+  on claiming 3.25% and its "one unit" step quietly shrank to 0.375, understating that
+  input's influence by two thirds. `SENS` is now built from the live constants, and
+  `validate.py` asserts every step is exactly one unit and that the displayed level matches.
+
+- `mutate.py` broke loudly when `VIX_SPOT` stopped being a literal — the right failure mode,
+  since a silently skipped mutation is a blind spot. Repaired to perturb the series instead,
+  plus a date mutation and a live-derived `SGOV_GROSS` step: **40 run, 0 survived.**
 
 - **`checklist.py` advertised two statuses it could not produce.** Its docstring and this
   README both promised a `CONFLICT` result for requirements the deliverable departs from,
@@ -328,10 +362,10 @@ consequential:
 - **The validator is now mutation-tested, and it holds.** More than half its checks are
   `present()`, which only asserts that a string appears somewhere in the page — weak by
   construction, and last pass one of them passed on a false statement. `mutate.py` corrupts
-  one model input at a time (39 of them: every return component, every volatility and
+  one model input at a time (40 of them: every return component, every volatility and
   correlation, both portfolios' weights, the drawdown multiplier, the driver and regional
   scores, the published house forecasts, the revision stamp) and re-runs `validate.py`,
-  restoring the file afterwards. **39 run, 0 survived.** Every figure the model produces is
+  restoring the file afterwards. **40 run, 0 survived.** Every figure the model produces is
   genuinely policed. The page states that count and `validate.py` checks the claim against
   `mutate.py` itself, so the two cannot drift apart.
 

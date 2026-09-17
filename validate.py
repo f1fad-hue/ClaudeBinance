@@ -297,6 +297,42 @@ ck('neither book is efficient under the alternative inputs',
 ck('the baseline still leads under both input sets',
    _mine['gap'] > 0 and _jpm['gap'] > 0, (_mine['gap'], _jpm['gap']), 'both positive')
 
+# ── the VIX series is data, not a typed number ───────────────────────────────
+ck('VIX_SPOT comes from the series', M.VIX_SPOT == M.VIX_SERIES[-1][1],
+   M.VIX_SPOT, M.VIX_SERIES[-1])
+ck('VIX series is dated in order',
+   [d for d, _ in M.VIX_SERIES] == sorted(d for d, _ in M.VIX_SERIES),
+   [d for d, _ in M.VIX_SERIES], 'ascending')
+ck('VIX series has no duplicate dates',
+   len({d for d, _ in M.VIX_SERIES}) == len(M.VIX_SERIES), M.VIX_SERIES, 'unique dates')
+for _a, _b in zip(M.VIX_SERIES, M.VIX_SERIES[1:]):
+    ck(f'VIX move {_a[0]} to {_b[0]} is plausible', abs(_b[1] - _a[1]) / _a[1] < 0.25,
+       f'{(_b[1]-_a[1])/_a[1]*100:+.1f}%', 'under 25% in one session')
+present('VIX series printed on the page',
+        ', '.join(f'{x:g}' for _, x in M.VIX_SERIES))
+ck('page is stamped with the series as-of date',
+   f"As of {int(M.VIX_ASOF[8:])} Sep {M.VIX_ASOF[:4]}" in html,
+   re.search(r'As of ([^<]+)', html).group(1), M.VIX_ASOF)
+
+# ── the sensitivity spec is derived, so its labels cannot go stale ───────────
+for _lab, _now, _key, _val in M.SENS:
+    _fld = _key.split('_', 1)[1]
+    _cur = (M.OBS[_key.split('_')[0]][_fld] if _key.split('_')[0] in M.OBS
+            else M.BMNR[_fld] if _key.startswith('BMNR') else M.SGOV_GROSS)
+    ck(f'sens step is one unit: {_lab}', abs(abs(_val - _cur) - 1.0) < 1e-9,
+       abs(_val - _cur), 1.0)
+ck('SGOV sensitivity row shows the live assumption',
+   f'{M.SGOV_GROSS:g}%' in [n for _l, n, _k, _v in M.SENS if _l == 'SGOV gross yield'][0],
+   [n for _l, n, _k, _v in M.SENS if _l == 'SGOV gross yield'][0], f'{M.SGOV_GROSS:g}%')
+
+# ── the cash sleeve must follow policy, not a superseded level ───────────────
+present('policy range on the page', 'Fed 3.75–4.00%')
+ck('SGOV assumption equals the policy midpoint', abs(M.SGOV_GROSS - 3.875) < 1e-9,
+   M.SGOV_GROSS, 3.875)
+ck('SGOV is still the lowest-return sleeve',
+   M.A['SGOV']['net'] == min(a['net'] for a in M.A.values()),
+   M.A['SGOV']['net'], 'lowest')
+
 # ── the CAL must follow the book the page recommends, not a stale mix ────────
 ck('CAL uses the recommended risky mix',
    M.risky_mix() == tuple(M.PORTFOLIOS['optimized'][k] for k in ('QQQ','IEMG','BMNR')),
@@ -341,14 +377,18 @@ ck('BMNR staked share matches token counts',
 _log  = html[html.index('Verification log'):]
 _card = _log[_log.index('<div class="card">'):_log.index('<p class="sl-role"')]
 _rows = _card.count('<div class="kv">')
-_words = dict(zip(range(70, 121),
+_words = dict(zip(range(70, 131),
     ('Seventy Seventy-one Seventy-two Seventy-three Seventy-four Seventy-five Seventy-six '
      'Seventy-seven Seventy-eight Seventy-nine Eighty Eighty-one Eighty-two Eighty-three '
      'Eighty-four Eighty-five Eighty-six Eighty-seven Eighty-eight Eighty-nine Ninety '
      'Ninety-one Ninety-two Ninety-three Ninety-four Ninety-five Ninety-six Ninety-seven '
      'Ninety-eight Ninety-nine One-hundred One-hundred-and-one One-hundred-and-two '
      'One-hundred-and-three One-hundred-and-four One-hundred-and-five One-hundred-and-six '
-     'One-hundred-and-seven One-hundred-and-eight').split()))
+     'One-hundred-and-seven One-hundred-and-eight One-hundred-and-nine One-hundred-and-ten '
+     'One-hundred-and-eleven One-hundred-and-twelve One-hundred-and-thirteen '
+     'One-hundred-and-fourteen One-hundred-and-fifteen One-hundred-and-sixteen '
+     'One-hundred-and-seventeen One-hundred-and-eighteen One-hundred-and-nineteen '
+     'One-hundred-and-twenty').split()))
 ck('log count in words matches rows', f'{_words.get(_rows, "?")} corrections recorded' in html,
    _rows, _words.get(_rows))
 ck('calibration card quotes the same count',
