@@ -6,7 +6,7 @@ Run directly for a readable report; `python3 validate.py` checks the published
 page against whatever this file computes. If a number changes here, the page is
 wrong until it is changed there too.
 
-Market data as of 16 September 2026. Sources are linked on the page itself.
+Market data as of 18 September 2026. Sources are linked on the page itself.
 """
 import math, json
 from decimal import Decimal, ROUND_HALF_UP
@@ -43,7 +43,7 @@ BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
 # not an assumption. mnav uses the crypto-only reading (mkt cap $15.39B / ETH $14.79B),
 # the conservative one: against total NAV of $15.7B the stock trades at 0.98x.
 
-REVISION = 17                          # bump when publishing; validate.py enforces it
+REVISION = 18                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -51,7 +51,8 @@ REVISION = 17                          # bump when publishing; validate.py enfor
 # 11 September's 15.84 at +11.24%. A quoted level whose change does not reconcile
 # with the close already on file is the tell, and it now fails the build.
 VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
-              ('2026-09-15', 17.20), ('2026-09-16', 17.71))
+              ('2026-09-15', 17.20), ('2026-09-16', 17.71),
+              ('2026-09-17', 15.42), ('2026-09-18', 14.81))
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
 VIX_ASOF = VIX_SERIES[-1][0]
 assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIES[1:])), \

@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 287 checks. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 289 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / FAIL / CONFLICT per requirement. |
 | `mutate.py` | Mutation-tests the validator: corrupts one model input at a time and checks validate.py fails. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
@@ -84,15 +84,15 @@ Weights are constrained to increments of 5, and all four sleeves must be held.
 | Net 10-yr CAGR | 8.02% | 7.64% |
 | Weighted fee | 0.126% | 0.117% |
 | σ — calm (today) | 16.44% | 15.22% |
-| σ — vol normalized | 19.05% | 17.76% |
+| σ — vol normalized | 21.83% | 20.28% |
 | Max drawdown — calm | −27.9% | −25.9% |
-| Max drawdown — normalized | −32.4% | −30.2% |
+| Max drawdown — normalized | −37.1% | −34.5% |
 | Correlated-stress drawdown | −32.1% | −30.0% |
 | Return / risk (calm) | **0.258** | 0.253 |
 
 The optimized book is driven by macro sentiment, regional rankings **and** volatility
 analysis across 3, 6 and 12 months. It does not dominate the baseline on every axis:
-it gives up 0.38 points of CAGR to buy 2.2 points of drawdown, and it no longer leads on
+it gives up 0.38 points of CAGR to buy 2.6 points of drawdown, and it no longer leads on
 risk-adjusted return either. It is the lower-drawdown point on the frontier, not the
 better book.
 
@@ -104,10 +104,10 @@ The baseline moved onto the frontier this pass when QQQ's stale multiple was cor
 had been dominated. The optimized book is therefore no longer an improvement on the
 baseline, only a lower-drawdown point on the same curve.
 
-Two limits are stated rather than glossed. "Best" is a curve, not a point — 92
+Two limits are stated rather than glossed. "Best" is a curve, not a point — 90
 allocations are efficient and the right one depends on the drawdown actually tolerated.
 And the curve is nearly straight: at the recommendation, one more point of drawdown buys
-0.16 points of CAGR, and that ratio barely changes along it — which is the
+0.14 points of CAGR, and that ratio barely changes along it — which is the
 frontier telling you the same thing the capital-allocation line does. Beyond BMNR 45% the frontier returns drawdowns
 worse than −100%, which is impossible — the variance model fails exactly where this repo
 already documents it failing, so the curve is drawn only where BMNR stays at 5%.
@@ -154,12 +154,13 @@ preserved at every horizon, which is the check that the rescale is presentationa
 
 ## Volatility regime
 
-Weights are sized to *normalized* volatility, not today's level. Spot VIX of 17.71
-sits 6.3% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
-by 1.07 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85). That uplift has
+Weights are sized to *normalized* volatility, not today's level. Spot VIX of 14.81
+sits 21.6% below its 2016–2023 average of 18.9, so sleeve volatilities are scaled
+by 1.28 and correlations stressed toward crisis levels (QQQ·IEMG 0.66 → 0.85). That uplift has
 fallen from 1.24 in early September as the VIX rose: most of the premise is spent, and the
-repo's own revisit trigger — a sustained VIX above 18.9 — is 1.19 points away, at which
-point 30% cash becomes a candidate to spend toward 25%.
+repo's own revisit trigger — a sustained VIX above 18.9 — is 4.09 points away, at which
+point 30% cash becomes a candidate to spend toward 25%. That distance closed to 1.19 points on the eve of
+the FOMC and then re-opened entirely once the decision removed the event premium.
 
 The VIX is stored as a dated series (`VIX_SERIES`), not a single typed number, and
 `VIX_SPOT` is read from its last entry. A level published from a source whose own stated
@@ -168,20 +169,20 @@ that is exactly how a wrong one got through.
 
 | Sleeve | σ calm | σ normalized |
 |---|---|---|
-| QQQ | 21.0% | 22.4% |
-| IEMG | 18.0% | 19.2% |
+| QQQ | 21.0% | 26.8% |
+| IEMG | 18.0% | 23.0% |
 | SGOV | 0.5% | 0.5% |
 | BMNR | 95% | 109% |
 
 Two findings constrained the answer:
 
 - **The cash line is straight.** Scaling a fixed risky mix against cash holds
-  return-per-drawdown at 0.1276 regardless of the cash weight — invariant to 2.8e-17,
+  return-per-drawdown at 0.1117 regardless of the cash weight — invariant to 2.8e-17,
   since an uncorrelated zero-variance sleeve scales return and risk by the same factor.
   The optimizer cannot pick the cash weight; 30% is a stated drawdown budget, not a model
   output. Earlier revisions demonstrated this with QQQ traded against SGOV at a pinned
   IEMG; that is *not* a pure CAL (the risky mix changes, not just its scale) and drifts
-  0.132 → 0.122. `cal_line()` now carries the theorem, `cash_line()` the illustration.
+  0.115 → 0.108. `cal_line()` now carries the theorem, `cash_line()` the illustration.
 - **Variance math breaks on BMNR.** Under a lognormal model a +10% compound return at 109%
   volatility implies a 69.6% arithmetic mean, which nobody would forecast. A Booth-Fama
   rebalancing premium worth an apparent +2.9%/yr was computed, traced to this artefact,
@@ -201,8 +202,8 @@ Every figure above is a point estimate, so the page now carries the distribution
 | Optimized book, 10 yr | Calm | Normalized |
 |---|---|---|
 | Net CAGR | 7.64% | 7.64% |
-| Standard error, σ/√10 | ±4.81 | ±5.62 |
-| 95% band | −1.8 to 17.1 | −3.4 to 18.6 |
+| Standard error, σ/√10 | ±4.81 | ±6.41 |
+| 95% band | −1.8 to 17.1 | −4.9 to 20.2 |
 
 The headline result is uncomfortable and worth stating plainly: **of the 969 admissible
 allocations, 0 are statistically distinguishable from the recommendation at 95% over ten
@@ -267,7 +268,10 @@ Fidelity puts US *growth* stocks, the closest published proxy for the Nasdaq-100
 repo reversed two passes ago; Vanguard is the exception and sits on this page's side. The EM
 sleeve is unremarkable by comparison, bracketed by J.P. Morgan's 7.8% and Fidelity's 8.1%.
 J.P. Morgan also puts EM volatility at 20.9%, which as of the 14 September VIX exceeds *both*
-regimes used here — 18.0% calm and 19.2% normalised. When this comparison was first written the
+two regimes used here — 18.0% calm and 23.0% normalised. That comparison has flipped
+three times in a fortnight with no assumption changing, because the uplift factor moves
+inversely with spot VIX; it is a fair criticism of the method, and the reason both regimes
+are reported rather than one. When this comparison was first written the
 normalised figure was 21.5% and sat above theirs; the VIX rising pulled the uplift factor down and
 took it below. On their number the EM sleeve is under-risked here either way.
 
@@ -281,7 +285,7 @@ forecasts:
 | Optimized CAGR | 7.64% | 6.20% |
 | Baseline's lead | +0.38 | +0.08 |
 | Best-Sharpe book | 60/30/5/5 | 5/85/5/5 |
-| Efficient allocations | 92 | 17 |
+| Efficient allocations | 90 | 17 |
 | Both books efficient | yes | neither |
 
 The sizing survives and the baseline still leads, but the margin collapses from 0.38 to 0.08
@@ -294,8 +298,31 @@ who trusts J.P. Morgan over this page should hold *more* emerging markets, not l
 
 ## Verification
 
-One hundred and fifteen corrections have been recorded across fifteen verification passes. The most
-consequential:
+One hundred and twenty-two corrections have been recorded across sixteen verification passes.
+The most consequential:
+
+- **The market unwound the hike it spent a fortnight pricing, and the volatility premise came
+  back.** In the two sessions after the 16 September decision the VIX fell **17.71 → 15.42 →
+  14.81**, the 10-year retreated from a 19-year high of 5.04% to **4.94%** as oil softened,
+  and Brent gave up four dollars to **$103.21**. Spot volatility now sits **21.6% below** its
+  2016–2023 average — almost exactly the discount of a fortnight ago, after a week in which
+  this repo reported it closing to 6% and the premise nearly spent. The recommended book's
+  normalised drawdown widens back out from −30.2% to **−34.5%**, and the revisit trigger
+  moves from 1.19 points away to 4.09.
+
+- **A comparison the page makes has now flipped three times without anyone changing an
+  assumption.** J.P. Morgan's 20.9% EM volatility is a fixed long-run estimate; this repo's
+  normalised figure is anchored to a spot VIX that has covered four points in ten sessions,
+  so which is larger keeps reversing. The prose said "exceeds both regimes" and was wrong
+  again this pass. Both the sentence and the check are rewritten to state the *relation*
+  (below both / between / above both) rather than a side, so the prose has to be re-read
+  whenever the relation changes. It is also a fair criticism of the method, and the page now
+  says so where the comparison is made.
+
+- Geometry audited directly against the model this pass rather than through the page's own
+  assertions: the gauge arc length and needle endpoint, the donut segment lengths implied
+  weights back to 45/25/25/5 and 35/30/30/5 to four decimals, and the 1–10 → 1–5 conversion
+  and bar fill hit their endpoints exactly and stay monotone. No defects found.
 
 - **The Fed hiked, and two of this repo's assumptions moved with it.** On 16 September the
   FOMC voted **12-0** to raise the range to **3.75-4.00%** — the first increase since July

@@ -244,11 +244,17 @@ ck('baseline sensitivity run reproduces the model',
    abs(_o0 - M.stats(M.PORTFOLIOS['optimized'], 'calm')['cagr']) < 1e-9, _o0, 'same CAGR')
 
 # ── the outside check: published forecasts, and the scenario they imply ──────
+# J.P. Morgan's EM volatility is a fixed long-run estimate; this page's normalised
+# figure moves inversely with spot VIX, so which is larger has flipped three times
+# in a fortnight. The check names the relation rather than a side, so the prose has
+# to be re-read whenever the relation changes.
 _emvol = 20.9   # J.P. Morgan LTCMA 2026 EM equity volatility
-ck('EM volatility comparison states the right side of the line',
-   ('exceeds\n' not in html) and
-   (('exceeds <em>both</em>' in html) == (_emvol > M.REGIME['normalized']['vol']['IEMG'])),
-   (M.REGIME['calm']['vol']['IEMG'], M.REGIME['normalized']['vol']['IEMG']), f'vs {_emvol}')
+_lo, _hi = M.REGIME['calm']['vol']['IEMG'], M.REGIME['normalized']['vol']['IEMG']
+_rel = ('exceeds <em>both</em>' if _emvol > max(_lo, _hi)
+        else 'below <em>both</em>' if _emvol < min(_lo, _hi)
+        else 'falls <em>between</em>')
+ck('EM volatility comparison states the right relation', _rel in html,
+   (round(_lo, 1), round(_hi, 1), _emvol), _rel)
 present('normalized EM vol in the house comparison',
         f"18.0% calm and {M.REGIME['normalized']['vol']['IEMG']:.1f}% normalised")
 for _name, _d in M.INSTITUTIONAL.items():
@@ -377,7 +383,7 @@ ck('BMNR staked share matches token counts',
 _log  = html[html.index('Verification log'):]
 _card = _log[_log.index('<div class="card">'):_log.index('<p class="sl-role"')]
 _rows = _card.count('<div class="kv">')
-_words = dict(zip(range(70, 131),
+_words = dict(zip(range(70, 140),
     ('Seventy Seventy-one Seventy-two Seventy-three Seventy-four Seventy-five Seventy-six '
      'Seventy-seven Seventy-eight Seventy-nine Eighty Eighty-one Eighty-two Eighty-three '
      'Eighty-four Eighty-five Eighty-six Eighty-seven Eighty-eight Eighty-nine Ninety '
@@ -388,7 +394,10 @@ _words = dict(zip(range(70, 131),
      'One-hundred-and-eleven One-hundred-and-twelve One-hundred-and-thirteen '
      'One-hundred-and-fourteen One-hundred-and-fifteen One-hundred-and-sixteen '
      'One-hundred-and-seventeen One-hundred-and-eighteen One-hundred-and-nineteen '
-     'One-hundred-and-twenty').split()))
+     'One-hundred-and-twenty One-hundred-and-twenty-one One-hundred-and-twenty-two '
+     'One-hundred-and-twenty-three One-hundred-and-twenty-four One-hundred-and-twenty-five '
+     'One-hundred-and-twenty-six One-hundred-and-twenty-seven One-hundred-and-twenty-eight '
+     'One-hundred-and-twenty-nine').split()))
 ck('log count in words matches rows', f'{_words.get(_rows, "?")} corrections recorded' in html,
    _rows, _words.get(_rows))
 ck('calibration card quotes the same count',
