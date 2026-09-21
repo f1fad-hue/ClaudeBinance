@@ -303,6 +303,35 @@ ck('neither book is efficient under the alternative inputs',
 ck('the baseline still leads under both input sets',
    _mine['gap'] > 0 and _jpm['gap'] > 0, (_mine['gap'], _jpm['gap']), 'both positive')
 
+# ── a candidate sleeve must go through the same maths as the four ───────────
+_ctx = M.base_ctx()
+for _p, _w in M.PORTFOLIOS.items():
+    for _r in M.REGIME:
+        _a, _b = M.stats(_w, _r), M.stats_n(_w, _r, _ctx)
+        ck(f'stats_n reproduces stats: {_p}/{_r}',
+           all(abs(_a[k] - _b[k]) < 1e-12 for k in ('cagr','fee','vol','dd','naive','sharpe')),
+           {k: round(_b[k], 6) for k in ('cagr','vol','sharpe')}, 'identical')
+        ck(f'stats_n risk contribs match: {_p}/{_r}',
+           all(abs(_a['rc'][k] - _b['rc'][k]) < 1e-9 for k in _w), _b['rc'], _a['rc'])
+ck('stress lift matches the published regimes',
+   abs(M.stress_lift() - 0.17) < 5e-3, round(M.stress_lift(), 4), 0.17)
+# the bug this guards against: a candidate keeping calm correlations while the
+# rest of the book is stressed
+_cand = M.with_candidate('TEST', 8.0, 0.30, 22.0, 50.0,
+                         {('QQQ','TEST'): 0.50, ('IEMG','TEST'): 0.45, ('BMNR','TEST'): 0.30})
+for _pair, _c in ((('QQQ','TEST'), 0.50), (('IEMG','TEST'), 0.45), (('BMNR','TEST'), 0.30)):
+    ck(f'candidate {_pair[0]}.{_pair[1]} is stressed in the normalized regime',
+       _cand['regime']['normalized']['rho'][_pair] > _cand['regime']['calm']['rho'][_pair],
+       (_cand['regime']['calm']['rho'][_pair], _cand['regime']['normalized']['rho'][_pair]),
+       'normalized above calm')
+ck('candidate volatility is stressed by the same uplift',
+   abs(_cand['regime']['normalized']['vol']['TEST'] - 22.0 * M.UPLIFT) < 1e-9,
+   _cand['regime']['normalized']['vol']['TEST'], 22.0 * M.UPLIFT)
+ck('candidate leaves the four existing sleeves untouched',
+   all(_cand['regime'][r]['vol'][k] == M.REGIME[r]['vol'][k]
+       for r in M.REGIME for k in M.DD),
+   'a sleeve moved', 'unchanged')
+
 # ── the VIX series is data, not a typed number ───────────────────────────────
 ck('VIX_SPOT comes from the series', M.VIX_SPOT == M.VIX_SERIES[-1][1],
    M.VIX_SPOT, M.VIX_SERIES[-1])

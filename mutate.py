@@ -49,6 +49,8 @@ MUT=[
  ("rho QQQ-IEMG",   "('QQQ','IEMG'):0.66",      "('QQQ','IEMG'):0.70"),
  ("rho QQQ-BMNR",   "('QQQ','BMNR'):0.65",      "('QQQ','BMNR'):0.60"),
  ("rho stressed",   "('QQQ','IEMG'):0.85",      "('QQQ','IEMG'):0.88"),
+ ("rho BMNR stressed","('QQQ','BMNR'):0.80",    "('QQQ','BMNR'):0.84"),
+ ("rho IEMG-BMNR str","('IEMG','BMNR'):0.72",   "('IEMG','BMNR'):0.76"),
  ("BMNR norm mult", "95.0*1.15",                "95.0*1.20"),
  ("baseline QQQ",   "'baseline':  {'QQQ':45,'IEMG':25,'SGOV':25,'BMNR':5}",
                     "'baseline':  {'QQQ':40,'IEMG':30,'SGOV':25,'BMNR':5}"),

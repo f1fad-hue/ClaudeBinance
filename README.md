@@ -11,7 +11,7 @@ Live page: https://claude.ai/code/artifact/ae9d19e3-750e-4ca8-aec9-e4ba6a8d6f7f
 |---|---|
 | `allocation.html` | The dashboard. Bottom tab bar, light theme, five sections. |
 | `portfolio_model.py` | Single source of truth for every figure on the page. |
-| `validate.py` | Asserts the page matches the model, plus model self-consistency. 289 checks. |
+| `validate.py` | Asserts the page matches the model, plus model self-consistency. 303 checks. |
 | `checklist.py` | Runs the original brief as an acceptance test. PASS / FAIL / CONFLICT per requirement. |
 | `mutate.py` | Mutation-tests the validator: corrupts one model input at a time and checks validate.py fails. |
 | `sync-artifact.sh` | Validates, then copies the page one-way to the publish path. |
@@ -298,8 +298,30 @@ who trusts J.P. Morgan over this page should hold *more* emerging markets, not l
 
 ## Verification
 
-One hundred and twenty-two corrections have been recorded across sixteen verification passes.
-The most consequential:
+One hundred and twenty-six corrections have been recorded across seventeen verification
+passes. The most consequential:
+
+- **A fifth sleeve was tested off-page, and the test was wrong.** Asked what adding an
+  aerospace-and-defence ETF would do, this model was extended in a throwaway script that
+  reimplemented `stats()`. It got the regime wrong: the page stresses *every* correlation
+  when it normalises volatility — QQQ·IEMG 0.66→0.85, QQQ·BMNR 0.65→0.80, IEMG·BMNR
+  0.55→0.72, a mean lift of +0.17 — and the ad-hoc version left the candidate's correlations
+  at their calm values while stressing everyone else's. That flattered the newcomer's
+  diversification in precisely the regime that sets the weights. Corrected, the number of
+  five-sleeve books beating the recommended one on both return and drawdown fell from **two
+  to zero**, and the allocation offered on that basis was withdrawn.
+
+  The fix is structural, not a patch. `with_candidate()` extends the regime with the same
+  stress rule the page applies to every other pair; `stats_n()` runs the shared arithmetic
+  over an arbitrary sleeve set; and `validate.py` asserts the two reproduce `stats()` exactly
+  on every existing book and regime, that the stress lift matches the published regimes, and
+  that a candidate's correlations really are lifted. Nothing reimplements `stats()` now.
+
+- **The reconciliation rule added last pass earned its place within the week.** Monday
+  21 September was deliberately left off the page: one widely-syndicated figure put the
+  10-year at 4.37% against 4.94% at Friday's close, on a day described as a 5bp fall. A level
+  whose stated change will not reconcile with the close already on file does not get
+  published, so the stamp stays at 18 September.
 
 - **The market unwound the hike it spent a fortnight pricing, and the volatility premise came
   back.** In the two sessions after the 16 September decision the VIX fell **17.71 → 15.42 →
@@ -351,7 +373,7 @@ The most consequential:
 
 - `mutate.py` broke loudly when `VIX_SPOT` stopped being a literal — the right failure mode,
   since a silently skipped mutation is a blind spot. Repaired to perturb the series instead,
-  plus a date mutation and a live-derived `SGOV_GROSS` step: **40 run, 0 survived.**
+  plus a date mutation and a live-derived `SGOV_GROSS` step: **42 run, 0 survived.**
 
 - **`checklist.py` advertised two statuses it could not produce.** Its docstring and this
   README both promised a `CONFLICT` result for requirements the deliverable departs from,
@@ -389,10 +411,10 @@ The most consequential:
 - **The validator is now mutation-tested, and it holds.** More than half its checks are
   `present()`, which only asserts that a string appears somewhere in the page — weak by
   construction, and last pass one of them passed on a false statement. `mutate.py` corrupts
-  one model input at a time (40 of them: every return component, every volatility and
+  one model input at a time (42 of them: every return component, every volatility and
   correlation, both portfolios' weights, the drawdown multiplier, the driver and regional
   scores, the published house forecasts, the revision stamp) and re-runs `validate.py`,
-  restoring the file afterwards. **40 run, 0 survived.** Every figure the model produces is
+  restoring the file afterwards. **42 run, 0 survived.** Every figure the model produces is
   genuinely policed. The page states that count and `validate.py` checks the claim against
   `mutate.py` itself, so the two cannot drift apart.
 

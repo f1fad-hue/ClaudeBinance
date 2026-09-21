@@ -346,6 +346,64 @@ def fr_slope(regime='normalized'):
     lo, hi = below[-1], above[0]
     return (hi[1] - lo[1]) / (hi[0] - lo[0])
 
+# ── testing a candidate sleeve, through the same code path ───────────────────
+# A fifth sleeve was once evaluated in a throwaway script that reimplemented
+# stats(). It got the regime wrong: the page stresses every correlation when it
+# normalises volatility, and the ad-hoc version left the candidate's correlations
+# at their calm values while stressing everyone else's. That flattered the
+# candidate's diversification in exactly the regime that sets the weights, and
+# turned two allocations that beat the recommended book into none. Nothing
+# reimplements stats() now.
+
+def stress_lift():
+    """How much the normalised regime lifts a correlation, averaged over the pairs
+    the page actually stresses. A candidate sleeve gets the same treatment."""
+    pairs = [k for k in REGIME['calm']['rho']]
+    return sum(REGIME['normalized']['rho'][p] - REGIME['calm']['rho'][p] for p in pairs) / len(pairs)
+
+def with_candidate(name, net, er, vol, dd, rho_calm, norm_vol_mult=None):
+    """Return REGIME / A / DD extended by one sleeve, with its correlations
+    stressed by the same lift the page applies to every other pair. Returns a
+    context the caller passes to stats_n()."""
+    lift = stress_lift()
+    reg = {}
+    for r in REGIME:
+        V = dict(REGIME[r]['vol'])
+        V[name] = vol * ((norm_vol_mult if norm_vol_mult is not None else UPLIFT)
+                         if r == 'normalized' else 1.0)
+        R = dict(REGIME[r]['rho'])
+        for (a, b), c in rho_calm.items():
+            R[(a, b)] = c if r == 'calm' else min(0.95, c + lift)
+        reg[r] = dict(vol=V, rho=R)
+    a = {k: dict(v) for k, v in A.items()}; a[name] = dict(net=net, er=er, gross=net)
+    d = dict(DD); d[name] = dd
+    return dict(regime=reg, nets={k: v['net'] for k, v in a.items()},
+                ers={k: v['er'] for k, v in a.items()}, dd=d, rf=A[RF_LABEL]['net'])
+
+def stats_n(w, regime, ctx):
+    """stats() over an arbitrary sleeve set. The four-sleeve path must agree with
+    stats() exactly; validate.py asserts that on every portfolio and regime."""
+    V, R = ctx['regime'][regime]['vol'], ctx['regime'][regime]['rho']
+    ks = list(w)
+    assert sum(w.values()) == 100 and all(v % 5 == 0 for v in w.values()), w
+    cagr = sum(w[k]/100 * ctx['nets'][k] for k in ks)
+    fee  = sum(w[k]/100 * ctx['ers'][k]  for k in ks)
+    vol  = math.sqrt(sum((w[x]/100)*(w[y]/100)*V[x]*V[y]*rho(R, x, y) for x in ks for y in ks))
+    mrc  = {x: (w[x]/100)*sum((w[y]/100)*V[x]*V[y]*rho(R, x, y) for y in ks)/vol for x in ks}
+    tot  = sum(mrc.values())
+    cagr_d = r2h(cagr)
+    return dict(cagr=cagr, cagr_d=cagr_d, fee=fee, vol=vol, dd=vol*DD_MULT,
+                naive=sum(w[k]/100*ctx['dd'][k] for k in ks),
+                rc={k: mrc[k]/tot*100 for k in ks},
+                sharpe=(cagr - ctx['rf'])/vol,
+                terminal=10000*(1 + cagr_d/100)**10)
+
+def base_ctx():
+    """The four-sleeve book as a context, so stats_n() can be checked against stats()."""
+    return dict(regime={r: dict(vol=REGIME[r]['vol'], rho=REGIME[r]['rho']) for r in REGIME},
+                nets={k: v['net'] for k, v in A.items()},
+                ers={k: v['er'] for k, v in A.items()}, dd=dict(DD), rf=A[RF_LABEL]['net'])
+
 # ── how much of this is signal ───────────────────────────────────────────────
 def tracking(w1, w2, regime='calm'):
     """Annualised sigma of (w1 - w2). The error on a *difference* between two
