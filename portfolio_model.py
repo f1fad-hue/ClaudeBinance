@@ -6,15 +6,17 @@ Run directly for a readable report; `python3 validate.py` checks the published
 page against whatever this file computes. If a number changes here, the page is
 wrong until it is changed there too.
 
-Market data as of 18 September 2026. Sources are linked on the page itself.
+Market data as of 22 September 2026. Sources are linked on the page itself.
 """
 import math, json
 from decimal import Decimal, ROUND_HALF_UP
 
-def r2h(x):
+def r2h(x, places=2):
     """Round half away from zero, the convention a reader applies by hand.
-    Python's round() is banker's rounding, which makes 7.205 -> 7.20."""
-    return float(Decimal(repr(x)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+    Python's round() is banker's rounding, which makes 7.205 -> 7.20. Float dust
+    is snapped off first: a difference that is exactly -0.0395 in decimal arrives
+    as -0.03949999..., and half-up on that gives the wrong last digit."""
+    return float(Decimal(repr(round(x, 9))).quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP))
 
 # ── observed inputs ──────────────────────────────────────────────────────────
 # Terminal multiples are each index's OWN 10-year average forward P/E (NDX 22.9x,
@@ -23,13 +25,29 @@ def r2h(x):
 # while marking IEMG up only as far as its average -- an asymmetry that favoured
 # the EM sleeve, which is the page's central recommendation.
 OBS = {
-    'QQQ' : dict(er=0.18, fwd_pe=22.40, div=0.42, eps=9.50, pe_end=22.9,  fx=0.0),
-    'IEMG': dict(er=0.09, fwd_pe=11.70, div=2.16, eps=7.50, pe_end=12.2,  fx=-1.50),
+    'QQQ' : dict(er=0.18, eps=9.50, pe_end=22.9,  fx=0.0),
+    'IEMG': dict(er=0.09, eps=7.50, pe_end=12.2,  fx=-1.50),
 }
-# div is the trailing-12-month distribution over the 11 Sep 2026 close, not an
-# estimate: QQQ $3.03 / $714.88 = 0.42%, IEMG $1.80 over a price near $83 = 2.16%
-# (secondary sources spread 2.13-2.16%). QQQ had carried 0.65% and IEMG 2.26%,
-# both of which priced the distribution against a lower share price than today's.
+# Dividend yield and forward P/E are both price over something, so they are
+# derived here from ONE price per fund and can never drift apart. An earlier
+# revision re-priced the yields to the latest close while leaving the forward
+# multiples at an older basis: QQQ rallied 4.6% to a record and IEMG fell 2.0%,
+# and the valuation model -- whose whole job is to respond to price -- did not
+# move. Forward EPS is held fixed over the few weeks between basis and now, which
+# is the standard short-window approximation; for QQQ it is independently
+# confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
+# +4.56% price move.
+PRICES = {
+    'QQQ':  dict(ttm_div=3.03, px=747.46, px_asof='2026-09-22',
+                 basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
+    'IEMG': dict(ttm_div=1.80, px=81.66,  px_asof='2026-09-18',
+                 basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
+}
+for _k, _p in PRICES.items():
+    OBS[_k]['div']    = float(Decimal(repr(_p['ttm_div'] / _p['px'] * 100))
+                              .quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+    OBS[_k]['fwd_pe'] = float(Decimal(repr(_p['basis_fwd'] * _p['px'] / _p['basis_px']))
+                              .quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 SGOV_GROSS = 3.875         # midpoint of the target range set on 16 Sep 2026
 # 0-3 month bills track the effective funds rate, so the decade assumption is simply
 # that policy averages where it now sits: the 3.75-4.00% range the FOMC set on
@@ -37,13 +55,16 @@ SGOV_GROSS = 3.875         # midpoint of the target range set on 16 Sep 2026
 # extrapolates the hiking path futures price (about 4.1% by December) nor assumes a
 # return to the 3.25% this file carried, which was below both spot and the curve.
 SGOV_ER    = 0.09
-BMNR = dict(eth=9.00, stake_share=0.855, stake_yield=2.61, mnav=1.04, drag=1.40)
-# stake_share 5,067,309 / 5,929,198 staked tokens; stake_yield is the company's own
-# reported 7-day annualised figure (8-K 8 Sep 2026: $330M on $12.6B staked = 2.62%),
-# not an assumption. mnav uses the crypto-only reading (mkt cap $15.39B / ETH $14.79B),
-# the conservative one: against total NAV of $15.7B the stock trades at 0.98x.
+BMNR = dict(eth=9.00, stake_share=0.847, stake_yield=2.62, mnav=1.08, drag=1.40)
+# From the 21 Sep 2026 holdings release: 5,983,940 ETH at $2,688 (Coinbase), of which
+# 5,067,309 staked -- the same staked count as a fortnight earlier, so the staked
+# SHARE falls to 84.7% as new purchases sit unstaked. The 7-day yield is 2.62%.
+# mnav uses the crypto-only reading, the conservative one: market cap $17.34B
+# ($28.75 x 603.2M shares, 22 Sep) against ~$16.11B of crypto = 1.08x; against total
+# holdings of $17.1B it is 1.01x. The stock rose ~6% on the release, which is what
+# widened the premium.
 
-REVISION = 18                          # bump when publishing; validate.py enforces it
+REVISION = 19                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -52,7 +73,9 @@ REVISION = 18                          # bump when publishing; validate.py enfor
 # with the close already on file is the tell, and it now fails the build.
 VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-15', 17.20), ('2026-09-16', 17.71),
-              ('2026-09-17', 15.42), ('2026-09-18', 14.81))
+              ('2026-09-17', 15.42), ('2026-09-18', 14.81),
+              ('2026-09-21', 14.87), ('2026-09-22', 14.25))
+VIX_2026 = dict(low=14.13, low_date='2026-08-28', high=31.65, high_date='2026-03-27')
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
 VIX_ASOF = VIX_SERIES[-1][0]
 assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIES[1:])), \
@@ -203,14 +226,17 @@ def risky_mix(name='optimized'):
     w = PORTFOLIOS[name]
     return (w['QQQ'], w['IEMG'], w['BMNR'])
 
-def cal_line(regime='normalized', mix=None):
+def cal_line(regime='normalized', mix=None, cash_vol=None):
     """A TRUE capital-allocation line: hold the risky mix in exact proportion and
-    scale it against cash. Return-per-drawdown is then invariant to machine
-    precision when cash has zero variance -- which is why no optimizer can pick
-    the cash weight. Continuous weights, so the 5% grid does not blur it."""
+    scale it against cash. Return-per-drawdown is exactly invariant only when cash
+    has zero variance (pass cash_vol=0 to test the theorem itself); SGOV's own
+    0.5% volatility leaves a small residual, which the page states rather than
+    rounding away. Continuous weights, so the 5% grid does not blur it."""
     q, i, b = mix or risky_mix(); tot = q + i + b
     prop = {'QQQ': q/tot, 'IEMG': i/tot, 'BMNR': b/tot}
-    V, R = REGIME[regime]['vol'], REGIME[regime]['rho']
+    V, R = dict(REGIME[regime]['vol']), REGIME[regime]['rho']
+    if cash_vol is not None:
+        V['SGOV'] = cash_vol
     rf, out = A[RF_LABEL]['net'], []
     for a in (0.80, 0.75, 0.70, 0.65, 0.60):
         w = {k: v*a for k, v in prop.items()}; w['SGOV'] = 1 - a
@@ -304,8 +330,11 @@ def frontier_svg(regime='normalized'):
     eff, _ = efficient(regime)
     assert all(FR_X[0] <= dd <= FR_X[1] and FR_Y[0] <= c <= FR_Y[1] for dd, c, _ in eff), \
         f'frontier runs outside the plotted axes: widen FR_X/FR_Y'
-    g = ['<svg viewBox="0 0 300 172" role="img" aria-label="Efficient frontier of net CAGR '
-         'against maximum drawdown, with both portfolios on the frontier">']
+    on = [n for n in PORTFOLIOS if any(w == PORTFOLIOS[n] for _, _, w in eff)]
+    who = ('both portfolios' if len(on) == len(PORTFOLIOS) else
+           f'the {on[0]} book' if on else 'neither portfolio')
+    g = [f'<svg viewBox="0 0 300 172" role="img" aria-label="Efficient frontier of net CAGR '
+         f'against maximum drawdown, with {who} on the frontier">']
     g.append('<line x1="44" y1="148" x2="288" y2="148" stroke="#DFE4EB" stroke-width="1"/>')
     g.append('<line x1="44" y1="22" x2="44" y2="148" stroke="#DFE4EB" stroke-width="1"/>')
     for c in range(int(FR_Y[0]) + 1, int(FR_Y[1]) + 1):
@@ -500,7 +529,7 @@ def sensitivity():
     for label, now, key, val in SENS:
         o, g = figs(build_with(**{key: val}))
         # clamp float dust so a zero effect never renders as "-0.000"
-        z = lambda x: 0.0 if abs(x) < 5e-4 else x
+        z = lambda x: 0.0 if abs(x) < 5e-4 else round(x, 9)
         rows.append(dict(label=label, now=now, d_cagr=z(o - o0), d_gap=z(g - g0)))
     return sorted(rows, key=lambda r: -abs(r['d_cagr'])), o0, g0
 
@@ -565,4 +594,7 @@ if __name__ == '__main__':
     print('\n== TRUE CAL (risky mix fixed in exact proportion, scaled against cash) ==')
     cal = cal_line()
     for a, r in cal: print(f"  {a:>3}% risky   ret/DD {r:.6f}")
-    print(f"  spread {max(r for _,r in cal)-min(r for _,r in cal):.2e} -> invariant, as theory requires")
+    cal0 = cal_line(cash_vol=0.0)
+    print(f"  spread {max(r for _,r in cal)-min(r for _,r in cal):.2e} with SGOV at its "
+          f"{REGIME['normalized']['vol']['SGOV']}% vol; "
+          f"{max(r for _,r in cal0)-min(r for _,r in cal0):.2e} with riskless cash -> the theorem")
