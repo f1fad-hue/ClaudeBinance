@@ -82,6 +82,24 @@ MUT=[
  ("JPM em",         "us=6.70, em=7.80",         "us=6.70, em=8.30"),
  ("Vanguard em",    "dict(us=5.20, em=4.30",    "dict(us=5.20, em=6.30"),
  ("REVISION",       f"REVISION = {_REV}",       f"REVISION = {_REV + 1}"),
+ # added in Rev. 20: inputs the review found no mutation for
+ ("IEMG basis px",  f"basis_px={_P['IEMG','basis_px']}",   f"basis_px={_bump(_P['IEMG','basis_px'], 2)}"),
+ ("IEMG er",        "er=0.09, eps=7.50",        "er=0.11, eps=7.50"),
+ ("VIX 2026 low",   "low=14.13,",               "low=13.63,"),
+ ("VIX low date",   "low_date='2026-08-14'",    "low_date='2026-08-21'"),
+ ("FOMC date",      "FOMC_DATE  = '2026-09-16'", "FOMC_DATE  = '2026-09-17'"),
+ ("BMNR held",      "held=5_983_940",           "held=6_083_940"),
+ ("Brent level only", "brent=103.08,",          "brent=104.08,"),
+ ("10y level+change", "ust10=5.12,   ust10_prev=4.96,  ust10_chg_bp=16",
+                      "ust10=5.15,   ust10_prev=4.96,  ust10_chg_bp=19"),
+ ("driver inflation", "('Inflation trajectory',3.0,.15)", "('Inflation trajectory',3.5,.15)"),
+ ("driver liquidity", "('Liquidity & credit',5.5,.15)",   "('Liquidity & credit',5.0,.15)"),
+ ("driver valuation", "('Valuation & positioning',4.0,.15)", "('Valuation & positioning',4.5,.15)"),
+ ("driver geopol",  "('Geopolitical risk',2.0,.10)",    "('Geopolitical risk',2.5,.10)"),
+ ("region US",      "'United States':[5.0,5.5,6.5,7.0]", "'United States':[5.0,5.5,6.0,7.0]"),
+ ("Fidelity em",    "dict(us=4.40, em=8.10",    "dict(us=4.40, em=8.60"),
+ ("BlackRock us",   "dict(us=5.00, em=7.10",    "dict(us=5.50, em=7.10"),
+ ("JPM EM vol",     "em_vol=20.9",              "em_vol=24.9"),
 ]
 survived=[]; skipped=[]
 for name, old, new in MUT:

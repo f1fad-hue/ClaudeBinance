@@ -86,8 +86,8 @@ auth = {'www.federalreserve.gov','www.bls.gov','www.ecb.europa.eu','www.imf.org'
 # its numbers come from them. Three inputs are admittedly extrapolations, and the
 # page names them; one of those three is its single most load-bearing figure. That
 # is a real departure from the brief's wording, so it is reported as one.
-ASSUMED = ('9.5%/yr earnings growth', '1.70 x sigma drawdown multiplier',
-           "BMNR's 9%/yr ETH appreciation")
+ASSUMED = (f"{M.OBS['QQQ']['eps']:g}%/yr earnings growth", f'{M.DD_MULT:.2f} x sigma drawdown multiplier',
+           f"BMNR's {M.BMNR['eth']:g}%/yr ETH appreciation")
 observed = auth.issubset(set(srcs))
 discloses = 'Still open' in html and 'assumptions rather than observations' in html
 if observed and discloses:

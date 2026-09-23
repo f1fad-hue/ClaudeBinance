@@ -6,9 +6,10 @@ Run directly for a readable report; `python3 validate.py` checks the published
 page against whatever this file computes. If a number changes here, the page is
 wrong until it is changed there too.
 
-Market data as of 22 September 2026. Sources are linked on the page itself.
+Market data to the 23 September 2026 close; each fund price carries its own
+date in PRICES. Sources are linked on the page itself.
 """
-import math, json
+import math, json, copy as _copy
 from decimal import Decimal, ROUND_HALF_UP
 
 def r2h(x, places=2):
@@ -44,11 +45,11 @@ PRICES = {
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
-    OBS[_k]['div']    = float(Decimal(repr(_p['ttm_div'] / _p['px'] * 100))
-                              .quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
-    OBS[_k]['fwd_pe'] = float(Decimal(repr(_p['basis_fwd'] * _p['px'] / _p['basis_px']))
-                              .quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
-SGOV_GROSS = 3.875         # midpoint of the target range set on 16 Sep 2026
+    OBS[_k]['div']    = r2h(_p['ttm_div'] / _p['px'] * 100)
+    OBS[_k]['fwd_pe'] = r2h(_p['basis_fwd'] * _p['px'] / _p['basis_px'])
+FED_RANGE  = (3.75, 4.00)  # target range set on 16 Sep 2026
+FOMC_DATE  = '2026-09-16'
+SGOV_GROSS = 3.875         # midpoint of FED_RANGE; validate.py asserts it
 # 0-3 month bills track the effective funds rate, so the decade assumption is simply
 # that policy averages where it now sits: the 3.75-4.00% range the FOMC set on
 # 16 September, midpoint 3.875%. That is neutral by construction -- it neither
@@ -56,6 +57,7 @@ SGOV_GROSS = 3.875         # midpoint of the target range set on 16 Sep 2026
 # return to the 3.25% this file carried, which was below both spot and the curve.
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.847, stake_yield=2.62, mnav=1.08, drag=1.40)
+BMNR_HOLDINGS = dict(held=5_983_940, staked=5_067_309, asof='2026-09-21')
 # From the 21 Sep 2026 holdings release: 5,983,940 ETH at $2,688 (Coinbase), of which
 # 5,067,309 staked -- the same staked count as a fortnight earlier, so the staked
 # SHARE falls to 84.7% as new purchases sit unstaked. The 7-day yield is 2.62%.
@@ -64,22 +66,42 @@ BMNR = dict(eth=9.00, stake_share=0.847, stake_yield=2.62, mnav=1.08, drag=1.40)
 # holdings of $17.1B it is 1.01x. The stock rose ~6% on the release, which is what
 # widened the premium.
 
-REVISION = 19                          # bump when publishing; validate.py enforces it
+REVISION = 20                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
 # 17.20 -- not the 17.62 this file already held for 14 September, verified against
 # 11 September's 15.84 at +11.24%. A quoted level whose change does not reconcile
 # with the close already on file is the tell, and it now fails the build.
+# Rev. 19 carried 14.25 for 22 September. The close was 14.21 ("fell 4.44% to
+# 14.21, a 21-session low"), which reconciles with 14.87 on the 21st, and the
+# 23 September close of 15.35 was reported as +1.14 / +8.02% -- from 14.21, not
+# 14.25. That second quote is what exposed the first.
 VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-15', 17.20), ('2026-09-16', 17.71),
               ('2026-09-17', 15.42), ('2026-09-18', 14.81),
-              ('2026-09-21', 14.87), ('2026-09-22', 14.25))
-VIX_2026 = dict(low=14.13, low_date='2026-08-28', high=31.65, high_date='2026-03-27')
+              ('2026-09-21', 14.87), ('2026-09-22', 14.21),
+              ('2026-09-23', 15.35))
+# The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
+# report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
+# 21-session low of 14.21 on 22 September rules that out.
+VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
 VIX_ASOF = VIX_SERIES[-1][0]
 assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIES[1:])), \
     'a >25% single-session move in the series is a transcription error until proven'
+
+# Masthead levels, each with the change its source reported, so a level whose
+# change does not reconcile with the close on file fails here -- the rule the VIX
+# series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
+# the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
+MARKET = dict(asof='2026-09-23',
+              brent=103.08, brent_prev=99.25, brent_chg_pct=3.86,
+              ust10=5.12,   ust10_prev=4.96,  ust10_chg_bp=16)
+assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
+    'Brent level does not reconcile with its stated change'
+assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']) < 0.005, \
+    '10-year level does not reconcile with its stated change'
 
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 RF_LABEL = 'SGOV'
@@ -88,24 +110,27 @@ def annualised(p_now, p_end, yrs=10):
     return ((p_end / p_now) ** (1 / yrs) - 1) * 100
 
 # ── forecasts ────────────────────────────────────────────────────────────────
-def build():
+def _build(obs, b, sg, sger):
     """Components are rounded to the precision the page displays, then summed, so
-    every figure on the page can be reproduced by hand from the components shown."""
-    r2 = r2h
+    every figure on the page can be reproduced by hand from the components shown.
+    build() and build_with() both go through here, so a sensitivity cannot drift
+    from the forecast it perturbs."""
     a = {}
-    for k, o in OBS.items():
-        val   = r2(annualised(o['fwd_pe'], o['pe_end']))
-        gross = r2(o['div'] + o['eps'] + val + o['fx'])
+    for k, o in obs.items():
+        val   = r2h(annualised(o['fwd_pe'], o['pe_end']))
+        gross = r2h(o['div'] + o['eps'] + val + o['fx'])
         a[k] = dict(div=o['div'], eps=o['eps'], val=val, fx=o['fx'],
-                    gross=gross, er=o['er'], net=r2(gross - o['er']))
-    a['SGOV'] = dict(gross=SGOV_GROSS, er=SGOV_ER, net=r2(SGOV_GROSS - SGOV_ER))
-    b = BMNR
-    mnav  = r2(annualised(b['mnav'], 1.00))
-    stake = r2(b['stake_share'] * b['stake_yield'])
-    net   = r2(b['eth'] + stake + mnav - b['drag'])
+                    gross=gross, er=o['er'], net=r2h(gross - o['er']))
+    a['SGOV'] = dict(gross=sg, er=sger, net=r2h(sg - sger))
+    mnav  = r2h(annualised(b['mnav'], 1.00))
+    stake = r2h(b['stake_share'] * b['stake_yield'])
+    net   = r2h(b['eth'] + stake + mnav - b['drag'])
     a['BMNR'] = dict(eth=b['eth'], stake=stake, mnav=mnav, drag=-b['drag'],
                      er=0.0, net=net, gross=net)
     return a
+
+def build():
+    return _build(OBS, BMNR, SGOV_GROSS, SGOV_ER)
 
 A = build()
 DD  = {'QQQ': 40.0, 'IEMG': 39.0, 'SGOV': 0.3, 'BMNR': 85.0}
@@ -203,14 +228,15 @@ def export():
         donuts={p: donut(w)[0] for p,w in PORTFOLIOS.items()},
         vix=dict(spot=VIX_SPOT, mean=VIX_MEAN,
                  below=round((VIX_SPOT-VIX_MEAN)/VIX_MEAN*100,1),
-                 term={h: round(VIX_SPOT*math.sqrt(h),2) for h in (1/252,0.25,0.5,1.0)}),
+                 term={h: r2h(VIX_SPOT*math.sqrt(h)) for h in (1/252,0.25,0.5,1.0)}),
         uplift=round(UPLIFT,4), revision=REVISION,
     )
 
 # ── claims the page makes that must stay reproducible ────────────────────────
 def frontier(regime, bmnr=5, sgov_min=15):
-    """Every 5%-increment allocation, ranked by Sharpe. The page states the
-    unconstrained winner and then explains why it is rejected."""
+    """Allocations with BMNR pinned (default 5%), ranked by Sharpe. For the page's
+    "subject only to the 5% floor" claim use best_sharpe(), which searches every
+    admissible allocation; validate.py asserts the two agree."""
     out = []
     for q in range(5, 101, 5):
         for i in range(5, 101, 5):
@@ -264,7 +290,7 @@ def cash_line(regime='normalized'):
 # Ten-to-fifteen-year, USD, total return, gross of fund fees. These are other
 # people's numbers, quoted to be disagreed with in the open -- not inputs.
 INSTITUTIONAL = {
-    'J.P. Morgan LTCMA 2026': dict(us=6.70, em=7.80, note='US large cap; EM vol 20.9%'),
+    'J.P. Morgan LTCMA 2026': dict(us=6.70, em=7.80, em_vol=20.9, note='US large cap; EM vol 20.9%'),
     'Fidelity':               dict(us=4.40, em=8.10, note='US large cap midpoint 3.4-5.4; US growth 2.3-4.3'),
     'Vanguard':               dict(us=5.20, em=4.30, note='midpoints of 4.2-6.2 and 3.3-5.3'),
     'BlackRock':              dict(us=5.00, em=7.10, note='EM figure is non-US broadly'),
@@ -316,6 +342,11 @@ def admissible(bmnr=None):
                 if bmnr is not None and b != bmnr: continue
                 out.append({'QQQ': q, 'IEMG': i, 'SGOV': s, 'BMNR': b})
     return out
+
+def best_sharpe(regime='calm'):
+    """Highest return-per-unit-risk allocation over EVERY admissible book, BMNR
+    weight included: the page's claim is "subject only to the brief's 5% floor"."""
+    return max(admissible(), key=lambda w: stats(w, regime)['sharpe'])
 
 def efficient(regime='normalized', bmnr=5):
     """Allocations nothing else beats on both return and drawdown at once."""
@@ -469,8 +500,6 @@ def se_level(name, regime='calm', years=10):
     return stats(PORTFOLIOS[name], regime)['vol'] / math.sqrt(years)
 
 # ── which input should you argue with first ──────────────────────────────────
-import copy as _copy
-
 def build_with(**over):
     """Rebuild the sleeve table with one input overridden, through the same code
     path as build(), so a sensitivity is computed rather than asserted."""
@@ -486,15 +515,7 @@ def build_with(**over):
         elif key == 'SGOV_gross': sg = v
         elif key == 'SGOV_er':    sger = v
         else: raise KeyError(key)
-    a = {}
-    for k, o in OBS_.items():
-        val   = r2h(annualised(o['fwd_pe'], o['pe_end']))
-        gross = r2h(o['div'] + o['eps'] + val + o['fx'])
-        a[k]  = dict(net=r2h(gross - o['er']), er=o['er'])
-    a['SGOV'] = dict(net=r2h(sg - sger), er=sger)
-    mn = r2h(annualised(BM['mnav'], 1.00)); st = r2h(BM['stake_share'] * BM['stake_yield'])
-    a['BMNR'] = dict(net=r2h(BM['eth'] + st + mn - BM['drag']), er=0.0)
-    return a
+    return _build(OBS_, BM, sg, sger)
 
 # Built from the live constants, never typed. An earlier revision hardcoded both
 # the displayed level and the perturbed value; when SGOV's assumed yield moved from
@@ -574,9 +595,9 @@ if __name__ == '__main__':
         for w, st in frontier(r)[:3]:
             print(f"    QQQ {w['QQQ']:>3} IEMG {w['IEMG']:>3} SGOV {w['SGOV']:>3} BMNR {w['BMNR']:>2}"
                   f"  CAGR {st['cagr_d']:.2f}%  sigma {st['vol']:.2f}%  Sharpe {st['sharpe']:.3f}")
-    print('\n== CASH LINE (QQQ <-> SGOV, IEMG fixed at 40) ==')
+    print(f"\n== CASH LINE (QQQ <-> SGOV, IEMG fixed at {PORTFOLIOS['optimized']['IEMG']}) ==")
     for w, c, dd, r in cash_line():
-        print(f"  {w['QQQ']:>3}/40/{w['SGOV']:<3}/5   CAGR {c:>5.2f}%  maxDD -{dd:>5.1f}%  ret/DD {r:.3f}")
+        print(f"  {w['QQQ']:>3}/{w['IEMG']}/{w['SGOV']:<3}/{w['BMNR']}   CAGR {c:>5.2f}%  maxDD -{dd:>5.1f}%  ret/DD {r:.3f}")
     rs = [r for _, _, _, r in cash_line()]
     print(f"  spread {max(rs)-min(rs):.4f} -> drifts, because pinning IEMG changes the risky mix")
     print('\n== AGAINST THE PROFESSIONALS (10-15yr, USD, gross of fees) ==')

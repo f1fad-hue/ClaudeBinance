@@ -19,6 +19,11 @@ def present(label, needle):
     ck(label, needle in html, needle[:70], 'present')
 
 E = M.export()
+_MONTHS = ('January','February','March','April','May','June','July','August','September','October','November','December')
+def _day(iso, short=False):
+    """'2026-08-14' -> '14 August' (or '14 Aug'), as the page writes dates."""
+    m = _MONTHS[int(iso[5:7]) - 1]
+    return f'{int(iso[8:])} {m[:3] if short else m}'
 
 # ── model self-consistency, independent of the page ──────────────────────────
 for pname, w in M.PORTFOLIOS.items():
@@ -155,6 +160,23 @@ cmp_rows = {
  'Max DD — normalized': (f"−{E['portfolios']['baseline']['normalized']['dd']:.1f}%",
                          f"−{E['portfolios']['optimized']['normalized']['dd']:.1f}%"),
 }
+def _d(a, b, p):
+    """Optimized minus baseline, from the DISPLAYED values, as a reader subtracts."""
+    x = M.r2h(b, p) - M.r2h(a, p)
+    return ('\u2212' if x < -1e-12 else '+') + f'{abs(x):.{p}f}'
+_P = E['portfolios']
+_delta = {'Net 10-yr CAGR': _d(_P['baseline']['calm']['cagr_d'], _P['optimized']['calm']['cagr_d'], 2),
+          'Weighted fee': _d(_P['baseline']['calm']['fee'], _P['optimized']['calm']['fee'], 3),
+          'σ — calm (today)': _d(_P['baseline']['calm']['vol'], _P['optimized']['calm']['vol'], 2),
+          'σ — vol normalized': _d(_P['baseline']['normalized']['vol'], _P['optimized']['normalized']['vol'], 2),
+          # drawdowns are losses, so the improvement is the fall in magnitude
+          'Max DD — calm': _d(_P['optimized']['calm']['dd'], _P['baseline']['calm']['dd'], 1),
+          'Max DD — normalized': _d(_P['optimized']['normalized']['dd'], _P['baseline']['normalized']['dd'], 1),
+          'Correlated-stress DD': _d(_P['optimized']['calm']['naive'], _P['baseline']['calm']['naive'], 1),
+          'Return / risk (calm)': _d(_P['baseline']['calm']['sharpe'], _P['optimized']['calm']['sharpe'], 3)}
+for _lab, _want in _delta.items():
+    _m = re.search(r'<td>%s</td>(?:<td class="n[^"]*">[^<]+</td>){2}<td class="n[^"]*">([^<]+)</td>' % re.escape(_lab), html)
+    ck(f'cmp delta {_lab}', _m is not None and _m.group(1) == _want, _m and _m.group(1), _want)
 for label, (b_want, o_want) in cmp_rows.items():
     m = re.search(r'<td>%s</td>((?:<td class="n[^"]*">[^<]+</td>){2})' % re.escape(label), html)
     ck(f'cmp row present: {label}', m is not None, bool(m), True)
@@ -204,9 +226,13 @@ for name, segs in E['donuts'].items():
        round(sum(s[1] for s in segs), 2), round(C, 2))
 
 # ── VIX term structure ───────────────────────────────────────────────────────
-for h, lab in ((0.25, '3 months'), (0.5, '6 months'), (1.0, '12 months')):
-    present(f'vix sigma {lab}', f"{E['vix']['term'][h]:.2f}%")
-    present(f'vix band {lab}',  f"±{1.645*E['vix']['term'][h]:.1f}%")
+# every row of the term-structure table, the 1-day row included -- it was never
+# checked, and the other three only as "appears somewhere on the page"
+for h, lab in ((1/252, '1 day'), (0.25, '3 months'), (0.5, '6 months'), (1.0, '12 months')):
+    _sig = E['vix']['term'][h]
+    present(f'vix term row {lab}',
+            f'<tr><td>{lab}</td><td class="n">{math.sqrt(h):.3f}</td><td class="n">{_sig:.2f}%</td>'
+            f'<td class="n">±{M.r2h(1.645*_sig, 2 if h < 0.1 else 1):.{2 if h < 0.1 else 1}f}%</td></tr>')
 
 # ── weight constraints from the brief ────────────────────────────────────────
 for name, w in E['weights'].items():
@@ -220,13 +246,21 @@ for reg in ('calm','normalized'):
     w, st = M.frontier(reg, sgov_min=5)[0]
     ck(f'frontier winner {reg} sums to 100', sum(w.values()) == 100, sum(w.values()), 100)
 wc, _ = M.frontier('calm', sgov_min=5)[0]
+# the page says "subject only to the brief's 5% floor"; frontier() pins BMNR at 5,
+# so the claim is only true if a search over every BMNR weight agrees
+ck('best-Sharpe book survives an unrestricted search', M.best_sharpe('calm') == wc,
+   M.best_sharpe('calm'), wc)
 present('frontier stated in prose',
         f"QQQ {wc['QQQ']} / IEMG {wc['IEMG']} / SGOV {wc['SGOV']} / BMNR {wc['BMNR']}")
 present('frontier Sharpe stated', f"{M.frontier('calm', sgov_min=5)[0][1]['sharpe']:.3f}")
 # the theorem: a true CAL (risky mix fixed, scaled against cash) is invariant
 cal = [r for _, r in M.cal_line()]
 ck('CAL invariant', max(cal) - min(cal) < 1e-4, f'{max(cal)-min(cal):.2e}', '<1e-4')
-present('CAL ratio stated', f'{cal[0]:.4f}')
+present('CAL ratio stated', f'return-per-drawdown is <b>{cal[0]:.4f} at every point</b>')
+present('CAL ratio in the rationale', f'holds return-per-drawdown at {cal[0]:.4f} whatever the cash weight')
+present('CAL ratio in the card header', f'<div class="drv-s">ret/DD {cal[0]:.4f}</div>')
+present('VIX spot in the volatility hero', f'<div class="k">VIX spot</div><div class="v">{M.VIX_SPOT:.2f}</div>')
+present('2026 range in the volatility hero', f'<div class="k">2026 low · high</div><div class="v">{M.VIX_2026["low"]:.2f} · {M.VIX_2026["high"]:.2f}</div>')
 # the theorem is exact only with riskless cash; SGOV's own volatility leaves a
 # residual the page states. Earlier revisions called it "machine precision",
 # which was never true of this model.
@@ -248,6 +282,16 @@ ck('frontier call-out names the right books as efficient',
    ('the baseline, by a hair, is not' in html) == (_on['optimized'] and not _on['baseline']),
    _on, 'prose matches')
 present('frontier svg matches model', M.frontier_svg())
+_bn_ = M.stats(M.PORTFOLIOS['baseline'], 'normalized')
+_dom = [(d, c, w) for d, c, w in ((M.stats(w, 'normalized')['dd'], M.stats(w, 'normalized')['cagr'], w) for w in M.admissible(5))
+        if d <= _bn_['dd'] and c >= _bn_['cagr'] and (d < _bn_['dd'] or c > _bn_['cagr'])]
+ck('baseline is dominated by exactly one book, as stated', len(_dom) == 1 and 'beaten by exactly one allocation' in html,
+   len(_dom), 1)
+if len(_dom) == 1:
+    _dd_, _dc_, _dw_ = _dom[0]
+    present('the dominating book and its margins',
+            f'QQQ {_dw_["QQQ"]} / IEMG {_dw_["IEMG"]} / SGOV {_dw_["SGOV"]} / BMNR {_dw_["BMNR"]} — and by '
+            f'+{M.r2h(_dc_ - _bn_["cagr"]):.2f} points of CAGR and {M.r2h(_bn_["dd"] - _dd_, 1):.1f} of drawdown')
 eff, _ = M.efficient()
 present('efficient count stated', f'{len(eff)} allocations are efficient')
 present('frontier local slope', f"{M.fr_slope():.2f} points of CAGR")
@@ -310,10 +354,10 @@ ck('baseline sensitivity run reproduces the model',
 
 # ── the outside check: published forecasts, and the scenario they imply ──────
 # J.P. Morgan's EM volatility is a fixed long-run estimate; this page's normalised
-# figure moves inversely with spot VIX, so which is larger has flipped three times
-# in a fortnight. The check names the relation rather than a side, so the prose has
-# to be re-read whenever the relation changes.
-_emvol = 20.9   # J.P. Morgan LTCMA 2026 EM equity volatility
+# figure moves inversely with spot VIX, so which is larger keeps flipping (twice in
+# the series on file). The check names the relation rather than a side, so the
+# prose has to be re-read whenever the relation changes.
+_emvol = M.INSTITUTIONAL[M.ALT_SOURCE]['em_vol']
 _lo, _hi = M.REGIME['calm']['vol']['IEMG'], M.REGIME['normalized']['vol']['IEMG']
 _rel = ('exceeds <em>both</em>' if _emvol > max(_lo, _hi)
         else 'below <em>both</em>' if _emvol < min(_lo, _hi)
@@ -426,9 +470,9 @@ ck('SGOV sensitivity row shows the live assumption',
    [n for _l, n, _k, _v in M.SENS if _l == 'SGOV gross yield'][0], f'{M.SGOV_GROSS:g}%')
 
 # ── the cash sleeve must follow policy, not a superseded level ───────────────
-present('policy range on the page', 'Fed 3.75–4.00%')
-ck('SGOV assumption equals the policy midpoint', abs(M.SGOV_GROSS - 3.875) < 1e-9,
-   M.SGOV_GROSS, 3.875)
+present('policy range on the page', f'Fed {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%')
+ck('SGOV assumption equals the policy midpoint', abs(M.SGOV_GROSS - sum(M.FED_RANGE) / 2) < 1e-9,
+   M.SGOV_GROSS, sum(M.FED_RANGE) / 2)
 ck('SGOV is still the lowest-return sleeve',
    M.A['SGOV']['net'] == min(a['net'] for a in M.A.values()),
    M.A['SGOV']['net'], 'lowest')
@@ -480,7 +524,7 @@ present('BMNR staking contribution', f"+{b['stake']:.2f}% staking")
 present('BMNR mNAV normalisation', f"\u2212{abs(b['mnav']):.2f}% mNAV")
 ck('BMNR components sum to net',
    abs(b['eth'] + b['stake'] + b['mnav'] + b['drag'] - b['net']) < 0.005, b, 'sums')
-_STAKED, _HELD = 5_067_309, 5_983_940          # 21 Sep 2026 holdings release
+_STAKED, _HELD = M.BMNR_HOLDINGS['staked'], M.BMNR_HOLDINGS['held']
 ck('BMNR staked share matches token counts',
    abs(M.BMNR['stake_share'] - _STAKED/_HELD) < 0.0005,
    M.BMNR['stake_share'], round(_STAKED/_HELD, 4))
@@ -519,22 +563,48 @@ ck('BMNR ratio range includes today', f'<b>{_rat:.1f}× risk-to-weight ratio</b>
    (re.search(r'ranged from ([\d.]+)×', _rcc) or [None, 'absent'])[1], f'<= {_rat:.1f}')
 
 # ── VIX narrative: every derived figure from the stored series ───────────────
-_ser = dict(M.VIX_SERIES); _dd = _ser['2026-09-16']; _lo = M.VIX_2026['low']
+_ser = dict(M.VIX_SERIES); _dd = _ser[M.FOMC_DATE]; _lo = M.VIX_2026['low']
 def _q(x, p='1'): return str(M.Decimal(repr(x)).quantize(M.Decimal(p), rounding=M.ROUND_HALF_UP))
-present('VIX day change', f'down {_q(abs(M.VIX_SPOT/M.VIX_SERIES[-2][1]-1)*100, "0.1")}%, and '
-        f'{_q((1-M.VIX_SPOT/_dd)*100)}% below its {_dd:.2f} close on decision day')
-present('VIX round trip', f'up {_q(_dd-_lo, "0.01")} points to {_dd:.2f} on decision day, then back to within {_q(M.VIX_SPOT-_lo, "0.01")} of the low')
-ck('spot is the lowest close on file', M.VIX_SPOT == min(v for _, v in M.VIX_SERIES), M.VIX_SPOT, 'series min')
-present('decision-day discount', f'closed to {_q((1-_dd/M.VIX_MEAN)*100, "0.1")}% on decision day')
-ck('VIX low date matches its stated date', M.VIX_2026['low_date'] == '2026-08-28' and '(28 August)' in html,
-   M.VIX_2026['low_date'], '28 August on page')
+_pv = M.VIX_SERIES[-2][1]
+present('VIX day change', f'The VIX closed {_day(M.VIX_ASOF)} at <b style="color:var(--ink)">{M.VIX_SPOT:.2f}</b>, '
+        f'{"up" if M.VIX_SPOT > _pv else "down"} {_q(abs(M.VIX_SPOT/_pv-1)*100, "0.1")}% from a 21-session low of {_pv:.2f} the day before, '
+        f'and {_q((1-M.VIX_SPOT/_dd)*100)}% below its {_dd:.2f} close on decision day')
+ck('"21-session low" claim holds on the series', _pv == min(v for _, v in M.VIX_SERIES), _pv, 'series min')
+present('spot distance from the 2026 low', f'spot is {_q(M.VIX_SPOT-_lo, "0.01")} above the low')
+present('discount now, a session earlier and on decision day',
+        f'Spot now sits <b style="color:var(--ink)">{_q((1-M.VIX_SPOT/M.VIX_MEAN)*100, "0.1")}%</b> below that, against '
+        f'{_q((1-_pv/M.VIX_MEAN)*100, "0.1")}% at the 22 September close and {_q((1-_dd/M.VIX_MEAN)*100, "0.1")}% on decision day')
+ck('"widest discount in the series" appears only when spot is the series low',
+   ('widest discount in the series on file' in html) == (M.VIX_SPOT == min(v for _, v in M.VIX_SERIES)),
+   M.VIX_SPOT, min(v for _, v in M.VIX_SERIES))
+ck('2026 VIX low is printed with its own date', f"{_lo:.2f}</b> ({_day(M.VIX_2026['low_date'])})" in html,
+   M.VIX_2026['low_date'], _day(M.VIX_2026['low_date']))
+ck('2026 low sits below every close on file', _lo < min(v for _, v in M.VIX_SERIES), _lo, 'below the series')
 
 # ── forward multiples quoted in prose track the price-linked model ───────────
 _fq, _fi = M.OBS['QQQ']['fwd_pe'], M.OBS['IEMG']['fwd_pe']
 _b0 = 1 - M.PRICES['IEMG']['basis_fwd'] / M.PRICES['QQQ']['basis_fwd']
 present('valuation driver multiples', f'The Nasdaq-100 trades at {_fq:.1f}× forward earnings against emerging markets at '
         f'{_fi:.1f}× — a {_q((1-_fi/_fq)*100)}% discount, wider than the {_q(_b0*100)}% at the 11 September basis')
-present('valuation driver VIX', f'is back to <b>{M.VIX_SPOT:.2f}</b> — {_q(M.VIX_SPOT-_lo, "0.01")} above its 2026 low')
+present('valuation driver VIX', f'fell to {_pv:.2f} on 22 September — {_q(_pv-_lo, "0.01")} above its 2026 low — and jumped '
+        f'{_q((M.VIX_SPOT/_pv-1)*100, "0.1")}% to <b>{M.VIX_SPOT:.2f}</b> the next day')
+
+# ── masthead and lead: every market level from MARKET and the VIX series ─────
+_MK = M.MARKET
+ck('masthead date is the MARKET as-of date', _MK['asof'] == M.VIX_ASOF, _MK['asof'], M.VIX_ASOF)
+present('masthead levels',
+        f'<span>VIX {M.VIX_SPOT:.2f}</span><span>Brent ${_MK["brent"]:.2f}</span><span>UST 10y {_MK["ust10"]:.2f}%</span>')
+present('lead: 10-year, Brent and VIX moves',
+        f'the 10-year rose {_MK["ust10_chg_bp"]} basis points to <b>{_MK["ust10"]:.2f}%</b>, its highest since 2007; '
+        f'Brent settled up {_MK["brent_chg_pct"]:.2f}% at <b>${_MK["brent"]:.2f}</b>; and the VIX jumped '
+        f'{_q((M.VIX_SPOT/_pv-1)*100, "0.1")}% to <b>{M.VIX_SPOT:.2f}</b>')
+present('lead: prior VIX close', f'On 22 September the VIX closed at <b>{_pv:.2f}</b>, a 21-session low')
+present('liquidity driver 10-year', f'the 10-year rose {_MK["ust10_chg_bp"]} basis points to <b>{_MK["ust10"]:.2f}%</b> on 23 September')
+present('QQQ transmission 10-year', f'with the 10-year at <b>{_MK["ust10"]:.2f}%</b> on 23 September, its highest since 2007, '
+        f'a day after closing at {_MK["ust10_prev"]:.2f}%')
+present('term-structure warnbox 10-year', f'a 10-year at {_MK["ust10"]:.2f}%, its highest since 2007')
+for _bad in ('4.93%', 'Brent $99.25', 'at $99.25'):
+    ck(f'no superseded market level ({_bad})', _bad not in html[:html.index('<h3>Verification log</h3>')], _bad, 'absent outside log')
 present('IEMG transmission multiples', f'at {_fi:.1f}× forward against the Nasdaq-100&#8217;s {_fq:.1f}×')
 present('Asia note multiple', f'Equities trade at {_fi:.1f}× forward — just below EM&#8217;s own 20-year average of 11.7×')
 ck('Asia note relation to 20-yr mean', _fi < 11.7, _fi, '< 11.7')
@@ -560,13 +630,13 @@ present('rationale terminal values',
         f"SGOV&#8217;s ${_t({'QQQ':0,'IEMG':0,'SGOV':100,'BMNR':0}):,.0f} terminal value against "
         f"QQQ&#8217;s ${_t({'QQQ':100,'IEMG':0,'SGOV':0,'BMNR':0}):,.0f} on the same $10,000")
 _vals = [v for _, v in M.VIX_SERIES]
-_side = [M.REGIME['calm']['vol']['IEMG'] * M.VIX_MEAN / v > 20.9 for v in _vals]
+_side = [M.REGIME['calm']['vol']['IEMG'] * M.VIX_MEAN / v > _emvol for v in _vals]
 _flips = sum(a != b for a, b in zip(_side, _side[1:]))
 present('EM-vol comparison flip count',
         f"flipped {({1:'once',2:'twice',3:'three times',4:'four times'})[_flips]} in the {len(_vals)} sessions on file")
 present('VIX range over the series', f"covered {_q(max(_vals)-min(_vals), '0.01')} points in those {len(_vals)} sessions")
 _oc2, _on2 = M.stats(_O, 'calm'), M.stats(_O, 'normalized')
-present('volatility trigger distance', f"That trigger is now {_q(M.VIX_MEAN-M.VIX_SPOT, '0.01')} points away</b>; a week ago it stood "
+present('volatility trigger distance', f"That trigger is now {_q(M.VIX_MEAN-M.VIX_SPOT, '0.01')} points away</b>; on decision day it stood "
         f"{_q(M.VIX_MEAN-_ser['2026-09-16'], '0.01')} away")
 present('regime gap on the recommended book', f"the two regimes differ by {_q(_on2['dd']-_oc2['dd'], '0.1')} points of drawdown on the recommended book")
 for _bad, _why in (('reversed two passes ago', 'relative pass reference'), ('made two passes ago', 'relative pass reference'),
@@ -588,7 +658,17 @@ present('EM margin over the highest house',
         f"by {M.r2h(_em - _H[_tem]['em'], 1):.1f} points over the highest — {_tem}&#8217;s {_H[_tem]['em']:.1f}% — "
         f"against {M.r2h(_us - _H[_tus]['us'], 1):.1f} on the US sleeve")
 
-# ── every slide: gross minus expense ratio equals the net shown ──────────────
+# ── every slide: hero figures, fee and terminal, scoped to that slide ─────────
+for _k in ('SGOV', 'QQQ', 'IEMG', 'BMNR'):
+    _sl = html[html.index(f'<div class="sl-tick">{_k}</div>'):]
+    _sl = _sl[:_sl.index('</article>')]
+    _net = re.search(r'Net 10-yr CAGR</div><div class="v"[^>]*>([\d.]+)%', _sl)
+    ck(f'{_k} slide net CAGR', _net is not None and float(_net.group(1)) == M.A[_k]['net'], _net and _net.group(1), M.A[_k]['net'])
+    _mdd = re.search(r'Expected max DD</div><div class="v"[^>]*>−([\d.]+)%', _sl)
+    ck(f'{_k} slide expected drawdown', _mdd is not None and float(_mdd.group(1)) == M.DD[_k], _mdd and _mdd.group(1), M.DD[_k])
+    if _k != 'BMNR':
+        ck(f'{_k} slide expense ratio', f'Expense ratio</span><span class="v">{M.A[_k]["er"]:.2f}%' in _sl, _k, M.A[_k]['er'])
+        ck(f'{_k} slide terminal', f'<span class="v">${E["sleeves"][_k]["terminal"]:,}</span>' in _sl, _k, E['sleeves'][_k]['terminal'])
 for _k in ('SGOV', 'QQQ', 'IEMG'):
     _sl = html[html.index(f'<div class="sl-tick">{_k}</div>'):]
     _sl = _sl[:_sl.index('</article>')]
@@ -599,6 +679,12 @@ for _k in ('SGOV', 'QQQ', 'IEMG'):
 # ── the fee saving quoted in the rationale is the table's difference ─────────
 _fd = M.stats(M.PORTFOLIOS['baseline'],'calm')['fee_drag'] - M.stats(M.PORTFOLIOS['optimized'],'calm')['fee_drag']
 present('fee saving in rationale', f'${_q(_fd)} per $10,000 over ten years')
+_oc3, _on3 = M.stats(M.PORTFOLIOS['optimized'], 'calm'), M.stats(M.PORTFOLIOS['optimized'], 'normalized')
+_bn3 = M.stats(M.PORTFOLIOS['baseline'], 'normalized')
+present('rationale regime drawdowns', f'−{_oc3["dd"]:.1f}% at today&#8217;s levels becomes −{_on3["dd"]:.1f}% normalised')
+present('rationale drawdown budget', f'drawdown budget of roughly −{_q(_on3["dd"])}% in a normalised world')
+present('rationale BMNR risk share', f'contributes {_on3["rc"]["BMNR"]:.1f}% of variance — a {_on3["rc"]["BMNR"]/5:.1f}× risk-to-weight ratio')
+present('recommendation drawdowns', f'−{_on3["dd"]:.1f}% normalised against the baseline&#8217;s −{_bn3["dd"]:.1f}%')
 
 # ── typographic minus in prose: an ASCII hyphen before a figure is a leftover ──
 _vis = re.sub(r'<style>.*?</style>|<svg.*?</svg>|<script.*?</script>|<[^>]+>', ' ', html, flags=re.S)
@@ -655,7 +741,6 @@ for _bad, _why in (('yesterday as 16.93', 'relative date three revisions old'),
                    ('low of 14.13 in early September', 'VIX low misdated'),
                    ('heading into a 15–16 September FOMC', 'pre-decision tense'),
                    ('touched 4.818%', '10-year high superseded by 5.04%'),
-                   ('a 10-year above 5%', '10-year level superseded'),
                    ('more than a quarter of the risk', 'BMNR share below 25%'),
                    ('complacent at 14.13; it is 3.5 points', 'VIX distance superseded'),
                    ('the widest discount of the month', 'unverifiable superlative')):
@@ -672,8 +757,6 @@ STALE = (('16.00%','old optimized sigma'), ('27.2%','old optimized maxDD'),
          ('4.8/10','pre-rescale gauge'),
          ('VIX 15.30','pre-CPI VIX'),     ('Brent $100','pre-settle Brent'),
          ('0.112%','wrong optimized fee'),
-         ('width:24.5%;background:var(--bmnr)','pre-fix BMNR risk contrib'),
-         ('width:44.3%;background:var(--qqq)','pre-fix QQQ risk contrib'),
          ('staked</span><span class="v">85.9%','pre-filing staked share'),
          ('0.1296','pre-fix CAL ratio'),  ('86 allocations','pre-fix efficient count'),
          ('75%-risk-asset','wrong risk-asset share'),
@@ -692,7 +775,12 @@ for _p, _w in M.PORTFOLIOS.items():
         _live |= {f"{_v:.1f}%" for _v in _s['rc'].values()}
 for _k, _a in M.A.items():
     _live |= {f"{_a['net']:.2f}%", f"{_a['gross']:.2f}%"}
-_collide = [(s, w) for s, w in STALE if s in _live]
+# Compare the figures INSIDE each entry, not the whole string: the entries are
+# anchored to markup ('width:24.5%;background:...'), so an equality test against a
+# bare '24.5%' could never fire -- and when BMNR's risk share returned to 24.5% in
+# Rev. 20 the build failed on a correct figure, the exact case this was written for.
+_tok = lambda t: set(re.findall(r'\$?[\d,]+\.\d+%?|\$[\d,]+', t))
+_collide = [(s, w) for s, w in STALE if _tok(s) & {x.lstrip('−') for x in _live}]
 ck('no blacklist entry collides with a live model figure', not _collide, _collide, 'none')
 
 # ── no stale scale or revision markers ───────────────────────────────────────
