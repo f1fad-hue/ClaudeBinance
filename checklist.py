@@ -12,6 +12,11 @@ status without implementing either.
 import re, sys
 import portfolio_model as M
 
+# Optional: `./checklist.py --live PATH` compares the page the live HTTPS URL serves
+# (saved with the Artifact tool's read action) against this repo's file and checks
+# the host shell carries the mobile viewport. Without it, item 1 says it was not run.
+LIVE = sys.argv[sys.argv.index('--live') + 1] if '--live' in sys.argv else None
+
 html = open('allocation.html').read()
 E = M.export()
 body = html[:html.index('Verification log')]
@@ -30,9 +35,24 @@ def conflict(n, text, note):
 tabs = re.search(r'\.tabs\{position:fixed;bottom:0', html)
 light = ':root{' in html and '--paper:#F7F8FA' in html
 no_dark = '@media(prefers-color-scheme: dark)' not in html and '@media (prefers-color-scheme: dark)' not in html
-req(1, 'Live HTTPS URL, bottom tab bar, light theme',
-    bool(tabs) and light and no_dark and html.count('data-p="') == 5,
-    f'{html.count("data-p=")} bottom tabs; light tokens only, no dark override')
+# Android: the page is published as a fragment and the artifact host supplies the
+# document shell. Earlier this check never looked at the live page or the viewport,
+# which is what makes a phone lay it out at device width instead of 980px desktop.
+mobile_css = '.app{max-width:460px' in html and 'env(safe-area-inset-bottom' in html
+live_note = 'live copy not compared (run with --live PATH)'
+live_ok = True
+if LIVE:
+    _l = open(LIVE).read()
+    _b = _l.split('<body>', 1)[1].strip()
+    for _t in ('</body></html>', '</body>'):
+        if _b.endswith(_t): _b = _b[:-len(_t)].strip()
+    _vp = 'name=viewport content="width=device-width' in _l or 'name="viewport" content="width=device-width' in _l
+    live_ok = _b == html.strip() and _vp and 'color-scheme:light' in _l
+    live_note = ('live page identical to the validated file; host shell sets a device-width viewport and a light colour scheme'
+                 if live_ok else 'LIVE PAGE DIFFERS from the repo file, or its shell lacks the mobile viewport')
+req(1, 'Live HTTPS URL for Android, bottom tab bar, light theme',
+    bool(tabs) and light and no_dark and html.count('data-p="') == 5 and mobile_css and live_ok,
+    f'{html.count("data-p=")} fixed bottom tabs; light tokens only, no dark override; {live_note}')
 
 # 2 ── all four sleeves in both portfolios
 allfour = all(set(w) == {'QQQ','IEMG','SGOV','BMNR'} and all(v >= 5 for v in w.values())
@@ -57,8 +77,14 @@ req(4, 'Volatility maths at 3, 6, 12 months with a 10-year horizon',
 slides = re.findall(r'<article class="slide">.*?</article>', html, re.S)
 have = all(any(t in sl for sl in slides) for t in ('SGOV','QQQ','IEMG','BMNR'))
 cagr_dd = all('Net 10-yr CAGR' in sl and 'Expected max DD' in sl for sl in slides)
-req(5, 'A slide per fund/ETF/stock with net 10-yr CAGR and expected drawdown',
-    len(slides) == 4 and have and cagr_dd, f'{len(slides)} swipeable slides, each with both figures')
+# "net 10yr cagr minus fund fees": each ETF slide must show the fee it nets off,
+# and the net must equal gross minus that fee. BMNR is a stock and has no fund fee.
+def _slide(t): return next(sl for sl in slides if f'<div class="sl-tick">{t}</div>' in sl)
+fees = all(f'Expense ratio</span><span class="v">{M.A[t]["er"]:.2f}%' in _slide(t) and
+           abs(M.A[t]['gross'] - M.A[t]['er'] - M.A[t]['net']) < 0.006 for t in ('SGOV','QQQ','IEMG'))
+req(5, 'A slide per fund/ETF/stock with net 10-yr CAGR (after fund fees) and expected drawdown',
+    len(slides) == 4 and have and cagr_dd and fees,
+    f'{len(slides)} swipeable slides, each with both figures; the three ETF slides show the fee netted off')
 
 # 6 ── the sentiment gauge; the brief now specifies 1-5, matching the page
 scale_ok = '/5</small>' in html and 1 <= E['gauge']['score5'] <= 5
@@ -72,11 +98,18 @@ req(7, 'Rationale report for the optimized allocation',
     f'{len(re.findall(r"<div><b>", html[html.index(chr(60)+"div class=" + chr(34) + "num" + chr(34) + ">"):]))} numbered arguments plus a recommendation')
 
 # 8 ── regional ranking system
+# Earlier this read only the model and hardcoded "Asia > US > Europe", so a
+# legitimate change in the ranking would have failed the requirement. It now checks
+# that the PAGE ranks the three blocs by their mean score, at all four horizons.
 reg_ok = all(len(v['scores']) == 4 for v in E['regions'].values()) and len(E['regions']) == 3
-order  = all(E['regions']['Asia / EM']['scores'][h] > E['regions']['United States']['scores'][h]
-             > E['regions']['Europe']['scores'][h] for h in range(4))
-req(8, 'Ranking for US, Europe and Asia at 3, 6, 12 months and 10 years', reg_ok and order,
-    'Asia > US > Europe at all four horizons')
+_seg = html[html.index('============ REGIONS'):html.index('============ VOLATILITY')]
+_page_rank = {nm: int(r) for nm, r in re.findall(r'<span class="nm">([^<]+)</span><span class="rank[^"]*">Rank (\d)</span>', _seg)}
+_names = {'Asia / EM': 'Asia / Emerging', 'United States': 'United States', 'Europe': 'Europe'}
+_by_mean = sorted(E['regions'], key=lambda k: -E['regions'][k]['mean'])
+ranks_ok = all(_page_rank.get(_names[k]) == i + 1 for i, k in enumerate(_by_mean))
+horizons_ok = all(_seg.count(f'<span class="hz-l">{h}</span>') == 3 for h in ('3 mo', '6 mo', '12 mo', '10 yr'))
+req(8, 'Ranking for US, Europe and Asia at 3, 6, 12 months and 10 years', reg_ok and ranks_ok and horizons_ok,
+    'page ranks ' + ' > '.join(_names[k] for k in _by_mean) + ' by mean score; every bloc scored at all four horizons')
 
 # 9 ── sourcing
 srcs = re.findall(r'href="https://([^/"]+)', html)
@@ -104,9 +137,11 @@ else:
 # 10 ── both portfolios' CAGR net of fees and drawdown
 both = all(f"{E['portfolios'][p]['calm']['cagr_d']:.2f}%" in html and
            f"−{E['portfolios'][p]['calm']['dd']:.1f}%" in html for p in E['portfolios'])
+both = both and all(f"−{E['portfolios'][p]['normalized']['dd']:.1f}%" in html for p in E['portfolios'])
 req(10, '10-yr CAGR net of fees and expected drawdown for both portfolios', both,
     ' vs '.join(f"{p} {E['portfolios'][p]['calm']['cagr_d']:.2f}% / "
-                f"−{E['portfolios'][p]['calm']['dd']:.1f}%" for p in E['portfolios']))
+                f"−{E['portfolios'][p]['calm']['dd']:.1f}% (−{E['portfolios'][p]['normalized']['dd']:.1f}% normalised)"
+                for p in E['portfolios']))
 
 # 11 ── weights end in 5 or 0
 req(11, 'Allocation percentages end in 5 or 0 in both portfolios',
@@ -119,29 +154,35 @@ req(12, 'Two portfolios shown as donut charts, side by side', len(donuts) == 8 a
     '2 donuts x 4 segments, rendered side by side')
 
 # 13 ── baseline is a 10-year strategic book
+# Earlier this asserted QQQ == 45, which tests a number rather than the requirement.
 req(13, 'Baseline portfolio built on a 10-year horizon',
-    'Strategic' in html and E['weights']['baseline']['QQQ'] == 45,
-    'plain strategic split, no macro tilt')
+    '<div class="dn-t">Baseline</div><div class="dn-c">Strategic</div>' in html and
+    'both are built for a 10-year horizon' in html and 'The baseline is a plain strategic split' in html,
+    'plain strategic split for the 10-year horizon, no macro tilt')
 
 # 14 ── optimized driven by macro + regional rankings (+ volatility, added later)
-req(14, 'Optimized portfolio from macro sentiment and regional rankings, 3/6/12mo, 10-yr horizon',
-    'Macro-tilted' in html and 'volatility analysis across 3, 6 and 12 months' in html,
-    'also incorporates volatility analysis, requested later')
+# Two phrases on the page do not show the book is BASED on its inputs. The tilt
+# must follow them: overweight the sleeve of the top-ranked bloc, hold more reserve
+# while spot volatility sits below its mean (the normalised regime is the larger
+# risk), and come out with the lower normalised drawdown.
+_top = _by_mean[0]
+_sleeve = {'Asia / EM': 'IEMG', 'United States': 'QQQ'}.get(_top)
+_Bw, _Ow = E['weights']['baseline'], E['weights']['optimized']
+tilt_ok = (_sleeve is not None and _Ow[_sleeve] > _Bw[_sleeve] and
+           (M.VIX_SPOT >= M.VIX_MEAN or _Ow['SGOV'] >= _Bw['SGOV']) and
+           E['portfolios']['optimized']['normalized']['dd'] < E['portfolios']['baseline']['normalized']['dd'])
+req(14, 'Optimized portfolio from broad + correlated sentiment, volatility and regional rankings, 3/6/12mo, 10-yr',
+    'Macro-tilted' in html and 'volatility analysis across 3, 6 and 12 months' in html and
+    'Correlated transmission' in html and tilt_ok,
+    f'{_sleeve} {_Bw[_sleeve]}→{_Ow[_sleeve]}% for the top-ranked bloc; SGOV {_Bw["SGOV"]}→{_Ow["SGOV"]}% '
+    f'with VIX {M.VIX_SPOT} below its {M.VIX_MEAN} mean; lower normalised drawdown')
 
 # 15 ── max CAGR net of fees subject to controlling drawdown
 # Two objectives, so "best" means Pareto-efficient: no admissible allocation offers
 # BOTH more CAGR and less drawdown. An earlier version of this check asked whether the
 # optimized book beat the baseline on Sharpe, which the brief never required -- and which
 # failed once QQQ's forecast was corrected, even though the recommendation stayed efficient.
-adm = []
-for q in range(5, 86, 5):
-    for i in range(5, 86, 5):
-        for s_ in range(5, 86, 5):
-            b = 100 - q - i - s_
-            if b < 5 or b % 5: continue
-            w = {'QQQ': q, 'IEMG': i, 'SGOV': s_, 'BMNR': b}
-            st = M.stats(w, 'normalized')
-            adm.append((w, st['cagr_d'], st['dd']))
+adm = [(w, st['cagr_d'], st['dd']) for w, st in ((w, M.stats(w, 'normalized')) for w in M.admissible())]
 opt, base = E['portfolios']['optimized'], E['portfolios']['baseline']
 dominators = [o for o in adm
               if o[1] >= opt['normalized']['cagr_d'] and o[2] <= opt['normalized']['dd']

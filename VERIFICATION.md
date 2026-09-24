@@ -5,6 +5,27 @@ verification log (Portfolios tab) carries the same record as a table; this file 
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
 
+## Checklist recheck — 24 September 2026
+
+The page did not change; the acceptance test did. Every item passed, but six passed for
+the wrong reason:
+
+- **Item 1** never looked at the live URL or at the viewport that makes Android render at
+  phone width. It now takes `--live`, compares the served page to the validated file
+  (identical) and checks the host shell's viewport and colour scheme.
+- **Item 8** read only the model and hardcoded "Asia > US > Europe", so a legitimate change
+  in the ranking would have failed the requirement. It now checks the page's rank badges
+  against the blocs' mean scores, and that every bloc is scored at all four horizons.
+- **Item 13** asserted QQQ = 45% — a value, not "built on a 10-year horizon".
+- **Item 14** looked for two phrases. It now requires the tilt to follow its inputs: the
+  top-ranked bloc's sleeve overweighted, more reserve while the VIX sits below its mean, and
+  a lower normalised drawdown.
+- **Item 5** did not check that the ETF slides show the fund fee the net figure is taken after.
+- **Item 15** re-implemented the admissible set instead of using `M.admissible()`.
+
+Each new check was broken deliberately and went red. Result unchanged: 15 pass, 0 fail,
+1 conflict (item 9, the three extrapolated inputs).
+
 ## Rev. 20 — 23 September 2026
 
 - **Two closes the page already held were wrong, and the next day's quotes proved it.** The

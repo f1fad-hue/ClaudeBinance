@@ -23,13 +23,18 @@ dates — QQQ 22 September, IEMG 18 September — and move when newer closes are
 ```bash
 python3 portfolio_model.py   # readable report of every figure
 python3 validate.py          # verify allocation.html against it
-./checklist.py               # audit the deliverable against the original brief
+./checklist.py --live <file> # audit against the brief; <file> is the live page saved via Artifact read
 python3 mutate.py            # prove validate.py actually fails when the model changes
 ./sync-artifact.sh <path>    # validate, then copy to the publish path
 ```
 
 `checklist.py` encodes each requirement from the brief as a check, so the deliverable is
 re-auditable rather than eyeballed. It currently reports **15 pass, 0 fail, 1 conflict**.
+With `--live` it also compares the page the HTTPS link actually serves against the validated
+file and checks the host shell sets a device-width viewport — the published file is a
+fragment, so that shell is what makes Android lay it out at phone width. The last recheck
+(24 September) found the live page byte-identical and passed a Pixel 7 emulation run: 412px
+layout, fixed bottom tabs, all five panes, swipeable slides, light background, no errors.
 
 Item 6 reads the gauge requirement as 1–5: the brief first asked for 1–10, later
 instructions asked for 1–5 and then for the regional rankings to match, and the user
