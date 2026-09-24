@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 """Mutation test for the validator.
 
-validate.py can only be trusted if it actually fails when the model changes. This
-perturbs one input at a time, re-runs validate.py, and reports any mutation that
-still passes -- a figure the harness does not really police. More than half the
-checks are `present()`, which only asserts a string appears somewhere in the page;
-this is what proves they bite.
+validate.py can only be trusted if it fails when something is wrong. Two kinds of
+corruption are applied, one at a time, each in a throwaway copy of the repo:
+
+  model mutations      change one input in portfolio_model.py and leave the page as
+                       it is. validate.py must fail: the published page is stale.
+  generator mutations  plant a realistic bug in build.py (a swapped column, the wrong
+                       rounding, a reversed ranking), REBUILD the page from it, and run
+                       validate.py. The freshness check passes -- the page is exactly
+                       what the buggy generator writes -- so only the independent
+                       re-derivations can catch it. This is what proves they bite.
 
     python3 mutate.py        # expect: every mutation was caught
 
-A mutation that cannot find its target is reported and FAILS the run. An earlier
-version printed 'every mutation was caught' while quietly skipping seven whose
-hardcoded old values no longer matched the model -- the harness reassuring itself
-about inputs it had stopped testing. Value-specific targets are now read from the
-live source.
-
-The model file is restored after every run, including on failure.
+A mutation whose target text is missing or ambiguous is reported and FAILS the run:
+an earlier version reported success while silently skipping seven.
 """
-import subprocess, shutil, re, sys, os
-REPO=os.path.dirname(os.path.abspath(__file__)); SRC=os.path.join(REPO,'portfolio_model.py')
-orig=open(SRC).read()
-_REV=int(re.search(r'REVISION = (\d+)', orig).group(1))
-_m=re.search(r"\('(\d{4}-\d\d-\d\d)', ([\d.]+)\)\)\n", orig)   # last VIX_SERIES entry
+import subprocess, shutil, re, sys, os, tempfile
+from concurrent.futures import ThreadPoolExecutor
+REPO = os.path.dirname(os.path.abspath(__file__))
+FILES = ('portfolio_model.py', 'build.py', 'validate.py', 'page.css', 'allocation.html', 'mutate.py', 'VERIFICATION.md')
+orig = open(os.path.join(REPO, 'portfolio_model.py')).read()
+gen  = open(os.path.join(REPO, 'build.py')).read()
+_REV = int(re.search(r'REVISION = (\d+)', orig).group(1))
+_m = re.search(r"\('(\d{4}-\d\d-\d\d)', ([\d.]+)\)\)\n", orig)   # last VIX_SERIES entry
 _LAST, _SPOT = _m.group(1), float(_m.group(2))
 _MEAN = float(re.search(r'VIX_SERIES\[-1\]\[1\], ([\d.]+)', orig).group(1))
 _SGOV = float(re.search(r'SGOV_GROSS = ([\d.]+)', orig).group(1))
@@ -101,26 +104,63 @@ MUT=[
  ("BlackRock us",   "dict(us=5.00, em=7.10",    "dict(us=5.50, em=7.10"),
  ("JPM EM vol",     "em_vol=20.9",              "em_vol=24.9"),
 ]
-survived=[]; skipped=[]
-for name, old, new in MUT:
-    if orig.count(old)!=1:
-        skipped.append((name, orig.count(old))); continue
-    open(SRC,'w').write(orig.replace(old,new))
+
+# generator mutations: (name, text in build.py, replacement) -- each a plausible bug
+def G(name, old, new): return (name, old, new)
+GEN = [
+ G("VaR column from the wrong book", 'neg(bc["var"][h])', 'neg(oc["var"][h])'),
+ G("term band from unrounded sigma", "±{f(1.645 * term[h], 2 if h < 0.1 else 1)}%", "±{f(1.645 * SPOT * math.sqrt(h), 2 if h < 0.1 else 1)}%"),
+ G("regions ranked ascending", "RANKED = sorted(E['regions'], key=lambda k: -E['regions'][k]['mean'])", "RANKED = sorted(E['regions'], key=lambda k: E['regions'][k]['mean'])"),
+ G("slide drawdown from the sigma model", "{neg(M.DD[t], 0 if M.DD[t] >= 1 else 1)}%", "{neg(M.REGIME['calm']['vol'][t] * M.DD_MULT, 0)}%"),
+ G("CAGR delta reversed", "d_(b['calm']['cagr_d'], o['calm']['cagr_d'], 2)", "d_(o['calm']['cagr_d'], b['calm']['cagr_d'], 2)"),
+ G("risk-adjusted tie threshold", "abs(RV['QQQ'] - RV['IEMG']) < 0.01", "abs(RV['QQQ'] - RV['IEMG']) < 0.0001"),
+ G("masthead shows the prior 10-year", "<span>UST 10y {MK['ust10']:.2f}%</span>", "<span>UST 10y {MK['ust10_prev']:.2f}%</span>"),
+ G("risk card from the calm regime", "    rc = on['rc']", "    rc = oc['rc']"),
+ G("gap from unrounded CAGRs", "GAP = M.r2h(M.r2h(ST['baseline']['calm']['cagr_d']) - M.r2h(ST['optimized']['calm']['cagr_d']))", "GAP = M.r2h(ST['baseline']['calm']['cagr'] - ST['optimized']['calm']['cagr'])"),
+ G("standard error from the wrong regime", "f\"±{M.se_level('optimized'):.2f} pts\"", "f\"±{M.se_level('optimized', 'normalized'):.2f} pts\""),
+ G("slide terminal from gross", "term = lambda k: f\"${E['sleeves'][k]['terminal']:,}\"", "term = lambda k: f\"${round(10000 * (1 + M.A[k]['gross'] / 100) ** 10):,}\""),
+ G("expense row loses its minus", "if signed is None: return f'<td class=\"n\">{MINUS}{x:.2f}</td>'", "if signed is None: return f'<td class=\"n\">{x:.2f}</td>'"),
+ G("VIX discount from the prior close", "Spot is {f((1 - SPOT / M.VIX_MEAN) * 100, 1)}% below", "Spot is {f((1 - PREV / M.VIX_MEAN) * 100, 1)}% below"),
+ G("gauge needle axes swapped", "x2=\"{g['needle'][0]}\" y2=\"{g['needle'][1]}\"", "x2=\"{g['needle'][1]}\" y2=\"{g['needle'][0]}\""),
+ G("disclaimer dated to a fund price", "Market data to the {day(MK['asof'], False)} close", "Market data to the {day(M.PRICES['QQQ']['px_asof'], False)} close"),
+ G("efficient count off by one", "{len(EFF)} allocations are efficient.", "{len(EFF) + 1} allocations are efficient."),
+ G("driver bar on the 1-10 scale", '<div class="drv-bar"><i style="width:{fill}%;background:{t}"></i></div>', '<div class="drv-bar"><i style="width:{s5 * 20:.1f}%;background:{t}"></i></div>'),
+ G("BMNR total mNAV over crypto", "{M.BMNR_MCAP_B / H['total_b']:.2f}×", "{M.BMNR_MCAP_B / H['crypto_b']:.2f}×"),
+ G("regional lead from 6 months", "for h in (0, 3)]", "for h in (1, 3)]"),
+ G("QQQ price dated from IEMG", "(f\"Price ({day(P['QQQ']['px_asof'])})\"", "(f\"Price ({day(P['IEMG']['px_asof'])})\""),
+ G("donut offsets shifted", 'stroke-dashoffset=\"{o:.2f}\"', 'stroke-dashoffset=\"{o - 1:.2f}\"'),
+]
+
+def run(kind, name, old, new):
+    src = orig if kind == 'model' else gen
+    if src.count(old) != 1:
+        return ('skip', name, src.count(old))
+    d = tempfile.mkdtemp(prefix='mut_')
     try:
-        r=subprocess.run([sys.executable,'validate.py'],cwd=REPO,capture_output=True,text=True,timeout=300)
-        if r.returncode==0: survived.append(name)
-    except Exception as e:
-        survived.append(f'{name} (ERROR {e})')
+        for f_ in FILES: shutil.copy(os.path.join(REPO, f_), d)
+        target = 'portfolio_model.py' if kind == 'model' else 'build.py'
+        open(os.path.join(d, target), 'w').write(src.replace(old, new))
+        if kind == 'gen':
+            b = subprocess.run([sys.executable, 'build.py'], cwd=d, capture_output=True, text=True, timeout=300)
+            if b.returncode != 0:
+                return ('broken', name, b.stderr.strip().splitlines()[-1:])
+        r = subprocess.run([sys.executable, 'validate.py'], cwd=d, capture_output=True, text=True, timeout=600)
+        if r.returncode == 0:
+            return ('survived', name, '')
+        if kind == 'gen' and 'page is exactly what build.py writes' in r.stdout:
+            return ('broken', name, 'freshness failed: the harness did not rebuild')
+        return ('caught', name, '')
     finally:
-        open(SRC,'w').write(orig)
-shutil.rmtree(f'{REPO}/__pycache__', ignore_errors=True)
-print(f'{len(MUT)-len(skipped)} mutations run, {len(survived)} survived')
-if skipped:
-    print('SKIPPED -- these inputs are NOT being tested (pattern missing or ambiguous):')
-    for s_ in skipped: print('   -', s_)
-if survived:
-    print('SURVIVED (unpoliced):')
-    for s_ in survived: print('   -', s_)
-if survived or skipped:
+        shutil.rmtree(d, ignore_errors=True)
+
+jobs = [('model',) + m for m in MUT] + [('gen',) + g for g in GEN]
+with ThreadPoolExecutor(max_workers=4) as ex:
+    res = list(ex.map(lambda j: run(*j), jobs))
+bad = [r for r in res if r[0] != 'caught']
+print(f'{len(MUT)} model and {len(GEN)} generator mutations run, '
+      f'{sum(r[0] == "survived" for r in res)} survived')
+for r in bad:
+    print(f'  {r[0].upper():<9} {r[1]}  {r[2] if r[2] else ""}')
+if bad:
     sys.exit(1)
 print('every mutation was caught')

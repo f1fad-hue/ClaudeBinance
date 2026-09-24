@@ -19,7 +19,6 @@ LIVE = sys.argv[sys.argv.index('--live') + 1] if '--live' in sys.argv else None
 
 html = open('allocation.html').read()
 E = M.export()
-body = html[:html.index('Verification log')]
 rows = []
 
 def req(n, text, ok, note=''):
@@ -102,7 +101,7 @@ req(7, 'Rationale report for the optimized allocation',
 # legitimate change in the ranking would have failed the requirement. It now checks
 # that the PAGE ranks the three blocs by their mean score, at all four horizons.
 reg_ok = all(len(v['scores']) == 4 for v in E['regions'].values()) and len(E['regions']) == 3
-_seg = html[html.index('============ REGIONS'):html.index('============ VOLATILITY')]
+_seg = html[html.index('id="p-regions"'):html.index('id="p-vol"')]
 _page_rank = {nm: int(r) for nm, r in re.findall(r'<span class="nm">([^<]+)</span><span class="rank[^"]*">Rank (\d)</span>', _seg)}
 _names = {'Asia / EM': 'Asia / Emerging', 'United States': 'United States', 'Europe': 'Europe'}
 _by_mean = sorted(E['regions'], key=lambda k: -E['regions'][k]['mean'])
@@ -192,10 +191,11 @@ req(15, 'Maximise net CAGR while controlling drawdown to a minimum', not dominat
     f"{opt['normalized']['cagr_d']:.2f}% at −{opt['normalized']['dd']:.1f}% vs "
     f"baseline {base['normalized']['cagr_d']:.2f}% at −{base['normalized']['dd']:.1f}%")
 
-# 16 ── the audit trail itself
+# 16 ── the audit trail itself: a log on the page, a count that matches the record
+_n_corr = int(re.search(r'CORRECTIONS: (\d+)', open('VERIFICATION.md').read()).group(1))
 req(16, 'Data revalidated, errors recorded and rectified',
-    'Verification log' in html and 'sync-artifact' not in html,
-    f'change log on the page; {len(re.findall(r"class=.kv.", html[html.index("Verification log"):]))} entries')
+    'Verification log' in html and f'{_n_corr} corrections recorded' in html and f'## Rev. {M.REVISION} ' in open('VERIFICATION.md').read(),
+    f'{_n_corr} corrections recorded; this revision listed on the page and in VERIFICATION.md')
 
 w = max(len(t) for _, t, _, _ in rows)
 print(f"{'#':>3}  {'REQUIREMENT':<{w}}  RESULT")

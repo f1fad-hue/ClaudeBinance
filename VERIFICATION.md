@@ -1,9 +1,45 @@
 # Verification history
 
+CORRECTIONS: 185
+
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 21 — 24 September 2026 (data to the 23 September close)
+
+- **A VIX close published here was a pre-settlement snapshot.** Rev. 20 carried 15.35 for
+  23 September, from a live blog written at the bell ("+1.14 / +8.02%"). The official 4:15pm
+  close is **15.18** (+0.97 / +6.83%) in the history tables. Both reconcile from 14.21, so the
+  change test could not separate them; closes now come from history tables only.
+- **The disclaimer was twelve days stale.** It gave the data date as 11 September, called
+  QQQ's 22.4× multiple "the stalest input" (price-linked since Rev. 19), dated BMNR's balance
+  sheet to an 8 September 8-K (the 21 September release is used), and said a point of QQQ
+  growth moves "a quarter" of the gap between the books (0.100 of 0.32, nearly a third).
+- **Three source links were superseded:** the July FOMC statement (the September decision is
+  cited), a June ECB decision (September), and the 5.93M-ETH BMNR release (5.98M).
+- **The page is now generated.** `build.py` writes every figure and every comparison word
+  from the model; `validate.py` re-derives them without importing it and requires the file to
+  be exactly what `build.py` writes. Twenty revisions of stale-prose corrections were one
+  defect: numbers typed into sentences. The page is also about a third of its former length.
+- 24 September closes were researched and held back: VIX and 10-year figures conflicted
+  across sources hours after the close.
+- **The validator was rewritten for the generated page** (305 checks): model consistency,
+  derived inputs, analytics, freshness, structure, then every pane re-derived without
+  importing `build.py`. `mutate.py` now runs in throwaway copies, in parallel, and adds 21
+  **generator mutations** — realistic bugs planted in `build.py`, the page rebuilt from them —
+  which only the independent checks can catch. 83 run, 0 survived.
+- **Five model inputs had gone dead.** The first concise draft dropped the house-forecast
+  table and the FOMC date, so mutating Vanguard, Fidelity, BlackRock, J.P. Morgan's EM
+  volatility or the decision day changed nothing on the page. Five survivors exposed it; the
+  table (five rows) and the dated policy note are back.
+- **The generator and the validator agreed on a wrong number.** Both counted mutations with
+  the same regex, which missed the generator rows: the page said 62 while `mutate.py` ran 83.
+  The validator now counts the two tables separately.
+- House cleanup: `cash_line()` and an unused export field removed; the README no longer
+  repeats model figures (they went stale in it every pass); `sync-artifact.sh` refuses a page
+  `build.py` would not write.
 
 ## Checklist recheck — 24 September 2026
 

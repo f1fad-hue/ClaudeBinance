@@ -2,9 +2,10 @@
 """
 Single source of truth for every figure in allocation.html.
 
-Run directly for a readable report; `python3 validate.py` checks the published
-page against whatever this file computes. If a number changes here, the page is
-wrong until it is changed there too.
+build.py generates the page from this file; validate.py re-derives every figure
+independently and fails if the published page is not what build.py would write.
+Change an input here, then run build.py -- never edit the page. Run this file
+directly for a readable report.
 
 Market data to the 23 September 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
@@ -57,7 +58,13 @@ SGOV_GROSS = 3.875         # midpoint of FED_RANGE; validate.py asserts it
 # return to the 3.25% this file carried, which was below both spot and the curve.
 SGOV_ER    = 0.09
 BMNR = dict(eth=9.00, stake_share=0.847, stake_yield=2.62, mnav=1.08, drag=1.40)
-BMNR_HOLDINGS = dict(held=5_983_940, staked=5_067_309, asof='2026-09-21')
+BMNR_HOLDINGS = dict(held=5_983_940, staked=5_067_309, asof='2026-09-21',
+                     eth_px=2688, crypto_b=16.11, total_b=17.1,        # 21 Sep release
+                     px=28.75, px_asof='2026-09-22', shares_m=603.2)   # close, shares out
+# mnav above is the crypto-only premium, derived here rather than typed:
+BMNR_MCAP_B = BMNR_HOLDINGS['px'] * BMNR_HOLDINGS['shares_m'] / 1000
+assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1e-9, \
+    'BMNR mnav must equal market cap over crypto holdings'
 # From the 21 Sep 2026 holdings release: 5,983,940 ETH at $2,688 (Coinbase), of which
 # 5,067,309 staked -- the same staked count as a fortnight earlier, so the staked
 # SHARE falls to 84.7% as new purchases sit unstaked. The 7-day yield is 2.62%.
@@ -66,7 +73,7 @@ BMNR_HOLDINGS = dict(held=5_983_940, staked=5_067_309, asof='2026-09-21')
 # holdings of $17.1B it is 1.01x. The stock rose ~6% on the release, which is what
 # widened the premium.
 
-REVISION = 20                          # bump when publishing; validate.py enforces it
+REVISION = 21                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -75,13 +82,16 @@ REVISION = 20                          # bump when publishing; validate.py enfor
 # with the close already on file is the tell, and it now fails the build.
 # Rev. 19 carried 14.25 for 22 September. The close was 14.21 ("fell 4.44% to
 # 14.21, a 21-session low"), which reconciles with 14.87 on the 21st, and the
-# 23 September close of 15.35 was reported as +1.14 / +8.02% -- from 14.21, not
-# 14.25. That second quote is what exposed the first.
+# 23 September close was reported as +0.97 / +6.83% -- from 14.21, not 14.25.
+# Rev. 20 then published 15.35 for the 23rd, from a live blog written at the bell
+# ("+1.14 / +8.02%"). That also reconciles from 14.21, so the change test could
+# not tell the two apart; the official 4:15pm close in the history tables is 15.18.
+# Rule since Rev. 21: closes come from history tables, never from live coverage.
 VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-15', 17.20), ('2026-09-16', 17.71),
               ('2026-09-17', 15.42), ('2026-09-18', 14.81),
               ('2026-09-21', 14.87), ('2026-09-22', 14.21),
-              ('2026-09-23', 15.35))
+              ('2026-09-23', 15.18))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
@@ -227,7 +237,6 @@ def export():
                          mean=round(sum(to5(x) for x in v)/len(v),1)) for k,v in REGIONS.items()},
         donuts={p: donut(w)[0] for p,w in PORTFOLIOS.items()},
         vix=dict(spot=VIX_SPOT, mean=VIX_MEAN,
-                 below=round((VIX_SPOT-VIX_MEAN)/VIX_MEAN*100,1),
                  term={h: r2h(VIX_SPOT*math.sqrt(h)) for h in (1/252,0.25,0.5,1.0)}),
         uplift=round(UPLIFT,4), revision=REVISION,
     )
@@ -270,21 +279,6 @@ def cal_line(regime='normalized', mix=None, cash_vol=None):
         sd  = math.sqrt(sum(w[x]*w[y]*V[x]*V[y]*rho(R,x,y) for x in w for y in w))
         out.append((round(a*100), (mu-rf)/(sd*DD_MULT)))
     return out
-
-def cash_line(regime='normalized'):
-    """The illustration shown on the page: QQQ traded against SGOV with IEMG held
-    at the recommended weight. NOT a pure CAL -- pinning IEMG changes the risky mix
-    as well as its scale -- so the ratio drifts slightly instead of holding exactly."""
-    rows = []
-    iemg = PORTFOLIOS['optimized']['IEMG']
-    span = [(PORTFOLIOS['optimized']['QQQ'] + d, 95 - iemg - PORTFOLIOS['optimized']['QQQ'] - d)
-            for d in (10, 5, 0, -5, -10)]
-    for q, s_ in span:
-        w = {'QQQ': q, 'IEMG': iemg, 'SGOV': s_, 'BMNR': 5}
-        st = stats(w, regime)
-        rows.append((w, st['cagr_d'], st['dd'],
-                     (st['cagr_d'] - A[RF_LABEL]['net']) / st['dd']))
-    return rows
 
 # ── what the professionals publish, as an outside check ──────────────────────
 # Ten-to-fifteen-year, USD, total return, gross of fund fees. These are other
@@ -595,11 +589,6 @@ if __name__ == '__main__':
         for w, st in frontier(r)[:3]:
             print(f"    QQQ {w['QQQ']:>3} IEMG {w['IEMG']:>3} SGOV {w['SGOV']:>3} BMNR {w['BMNR']:>2}"
                   f"  CAGR {st['cagr_d']:.2f}%  sigma {st['vol']:.2f}%  Sharpe {st['sharpe']:.3f}")
-    print(f"\n== CASH LINE (QQQ <-> SGOV, IEMG fixed at {PORTFOLIOS['optimized']['IEMG']}) ==")
-    for w, c, dd, r in cash_line():
-        print(f"  {w['QQQ']:>3}/{w['IEMG']}/{w['SGOV']:<3}/{w['BMNR']}   CAGR {c:>5.2f}%  maxDD -{dd:>5.1f}%  ret/DD {r:.3f}")
-    rs = [r for _, _, _, r in cash_line()]
-    print(f"  spread {max(rs)-min(rs):.4f} -> drifts, because pinning IEMG changes the risky mix")
     print('\n== AGAINST THE PROFESSIONALS (10-15yr, USD, gross of fees) ==')
     for nm, d in INSTITUTIONAL.items():
         print(f"  {nm:<24} US {d['us']:>5.2f}%  EM {d['em']:>5.2f}%   {d['note']}")

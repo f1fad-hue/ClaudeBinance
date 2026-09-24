@@ -14,6 +14,7 @@ if [ -z "$DEST" ]; then
   exit 2
 fi
 cd "$(dirname "$0")"
+python3 build.py --check   # the page must be what the generator writes
 python3 validate.py
 cp allocation.html "$DEST"
 echo "synced -> $DEST"
