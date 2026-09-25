@@ -1,11 +1,47 @@
 # Verification history
 
-CORRECTIONS: 185
+CORRECTIONS: 188
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 22 — 25 September 2026 (data to the 24 September close)
+
+- **The "still open" list understated the assumptions.** It named three inputs as assumed —
+  QQQ's earnings growth, the drawdown rule, BMNR's ETH return — and omitted IEMG's earnings
+  growth and currency drag, BMNR's dilution drag and the sleeve drawdowns, which are no more
+  observed. Every input is now tagged observed or assumed in the model (`ASSUMED`,
+  `OBSERVED`) and the page lists seven, generated from that tag.
+- **An undisclosed simplification in the headline figures.** Portfolio CAGR is the
+  weight-average of the sleeve CAGRs, which omits the diversification return a rebalanced book
+  earns, ½(Σwσ² − σₚ²). Excluding BMNR it is about 0.55–0.57%/yr, near-identical for both
+  books, so the ranking is unaffected; with BMNR's 95% volatility the formula gives about
+  2.4%, which is not credible. The page now states it; the CAGRs shown are conservative.
+- **Fund prices rolled to 24 September.** QQQ $741.21 (reconciled with the Nasdaq-100's
+  +0.03% from $740.93), IEMG $81.70. QQQ's forward multiple re-prices 23.42× → 23.23×, its
+  de-rating eases −0.22 → −0.14, and its net CAGR rises **9.51% → 9.59%**. Baseline 7.90%,
+  optimized 7.57%.
+- **The baseline returns to the efficient frontier.** With QQQ's forecast up, both books are
+  efficient (106 allocations): two points on one curve, not a better and a worse book. Weights
+  are unchanged.
+- **Market data to 24 September:** VIX 15.67 (+3.23% from 15.18, history table), Brent settled
+  $106.60 (+3.4%), 10-year 5.20% (+8bp; the three-session +23bp reported reconciles with the
+  closes on file), 30-year at its highest close since 2004.
+- **Held back:** QQQ's 21 September distribution ($0.7514 vs $0.69 across sources) — the
+  trailing dividend stays at the verified $3.03, a difference of at most 0.01 in the yield;
+  BMNR's 24 September close and that day's ETH price, so BMNR stays on its 22 September price
+  and 21 September holdings, a matched pair.
+- **A neutral score beside a tightening note.** Liquidity & credit scored 3.0 of 5 while its
+  own note said conditions were tightening, with the 10-year at a 19-year high and the 30-year
+  at a 22-year high. It now scores 2.6 (4.5 of 10). The composite gauge still reads 2.4.
+- **Three mutations went silent on the new data.** With QQQ and IEMG both priced on 24
+  September, the disclaimer date equal to QQQ's price date, and the rounded and unrounded CAGR
+  gaps both 0.33, three planted bugs produced identical pages — equivalent mutants, not holes
+  in the validator. They were replaced with bugs that change the output whatever the data.
+- An independent recomputation of every net CAGR, σ and drawdown from raw inputs, without the
+  model's functions, matched the model to machine precision.
 
 ## Rev. 21 — 24 September 2026 (data to the 23 September close)
 

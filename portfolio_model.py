@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 23 September 2026 close; each fund price carries its own
+Market data to the 24 September 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,10 +39,15 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
+# QQQ 24 Sep: $741.21, reconciled with the Nasdaq-100's +0.03% from $740.93 on the
+# 23rd. IEMG 24 Sep: $81.70, from successive-day closes (82.22 on the 23rd) inside the
+# day's reported range. QQQ went ex-dividend on 21 Sep, but sources disagree on the
+# amount ($0.7514 vs $0.69), so ttm_div stays at the verified $3.03 until one settles;
+# either way the yield moves by at most 0.01 of a point at this price.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.03, px=747.46, px_asof='2026-09-22',
+    'QQQ':  dict(ttm_div=3.03, px=741.21, px_asof='2026-09-24',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=81.66,  px_asof='2026-09-18',
+    'IEMG': dict(ttm_div=1.80, px=81.70,  px_asof='2026-09-24',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -73,7 +78,7 @@ assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1
 # holdings of $17.1B it is 1.01x. The stock rose ~6% on the release, which is what
 # widened the premium.
 
-REVISION = 21                          # bump when publishing; validate.py enforces it
+REVISION = 22                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -91,7 +96,7 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-15', 17.20), ('2026-09-16', 17.71),
               ('2026-09-17', 15.42), ('2026-09-18', 14.81),
               ('2026-09-21', 14.87), ('2026-09-22', 14.21),
-              ('2026-09-23', 15.18))
+              ('2026-09-23', 15.18), ('2026-09-24', 15.67))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
@@ -105,15 +110,30 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-MARKET = dict(asof='2026-09-23',
-              brent=103.08, brent_prev=99.25, brent_chg_pct=3.86,
-              ust10=5.12,   ust10_prev=4.96,  ust10_chg_bp=16)
+MARKET = dict(asof='2026-09-24',
+              brent=106.60, brent_prev=103.08, brent_chg_pct=3.4,
+              ust10=5.20,   ust10_prev=5.12,  ust10_chg_bp=8)
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
 assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']) < 0.005, \
     '10-year level does not reconcile with its stated change'
 
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
+
+# Which forecast inputs are observed and which are assumed. The page and checklist
+# list the assumed ones from here. Earlier revisions said "three" -- QQQ growth, the
+# drawdown rule, ETH -- and left out IEMG's growth and currency drag, BMNR's
+# dilution drag and the sleeve drawdowns, which are no more observed than those.
+ASSUMED = (('QQQ earnings growth', f"{OBS['QQQ']['eps']:.1f}%/yr"),
+           ('IEMG earnings growth', f"{OBS['IEMG']['eps']:.1f}%/yr"),
+           ('IEMG currency drag', f"{OBS['IEMG']['fx']:.1f}%/yr".replace('-', '\u2212')),
+           ('BMNR ETH return', f"{BMNR['eth']:.0f}%/yr"),
+           ('BMNR dilution drag', f"{BMNR['drag']:.2f}%/yr"),
+           ('drawdown rule', f"{DD_MULT:.2f} × σ"),
+           ('sleeve drawdowns', 'history-anchored judgements'))
+OBSERVED = ('prices and trailing dividends', 'forward and 10-year average multiples',
+            'fund fees', 'policy range', 'BMNR holdings and staking yield',
+            'VIX closes and its 2016-2023 mean', 'calm correlations')
 RF_LABEL = 'SGOV'
 
 def annualised(p_now, p_end, yrs=10):
@@ -184,6 +204,18 @@ def stats(w, regime):
                 fee_drag=10000*(1+(cagr_d+fee)/100)**10 - 10000*(1+cagr_d/100)**10)
 
 # ── 1-5 sentiment scales ─────────────────────────────────────────────────────
+def diversification_return(w, regime='calm', exclude=()):
+    """The rebalancing bonus a weight-average of sleeve CAGRs leaves out:
+    0.5 x (sum w_i sigma_i^2 - sigma_p^2), in %/yr. Portfolio CAGRs on the page are
+    weight-averages, so they omit this; BMNR's volatility makes the full figure
+    implausible, so the page quotes it with and without BMNR."""
+    ks = [k for k in w if k not in exclude]
+    V, R = REGIME[regime]['vol'], REGIME[regime]['rho']
+    tot = sum(w[k] for k in ks)
+    ww = {k: w[k] / tot for k in ks}
+    var = sum(ww[x] * ww[y] * V[x] * V[y] * rho(R, x, y) for x in ks for y in ks)
+    return 0.5 * (sum(ww[k] * V[k] ** 2 for k in ks) - var) / 100
+
 def to5(x):
     """Map a 1-10 score to 1-5. Both scales floor at 1, so this is not x/2."""
     return 1 + (x - 1) * 4 / 9
@@ -193,7 +225,7 @@ def fill(v):
     return (v - 1) / 4 * 100
 
 DRIVERS = [('Growth momentum',7.0,.25), ('Inflation trajectory',3.0,.15),
-           ('Monetary policy',2.0,.20), ('Liquidity & credit',5.5,.15),
+           ('Monetary policy',2.0,.20), ('Liquidity & credit',4.5,.15),
            ('Valuation & positioning',4.0,.15), ('Geopolitical risk',2.0,.10)]
 REGIONS = {'Asia / EM':[5.5,6.5,7.0,7.5], 'United States':[5.0,5.5,6.5,7.0],
            'Europe':[3.0,3.5,4.0,5.0]}

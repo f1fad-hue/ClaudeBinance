@@ -118,10 +118,9 @@ auth = {'www.federalreserve.gov','www.bls.gov','www.ecb.europa.eu','www.imf.org'
 # its numbers come from them. Three inputs are admittedly extrapolations, and the
 # page names them; one of those three is its single most load-bearing figure. That
 # is a real departure from the brief's wording, so it is reported as one.
-ASSUMED = (f"{M.OBS['QQQ']['eps']:g}%/yr earnings growth", f'{M.DD_MULT:.2f} x sigma drawdown multiplier',
-           f"BMNR's {M.BMNR['eth']:g}%/yr ETH appreciation")
+ASSUMED = tuple(f'{a} ({v})' for a, v in M.ASSUMED)   # read from the model's provenance tags
 observed = auth.issubset(set(srcs))
-discloses = 'Still open' in html and 'assumptions rather than observations' in html
+discloses = 'Still open' in html and f'{len(M.ASSUMED)} inputs are assumptions rather than observations' in html
 if observed and discloses:
     conflict(9, 'Data only from authoritative, fact-checked sources',
              f'{len(set(srcs))} authoritative domains cited and every observable figure '

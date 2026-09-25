@@ -67,9 +67,11 @@ python3 mutate.py                     # prove the checks bite
 ## Checklist status
 
 `checklist.py` reports 15 pass, 0 fail, 1 conflict. The conflict is item 9 — "data only from
-authoritative sources" — because three inputs are extrapolations (QQQ's earnings growth, the
-drawdown multiplier, BMNR's ETH return). The page discloses them; only the user can decide
-whether that meets the brief.
+authoritative sources" — because some forecast inputs are assumptions rather than
+observations. They are tagged in the model (`ASSUMED`), listed on the page from that tag, and
+QQQ's earnings growth is the most load-bearing. Only the user can decide whether that meets
+the brief. Portfolio CAGR is a weight-average of sleeve CAGRs, which omits the rebalancing
+(diversification) return, so the headline figures are conservative; the page states by how much.
 
 ## Disclaimer
 

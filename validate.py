@@ -94,7 +94,8 @@ for (d0, a), (d1, b) in zip(M.VIX_SERIES, M.VIX_SERIES[1:]):
 ck('2026 VIX low sits below every close on file', M.VIX_2026['low'] < min(vals), M.VIX_2026['low'], min(vals))
 ck('the decision day is in the series', M.FOMC_DATE in ser, M.FOMC_DATE, 'in series')
 ck('masthead date is the last VIX close', M.MARKET['asof'] == M.VIX_ASOF, M.MARKET['asof'], M.VIX_ASOF)
-ck('previous close is the low of the series', M.VIX_SERIES[-2][1] == min(vals), M.VIX_SERIES[-2][1], min(vals))
+ck('a "21-session low" claim appears only if the prior close is the series low',
+   ('21-session low' not in html) or M.VIX_SERIES[-2][1] == min(vals), M.VIX_SERIES[-2][1], min(vals))
 
 # ══ 3 · model analytics ════════════════════════════════════════════════════════
 cal = [r for _, r in M.cal_line()]; cal0 = [r for _, r in M.cal_line(cash_vol=0.0)]
@@ -160,8 +161,10 @@ present('masthead', f'<span>As of {day(MK["asof"])} {MK["asof"][:4]}</span><span
 # macro
 P = pane('p-macro')
 chg = (SPOT / PREV - 1) * 100
-present('lead: 10-year move', f'sent the 10-year {"up" if MK["ust10_chg_bp"] > 0 else "down"} {abs(MK["ust10_chg_bp"])}bp to <b>{MK["ust10"]:.2f}%</b>', P)
-present('lead: Brent move', f'Brent settled {"up" if MK["brent_chg_pct"] > 0 else "down"} {hu(abs(MK["brent_chg_pct"]))}% at <b>${MK["brent"]:.2f}</b>', P)
+present('lead: 10-year close and change', f'The 10-year closed at <b>{MK["ust10"]:.2f}%</b> on {day(MK["asof"])} '
+        f'({"+" if MK["ust10_chg_bp"] >= 0 else MINUS}{abs(MK["ust10_chg_bp"])}bp)', P)
+present('liquidity driver 10-year', f'The 10-year closed at {MK["ust10"]:.2f}% on {day(MK["asof"])}', P)
+present('lead: Brent move', f'Brent settled {"up" if MK["brent_chg_pct"] > 0 else "down"} {hu(abs(MK["brent_chg_pct"]), 1)}% at <b>${MK["brent"]:.2f}</b>', P)
 present('lead: VIX move', f'the VIX {"rose" if chg > 0 else "fell"} {hu(abs(chg), 1)}% to <b>{SPOT:.2f}</b>', P)
 g = E['gauge']
 present('gauge value', f'<div class="gauge-val">{g["display"]}<small>/5</small></div>', P)
@@ -180,6 +183,7 @@ for t in ('SGOV', 'QQQ', 'IEMG', 'BMNR'):
 present('SGOV transmission figures', f'The {M.SGOV_GROSS:g}% policy midpoint nets {M.A["SGOV"]["net"]:.2f}%', P)
 present('QQQ transmission figures', f'at {hu(FQ, 1)}× forward — {"above" if FQ > M.OBS["QQQ"]["pe_end"] else "below"} its {M.OBS["QQQ"]["pe_end"]}× average', P)
 present('IEMG transmission figures', f'The cheapest bloc at {hu(FI, 1)}×, {"below" if FI < M.OBS["IEMG"]["pe_end"] else "above"} its {M.OBS["IEMG"]["pe_end"]}× average', P)
+present('core tension: 10-year and oil', f'a {MK["ust10"]:.2f}% 10-year and ${MK["brent"]:.0f} oil', P)
 present('BMNR transmission correlation', f'a {M.REGIME["calm"]["rho"][("QQQ", "BMNR")]:.2f} correlation to QQQ', P)
 
 # regions
@@ -198,6 +202,7 @@ top, sec = by_mean[0], by_mean[1]
 present('ranking lead stated', f'{names[top]} leads by {M.r2h(E["regions"][top]["scores"][0] - E["regions"][sec]["scores"][0], 1):.1f} at 3 months and '
         f'{M.r2h(E["regions"][top]["scores"][3] - E["regions"][sec]["scores"][3], 1):.1f} at 10 years', P)
 present('EM multiple in the Asia note', f'Equities at {hu(FI, 1)}× forward', P)
+present('US note: multiple and 10-year', f'the richest multiple ({hu(FQ, 1)}×) and a {MK["ust10"]:.2f}% 10-year', P)
 
 # volatility
 P = pane('p-vol')
@@ -320,6 +325,7 @@ present('frontier chart', M.frontier_svg(), P)
 ON = {n: any(w == M.PORTFOLIOS[n] for _, _, w in EFF) for n in M.PORTFOLIOS}
 dom = [(dd_, dc_, w) for dd_, dc_, w in ((M.stats(w, 'normalized')['dd'], M.stats(w, 'normalized')['cagr'], w) for w in M.admissible(5))
        if dd_ <= bn['dd'] and dc_ >= bn['cagr'] and (dd_ < bn['dd'] or dc_ > bn['cagr'])]
+ck('both-efficient call-out matches the efficiency test', ('<b>Both books are efficient.</b>' in P) == (ON['optimized'] and ON['baseline']), ON)
 ck('frontier call-out matches the efficiency test',
    ('The recommended book is efficient; the baseline, by a hair, is not.' in P) == (ON['optimized'] and not ON['baseline'] and len(dom) == 1), ON)
 if len(dom) == 1:
@@ -348,8 +354,22 @@ present('J.P. Morgan EM volatility against the regimes',
         f'{_jv}% EM volatility sits {"between" if _lo <= _jv <= _hi else "above both of" if _jv > _hi else "below both of"} this page&#8217;s two regimes ({_lo:.1f}%, {_hi:.1f}%)', P)
 present('policy driver date and vote', f'The Fed hiked 12–0 on {day(M.FOMC_DATE)}', pane('p-macro'))
 ck('the most sensitive input is QQQ earnings growth', top['label'] == 'QQQ earnings growth', top['label'])
-present('still open: the three assumptions', f'QQQ&#8217;s {q["eps"]:.1f}%/yr earnings growth (the most load-bearing), the {M.DD_MULT:.2f} × σ drawdown rule, '
-        f'and BMNR&#8217;s {M.BMNR["eth"]:.0f}%/yr ETH return', P)
+present('still open: every assumed input, from the model', f'{len(M.ASSUMED)} inputs are assumptions rather than observations — '
+        + '; '.join(f'{a} ({v_})' for a, v_ in M.ASSUMED), P)
+ck('the assumed inputs include every non-observed forecast driver',
+   {'QQQ earnings growth', 'IEMG earnings growth', 'IEMG currency drag', 'BMNR ETH return', 'BMNR dilution drag', 'drawdown rule'}
+   <= {a for a, _ in M.ASSUMED}, [a for a, _ in M.ASSUMED])
+ck('assumed values quoted match the model', dict(M.ASSUMED)['QQQ earnings growth'] == f"{M.OBS['QQQ']['eps']:.1f}%/yr"
+   and dict(M.ASSUMED)['BMNR dilution drag'] == f"{M.BMNR['drag']:.2f}%/yr" and dict(M.ASSUMED)['drawdown rule'] == f'{M.DD_MULT:.2f} × σ')
+# diversification return, re-derived here: 0.5 x (sum w s^2 - s_p^2) over the included sleeves, renormalised
+def _divret(w, drop=()):
+    ks = [k for k in w if k not in drop]; tot = sum(w[k] for k in ks); V_, R_ = M.REGIME['calm']['vol'], M.REGIME['calm']['rho']
+    rh = lambda a, c: 1.0 if a == c else 0.0 if 'SGOV' in (a, c) else R_.get((a, c), R_.get((c, a)))
+    var = sum(w[a] / tot * w[c] / tot * V_[a] * V_[c] * rh(a, c) for a in ks for c in ks)
+    return 0.5 * (sum(w[k] / tot * V_[k] ** 2 for k in ks) - var) / 100
+present('diversification return disclosed', f'about {hu(_divret(B, ("BMNR",)))}–{hu(_divret(O, ("BMNR",)))}%/yr from the three funds', P)
+present('diversification return with BMNR', f'inflate it to about {hu(_divret(O))}%', P)
+ck('diversification return is near-identical for both books', abs(_divret(B, ('BMNR',)) - _divret(O, ('BMNR',))) < 0.1)
 present('rationale: horizon', f'SGOV turns $10,000 into ${E["sleeves"]["SGOV"]["terminal"]:,}, QQQ into ${E["sleeves"]["QQQ"]["terminal"]:,}', P)
 present('rationale: tilt', f'per unit of risk it is {rel} QQQ ({rv["IEMG"]:.3f} vs {rv["QQQ"]:.3f}) while earning '
         f'{"less" if i["net"] < q["net"] else "more"} ({i["net"]:.2f}% vs {q["net"]:.2f}%)', P)

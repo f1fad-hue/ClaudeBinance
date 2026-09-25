@@ -27,7 +27,7 @@ FACTS = dict(
     fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year',
     imf_world='IMF: 3.1% world growth in 2026',
     imf_asia='China (4.4%) and India (6.3%) supply 43.6% of world growth (IMF)',
-    ust10_note='its highest since 2007',
+    ust10_note='its highest since 2007', ust30_note='the 30-year closed at its highest since 2004',
     ecb='The ECB hiked to 2.50% on 10 Sep into 0.8% growth and 3.0% projected inflation',
     geo='The US–Iran conflict keeps the Strait of Hormuz disrupted',
     em_dm_discount='40% discount to developed markets (11 Sep) against a 25% long-run norm',
@@ -141,7 +141,7 @@ def driver_notes():
       'Growth momentum': f"Payrolls {FACTS['payrolls']}; flash PMIs on {FACTS['pmi_date']} at their fastest pace in over five years (services {FACTS['pmi_services']}, composite {FACTS['pmi_composite']}). {FACTS['imf_world']}.",
       'Inflation trajectory': f"{FACTS['cpi']}. September flash PMIs show input costs rising on energy.",
       'Monetary policy': f"The Fed hiked {FACTS['fed_vote']} on {day(M.FOMC_DATE)}; {FACTS['fed_dots']}; the range is {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%.",
-      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {FACTS['ust10_note']}: conditions tighten through the long end and oil.",
+      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {FACTS['ust10_note']}, and {FACTS['ust30_note']}: conditions tighten through the long end and oil.",
       'Valuation & positioning': f"Nasdaq-100 at {f(FQ, 1)}× forward vs EM at {f(FI, 1)}× — a {f(disc, 0)}% discount. The VIX at {SPOT:.2f} sits {f((1 - SPOT / M.VIX_MEAN) * 100, 0)}% below its {M.VIX_MEAN} long-run mean: protection is cheap.",
       'Geopolitical risk': f"{FACTS['geo']}; Brent settled at ${MK['brent']:.2f} on {day(MK['asof'])}.",
     }
@@ -171,7 +171,7 @@ def macro():
     return f'''<section class="pane on" id="p-macro" role="tabpanel" aria-labelledby="t-macro">
   <h2>Macro drivers</h2>
   <p class="lede">Six forces that set the return and risk of this book, and how each one reaches the four holdings.</p>
-  <div class="warnbox"><b>{'Rates broke higher' if MK['ust10_chg_bp'] > 0 else 'Rates eased'}.</b> Hot flash PMIs on {FACTS['pmi_date']} sent the 10-year {'up' if MK['ust10_chg_bp'] > 0 else 'down'} {abs(MK['ust10_chg_bp'])}bp to <b>{MK['ust10']:.2f}%</b>, {FACTS['ust10_note']}. Brent settled {'up' if MK['brent_chg_pct'] > 0 else 'down'} {f(abs(MK['brent_chg_pct']))}% at <b>${MK['brent']:.2f}</b>; the VIX {'rose' if chg > 0 else 'fell'} {f(abs(chg), 1)}% to <b>{SPOT:.2f}</b>.</div>
+  <div class="warnbox"><b>{'The bond sell-off extended' if MK['ust10_chg_bp'] > 0 else 'Rates eased'}.</b> The 10-year closed at <b>{MK['ust10']:.2f}%</b> on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {FACTS['ust10_note']}, after hot flash PMIs on {FACTS['pmi_date']}; {FACTS['ust30_note']}. Brent settled {'up' if MK['brent_chg_pct'] > 0 else 'down'} {f(abs(MK['brent_chg_pct']), 1)}% at <b>${MK['brent']:.2f}</b>; the VIX {'rose' if chg > 0 else 'fell'} {f(abs(chg), 1)}% to <b>{SPOT:.2f}</b>.</div>
 
   {gauge()}
 
@@ -185,13 +185,13 @@ def macro():
 {tr}
   </div>
 
-  <div class="call" style="margin-top:16px"><b>The core tension.</b> Growth is real but met by tightening, a long end above 5% and an oil shock. Stay invested for ten years, tilt the equity mix to the cheaper bloc, and hold a reserve to buy the repricing.</div>
+  <div class="call" style="margin-top:16px"><b>The core tension.</b> Growth is real but met by tightening, a {MK['ust10']:.2f}% 10-year and ${MK['brent']:.0f} oil. Stay invested for ten years, tilt the equity mix to the cheaper bloc, and hold a reserve to buy the repricing.</div>
 </section>'''
 
 def regions():
     notes = {
       'Asia / EM': f"{FACTS['imf_asia']}. Equities at {f(FI, 1)}× forward, a {FACTS['em_dm_discount']}. Dollar strength and oil cap the near term.",
-      'United States': f"The strongest productivity cycle, but the richest multiple ({f(FQ, 1)}×) and a 10-year above 5% weigh on the near term.",
+      'United States': f"The strongest productivity cycle, but the richest multiple ({f(FQ, 1)}×) and a {MK['ust10']:.2f}% 10-year weigh on the near term.",
       'Europe': f"{FACTS['ecb']}. The most energy-import-exposed bloc.",
     }
     cards = []
@@ -477,11 +477,12 @@ def houses():
   <p class="note">This page&#8217;s US forecast is {f(us - top_us, 1)} points above the highest house; {em_first} of {len(Hh)} houses rank EM above the US. J.P. Morgan&#8217;s {jv}% EM volatility sits {rel} this page&#8217;s two regimes ({lo:.1f}%, {hi:.1f}%).</p>"""
 
 def verification_rows():
-    return ((f'VIX close, 23 Sep', '15.35 → <b>15.18</b>'),
-            ('Disclaimer data date', '11 Sep → <b>23 Sep</b>'),
-            ('Sources: FOMC, ECB, BMNR', '<b>superseded links replaced</b>'),
-            ('Page prose', '<b>hand-typed → generated</b>'),
-            ('Mutation harness', '<b>generator mutations added</b>'))
+    return (('Assumed inputs listed', '3 → <b>7</b>'),
+            ('Liquidity & credit score', '3.0 → <b>2.6</b>'),
+            ('Diversification return', '<b>undisclosed → stated</b>'),
+            ('Fund prices', '22/18 Sep → <b>24 Sep</b>'),
+            ('QQQ net CAGR', '9.51% → <b>9.59%</b>'),
+            ('Baseline on frontier', 'no → <b>yes</b>'))
 
 def portfolios(n_mut, n_corr):
     b, o = ST['baseline'], ST['optimized']
@@ -492,6 +493,9 @@ def portfolios(n_mut, n_corr):
         eff_call = (f"<b>The recommended book is efficient; the baseline, by a hair, is not.</b> Across all {N_ADM} allocations with BMNR at 5%, "
                     f"none beats QQQ {O['QQQ']} / IEMG {O['IEMG']} / SGOV {O['SGOV']} / BMNR {O['BMNR']} on both axes. One book beats the baseline, "
                     f"by +{f(dc_ - b['normalized']['cagr'])} points of CAGR and {f(b['normalized']['dd'] - dd_, 1)} of drawdown — a technicality. {len(EFF)} allocations are efficient.")
+    elif ON['optimized'] and ON['baseline']:
+        eff_call = (f"<b>Both books are efficient.</b> Across all {N_ADM} allocations with BMNR at 5%, nothing beats either on return and drawdown at once: "
+                    f"they are two points on the same curve, the baseline for return and the optimized book for drawdown. {len(EFF)} allocations are efficient.")
     else:
         eff_call = (f"<b>Efficiency.</b> Optimized on the frontier: {'yes' if ON['optimized'] else 'no'}; baseline: {'yes' if ON['baseline'] else 'no'}. "
                     f"{len(EFF)} of {N_ADM} allocations are efficient.")
@@ -533,7 +537,7 @@ def portfolios(n_mut, n_corr):
 
   <h3>How the forecasts are built</h3>
 {blocks_table()}
-  <p class="note">Valuation change moves each forward multiple to its own 10-year average (NDX {M.OBS['QQQ']['pe_end']}×, MSCI EM {M.OBS['IEMG']['pe_end']}×). Yield and multiple are tied to one price per fund.</p>
+  <p class="note">Valuation change moves each forward multiple to its own 10-year average (NDX {M.OBS['QQQ']['pe_end']}×, MSCI EM {M.OBS['IEMG']['pe_end']}×). Yield and multiple are tied to one price per fund. Portfolio CAGR is the weight-average of the sleeve CAGRs, so it leaves out the diversification return rebalancing earns — about {f(M.diversification_return(B, exclude=('BMNR',)))}–{f(M.diversification_return(O, exclude=('BMNR',)))}%/yr from the three funds, near-identical for both books. BMNR&#8217;s volatility would inflate it to about {f(M.diversification_return(O))}%, which is not credible. The CAGRs shown are conservative.</p>
 
   <h3>Efficient frontier</h3>
   <div class="card">{M.frontier_svg()}</div>
@@ -544,7 +548,7 @@ def portfolios(n_mut, n_corr):
 {conf_html}
   </div>
 {houses()}
-  <p class="note"><b>Still open:</b> three inputs are assumptions rather than observations — QQQ&#8217;s {q['eps']:.1f}%/yr earnings growth (the most load-bearing), the {M.DD_MULT:.2f} × σ drawdown rule, and BMNR&#8217;s {M.BMNR['eth']:.0f}%/yr ETH return.</p>
+  <p class="note"><b>Still open:</b> {len(M.ASSUMED)} inputs are assumptions rather than observations — {'; '.join(f'{a} ({v})' for a, v in M.ASSUMED)}. QQQ&#8217;s earnings growth is the most load-bearing.</p>
 
   <h3>Rationale</h3>
   <div class="num">
