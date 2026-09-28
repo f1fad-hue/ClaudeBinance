@@ -53,16 +53,17 @@ python3 mutate.py                     # prove the checks bite
   forward multiple annualised back to the index's own 10-year average) + currency − fee.
   BMNR is ETH return + staking − premium normalisation − dilution drag. SGOV is the policy
   midpoint held flat.
-- **Risk** uses two regimes: today's volatility, and volatility mean-reverted to the VIX's
-  2016–2023 mean with crisis correlations. Weights are sized to the second. Ten-year expected
-  drawdown ≈ 1.70 × σ.
+- **Risk** uses two regimes: today's volatility, which scales with the spot VIX, and the
+  volatility at the VIX's 2016–2023 mean, which does not depend on spot, with crisis
+  correlations. Weights are sized to the second. Ten-year expected drawdown ≈ 1.70 × σ.
+  `validate.py` re-runs the model at a different VIX to prove that independence.
 - **Allocation**: every 5%-step book holding all four sleeves at 5% or more is searched. The
   recommendation must sit on the return/drawdown efficient frontier; SGOV's weight is a stated
   drawdown budget (the capital-allocation line cannot choose it); BMNR is capped at 5% because
   of its share of risk.
 - **Confidence**: standard errors, the probability the ranking holds, a sensitivity table and
-  published house forecasts are shown with the answer, and three inputs are flagged as
-  assumptions rather than observations.
+  published house forecasts are shown with the answer, and every input the model cannot
+  observe is tagged `ASSUMED` in the model and listed on the page.
 
 ## Checklist status
 

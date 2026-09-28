@@ -1,11 +1,88 @@
 # Verification history
 
-CORRECTIONS: 188
+CORRECTIONS: 198
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 23 — 28 September 2026 (data to the 25 September close)
+
+- **The stress-volatility regime moved the wrong way with the VIX — a structural error
+  carried since the regimes were introduced.** The calm vols were fixed constants while the
+  "normalized" regime was those constants times VIX_MEAN / VIX_SPOT. So a *rising* VIX made
+  stress risk *fall* (at a VIX of 25, QQQ's mean-reverted vol would have been 15.9%, below
+  today's) and a 5% fall in the VIX on 25 Sep moved the recommended book's normalized
+  drawdown by 1.4 points with nothing else changed. Every earlier check re-derived
+  the page from the model, so none could see it; the history even records the drawdown
+  "improving" as the uplift collapsed. Fixed: the calm regime is today's volatility and
+  scales with the spot VIX; the normalized regime is the volatility at the long-run mean and
+  ignores spot; they differ by the uplift, as the page says. The equity vols are unchanged
+  from Rev. 22 (struck at the 15.67 close), so normalized drawdowns are unchanged
+  (−35.5% / −33.0%) while today's fall with the VIX (optimized −25.9% → −24.9%).
+  `validate.py` now runs a metamorphic test — re-execute the model with the spot VIX 20%
+  higher — and requires normalized vol and drawdown to be identical, equity calm vol to scale
+  in proportion, and today's risk to rise. Planting the old design fails five of those checks.
+- **Volatilities and stress correlations were missing from the assumptions list.** Only
+  calm correlations were tagged observed; the vol levels (21 / 18 / 95%), the BMNR ×1.15 stress
+  multiplier and the stress correlations are estimates. Added as an eighth assumed input,
+  which the page lists from the tag.
+- **BMNR's release date and holdings date were one field.** The disclaimer said holdings were
+  "from its 21 September release" using the date the holdings were struck. Holdings are as of
+  a Sunday and released the Monday after (27 and 28 Sep); the model now carries both and the
+  page states both.
+- **"Its highest since 2007" would have been printed against a down-day close, and the
+  30-year was said to have "closed at" its highest since 2004** with only a live quote for
+  support. The 10-year note is now computed (on a lower close it names the prior 5.20% as the
+  high); the 30-year is stated as what a dated source supports, that it hit the level on 24 Sep.
+- **The verification rows on the Portfolios tab were hard-coded and unchecked** — the same
+  stale-prose class as the rest of this file: "Fund prices 22/18 Sep → 24 Sep" would have
+  stayed after this roll. The current figures are computed and `validate.py` re-derives each.
+- **Four driver and region notes gave only one side of their own score.** Europe's card cited
+  the ECB's 0.8% growth projection and omitted the 23 Sep flash composite PMI of 53.1 (52.0 in
+  August, a poll of 51.7; the highest since April 2023). Liquidity & credit, scored 4.5,
+  cited only yields, not high-yield spreads near 2.8% (FRED series, 24 Sep). Growth omitted
+  Michigan sentiment of 48.1 and said "flash PMIs" without saying they were the US ones.
+  Inflation omitted July PCE of 3.7% (core 3.3%), the Fed's gauge. All four added; no score
+  changed, because none of the new facts moves a driver across a level a note already implied.
+- **README stale**: it said three inputs were assumptions and described a one-regime uplift.
+  Both corrected.
+- **Market data to 25 September.** VIX 14.87 (−5.11% from 15.67), Brent settled $104.32
+  (−$2.28, −2.14% from $106.60, which reconciles exactly), 10-year 5.17% (−3bp; Trading
+  Economics and Advisor Perspectives' Treasury snapshot agree), QQQ $744.50 (+$3.40; a 28 Sep
+  quote repeats it as the previous close), IEMG $82.55 (its quoted previous close, $81.70,
+  is exactly the 24 Sep close held), BMNR $27.56 (−$0.47, −1.68%, two outlets). BMNR's 28 Sep
+  release: 6,001,302 ETH at $2,698 as of 27 Sep (17,362 bought; 5,983,940 + 17,362
+  reconciles), 5,067,309 staked (unchanged for the third release, so the staked share falls to
+  84.4%), $17.2B total. The premium to crypto narrows 1.08× → **1.03×** — the stock fell 4.1%
+  while holdings rose — which lifts BMNR's net CAGR 9.05% → **9.51%**. QQQ 9.59% → **9.54%**
+  (its forward multiple re-prices 23.23× → 23.33×), IEMG 8.73% → **8.60%**. Baseline
+  7.90% → **7.87%**, optimized 7.57% → **7.53%**; both books stay on the frontier, allocations
+  unchanged, and the independent recomputation (`audit.py`, no model functions) matches every
+  sleeve and portfolio figure.
+- **Held back, not averaged.** (1) QQQ's 21 Sep distribution, $0.7514 vs $0.69 — the trailing
+  $3.03 stays; the yield moves at most 0.01 either way. (2) QQQ's 24 Sep close appears as
+  741.10 (implied by the 25 Sep change), 741.21 (held) and 741.32; the 0.03% spread moves its
+  net CAGR by under 0.01. (3) CNBC's live 10-year quote read 5.163% "up less than 1bp" while
+  two sources say 5.17% and a fall; the level is used, the disagreement is recorded.
+  (4) BMNR's premium sits on a rounding edge (1.025×): $0.02B of crypto either way moves it a
+  cent, and 0.3% more shares from the week's purchases are not yet in the share count.
+  (5) A 21.95× Nasdaq-100 forward multiple (MacroMicro / GuruFocus, September) against the
+  22.4× basis: it lies inside the 20.8–22.4× range that set the basis, would lift QQQ's net
+  CAGR to 10.15% and the baseline to 8.14% (optimized 7.74%), widening the gap between the
+  books from 0.34 to 0.40. The recommendation does not change, but vendor definitions of
+  forward earnings differ and this input stays the page's weakest.
+- **Judgement scores re-read, not changed.** Regional margins: Europe would need +2.1 points
+  across all four horizons (of 10) to overtake the US; Asia / EM leads the US by only 0.6, so
+  that ordering is the fragile one — the US–China outcome (tariff cuts on $30B of goods each
+  way, the truce extended two months, few breakthroughs) does not move it. Fed speakers pushed
+  October-hike odds to 64–77%; Monetary policy is already the lowest-scored driver.
+- **Mutation harness: 94 (67 model, 27 generator), all caught.** New: the old inverted uplift,
+  the vols with no spot dependence, the strike level, BMNR's calm vol, a high claimed on a
+  down day, a revision row on the wrong figure, a disclaimer without the holdings date. One
+  older mutant became equivalent — BMNR's price date now equals the market date, so "dated to
+  BMNR's price" changed nothing — and was replaced by one dated to the holdings.
 
 ## Rev. 22 — 25 September 2026 (data to the 24 September close)
 

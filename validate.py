@@ -11,7 +11,7 @@ today, so a page left stale after a model change fails.
 Sections: 1 model self-consistency · 2 model inputs · 3 model analytics ·
 4 freshness · 5 page structure · 6 page content, pane by pane · 7 hygiene.
 """
-import re, sys, math
+import re, sys, math, io, contextlib
 import portfolio_model as M
 
 html = open('allocation.html').read()
@@ -68,6 +68,33 @@ ck('driver weights sum to 1', abs(sum(x for _, _, x in M.DRIVERS) - 1) < 1e-9)
 ck('gauge rescale commutes', abs(E['gauge']['score5'] - round(M.to5(E['gauge']['score10']), 4)) < 1e-9)
 for k, v in E['regions'].items():
     ck(f'{k} mean matches its scores', abs(sum(M.to5(x) for x in M.REGIONS[k]) / 4 - v['mean']) < 0.05, v['mean'], 'mean')
+# Metamorphic test of the volatility regimes: re-run the model with a different spot VIX.
+# Rev. 22 and earlier passed every other check while the normalized (stress) regime
+# FELL as the VIX rose, because only that regime read the spot. The property that must
+# hold: the long-run regime ignores spot; today's regime scales with it.
+def _alt_model(spot):
+    src = open('portfolio_model.py').read()
+    old = f"('{M.VIX_ASOF}', {M.VIX_SPOT})"
+    ck('the last VIX close appears once in the model source', src.count(old) == 1, src.count(old), 1)
+    ns = {'__name__': 'alt'}
+    with contextlib.redirect_stdout(io.StringIO()):
+        exec(compile(src.replace(old, f"('{M.VIX_ASOF}', {spot})"), 'alt', 'exec'), ns)
+    return ns
+_hi = round(M.VIX_SPOT * 1.2, 2)
+_alt = _alt_model(_hi)
+_sc = _hi / M.VIX_SPOT
+ck('normalized volatility does not depend on the spot VIX',
+   all(abs(_alt['REGIME']['normalized']['vol'][k] - M.REGIME['normalized']['vol'][k]) < 1e-9 for k in M.REGIME['normalized']['vol']))
+ck('calm equity volatility moves in proportion to the spot VIX',
+   all(abs(_alt['REGIME']['calm']['vol'][k] / M.REGIME['calm']['vol'][k] - _sc) < 1e-9 for k in ('QQQ', 'IEMG')))
+ck('BMNR and SGOV volatility do not follow the VIX',
+   all(_alt['REGIME']['calm']['vol'][k] == M.REGIME['calm']['vol'][k] for k in ('BMNR', 'SGOV')))
+ck('a higher VIX raises today\'s portfolio risk',
+   all(_alt['stats'](w, 'calm')['vol'] > ST[n]['calm']['vol'] for n, w in M.PORTFOLIOS.items()))
+ck('normalized drawdown of both books ignores the spot VIX',
+   all(abs(_alt['stats'](w, 'normalized')['dd'] - ST[n]['normalized']['dd']) < 1e-9 for n, w in M.PORTFOLIOS.items()))
+ck('the regimes differ by the uplift for equities',
+   all(abs(M.REGIME['normalized']['vol'][k] / M.REGIME['calm']['vol'][k] - M.UPLIFT) < 1e-9 for k in ('QQQ', 'IEMG')))
 ck('optimized drawdown beats baseline in both regimes',
    all(ST['optimized'][r]['dd'] < ST['baseline'][r]['dd'] for r in M.REGIME), '', 'optimized lower')
 
@@ -164,6 +191,8 @@ chg = (SPOT / PREV - 1) * 100
 present('lead: 10-year close and change', f'The 10-year closed at <b>{MK["ust10"]:.2f}%</b> on {day(MK["asof"])} '
         f'({"+" if MK["ust10_chg_bp"] >= 0 else MINUS}{abs(MK["ust10_chg_bp"])}bp)', P)
 present('liquidity driver 10-year', f'The 10-year closed at {MK["ust10"]:.2f}% on {day(MK["asof"])}', P)
+_note = 'its highest since 2007' if MK['ust10_chg_bp'] >= 0 else f'just off the {MK["ust10_prev"]:.2f}% of the session before, the highest since 2007'
+present('10-year note says where the high was', f'bp), {_note}, after hot flash PMIs', P)
 present('lead: Brent move', f'Brent settled {"up" if MK["brent_chg_pct"] > 0 else "down"} {hu(abs(MK["brent_chg_pct"]), 1)}% at <b>${MK["brent"]:.2f}</b>', P)
 present('lead: VIX move', f'the VIX {"rose" if chg > 0 else "fell"} {hu(abs(chg), 1)}% to <b>{SPOT:.2f}</b>', P)
 g = E['gauge']
@@ -392,10 +421,22 @@ present('correction count matches VERIFICATION.md', f'{n_corr} corrections recor
 ck('VERIFICATION.md lists the current revision', f'## Rev. {M.REVISION} ' in open('VERIFICATION.md').read(), M.REVISION)
 present('disclaimer: sensitivity', f'moves the recommended book&#8217;s CAGR by {hu(abs(top["d_cagr"]))} and the gap between the books by {hu(abs(top["d_gap"]), 3)}', P)
 present('disclaimer: data dates', f'Market data to the {day(MK["asof"], False)} close; fund prices as dated on each slide; '
-        f'BMNR holdings from its {day(H["asof"], False)} release', P)
+        f'BMNR holdings from its {day(H["released"], False)} release, as of {day(H["asof"], False)}', P)
 for dom_ in ('www.federalreserve.gov', 'www.bls.gov', 'www.ecb.europa.eu', 'www.imf.org', 'fred.stlouisfed.org',
              'www.sec.gov', 'www.ishares.com', 'www.invesco.com', 'www.cboe.com'):
     present(f'source cited: {dom_}', f'href="https://{dom_}/', P)
+present('BMNR release link is the current one', f'{str(H["total_b"]).replace(".", "-")}-billion-', P)
+ck('the holdings were released after the date they describe', H['released'] > H['asof'], H['released'], H['asof'])
+_rows = (('Market data', f'24 Sep → <b>{day(MK["asof"])}</b>'),
+         ('BMNR ETH held', f'5.98M → <b>{H["held"] / 1e6:.2f}M</b>'),
+         ('BMNR premium to crypto', f'1.08× → <b>{hu(M.BMNR["mnav"], 2)}×</b>'),
+         ('QQQ net CAGR', f'9.59% → <b>{hu(M.A["QQQ"]["net"], 2)}%</b>'),
+         ('Optimized net CAGR', f'7.57% → <b>{hu(ST["optimized"]["calm"]["cagr"], 2)}%</b>'),
+         ('Optimized drawdown, today', f'{MINUS}25.9% → <b>{MINUS}{hu(ST["optimized"]["calm"]["dd"], 1)}%</b>'),
+         ('Stress volatility vs the VIX', 'fell as it rose → <b>independent</b>'),
+         ('Assumed inputs listed', f'7 → <b>{len(M.ASSUMED)}</b>'))
+for _k, _v in _rows:
+    present(f'revision row: {_k}', f'<span class="k">{_k}</span><span class="v">{_v}</span>', P)
 
 # ══ 7 · hygiene ═══════════════════════════════════════════════════════════════
 vis = re.sub(r'<style>.*?</style>|<svg.*?</svg>|<script>.*?</script>|<[^>]+>', ' ', html, flags=re.S)

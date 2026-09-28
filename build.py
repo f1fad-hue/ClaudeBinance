@@ -27,7 +27,9 @@ FACTS = dict(
     fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year',
     imf_world='IMF: 3.1% world growth in 2026',
     imf_asia='China (4.4%) and India (6.3%) supply 43.6% of world growth (IMF)',
-    ust10_note='its highest since 2007', ust30_note='the 30-year closed at its highest since 2004',
+    ust10_high='highest since 2007', ust30_note='the 30-year hit its highest since 2004 on 24 Sep',
+    eu_pmi_date='23 Sep', eu_pmi=53.1, eu_pmi_prev=52.0,
+    umich='48.1', hy_oas='2.8%', pce='July PCE 3.7% y/y, core 3.3% (August due 30 Sep)',
     ecb='The ECB hiked to 2.50% on 10 Sep into 0.8% growth and 3.0% projected inflation',
     geo='The US–Iran conflict keeps the Strait of Hormuz disrupted',
     em_dm_discount='40% discount to developed markets (11 Sep) against a 25% long-run norm',
@@ -56,7 +58,7 @@ SOURCES = (
     ('Outside forecasts', (('J.P. Morgan LTCMA 2026', 'https://am.jpmorgan.com/us/en/asset-management/institutional/insights/portfolio-insights/ltcma/'),
                            ('Vanguard VCMM', 'https://corporate.vanguard.com/content/corporatesite/us/en/corp/vemo/vemo-return-forecasts'),
                            ('BlackRock CMAs', 'https://www.blackrock.com/institutions/en-global/institutional-insights/thought-leadership/capital-market-assumptions'))),
-    ('BMNR', (('Holdings release, 21 Sep 2026', 'https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-5-98-million-tokens-and-total-crypto-and-total-cash-holdings-of-17-1-billion-302884434.html'),
+    ('BMNR', (('Holdings release, 28 Sep 2026', 'https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-over-6-million-tokens-with-total-crypto-cash--marketable-securities-holdings-of-17-2-billion-302891056.html'),
               ('SEC filings', 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001829311'))),
 )
 
@@ -135,13 +137,20 @@ def gauge():
     <p class="gauge-note">Six weighted drivers, each scored 1–5 where 3 is neutral. Strong growth is outweighed by inflation, a hiking Fed and a realised energy shock.</p>
   </div>'''
 
+def ust10_note():
+    """'Its highest since 2007' is true only of the session that set it; a session that
+    closes lower must say where the high was."""
+    if MK['ust10_chg_bp'] >= 0:
+        return f"its {FACTS['ust10_high']}"
+    return f"just off the {MK['ust10_prev']:.2f}% of the session before, the {FACTS['ust10_high']}"
+
 def driver_notes():
     disc = (1 - FI / FQ) * 100
     return {
-      'Growth momentum': f"Payrolls {FACTS['payrolls']}; flash PMIs on {FACTS['pmi_date']} at their fastest pace in over five years (services {FACTS['pmi_services']}, composite {FACTS['pmi_composite']}). {FACTS['imf_world']}.",
-      'Inflation trajectory': f"{FACTS['cpi']}. September flash PMIs show input costs rising on energy.",
+      'Growth momentum': f"Payrolls {FACTS['payrolls']}; US flash PMIs on {FACTS['pmi_date']} at their fastest pace in over five years (services {FACTS['pmi_services']}, composite {FACTS['pmi_composite']}), though consumer sentiment is weak at {FACTS['umich']} (Michigan, final September). {FACTS['imf_world']}.",
+      'Inflation trajectory': f"{FACTS['cpi']}; {FACTS['pce']}. September flash PMIs show input costs rising on energy.",
       'Monetary policy': f"The Fed hiked {FACTS['fed_vote']} on {day(M.FOMC_DATE)}; {FACTS['fed_dots']}; the range is {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%.",
-      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {FACTS['ust10_note']}, and {FACTS['ust30_note']}: conditions tighten through the long end and oil.",
+      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()}, and {FACTS['ust30_note']}: the long end and oil tighten conditions, though high-yield spreads, near {FACTS['hy_oas']}, stay tight.",
       'Valuation & positioning': f"Nasdaq-100 at {f(FQ, 1)}× forward vs EM at {f(FI, 1)}× — a {f(disc, 0)}% discount. The VIX at {SPOT:.2f} sits {f((1 - SPOT / M.VIX_MEAN) * 100, 0)}% below its {M.VIX_MEAN} long-run mean: protection is cheap.",
       'Geopolitical risk': f"{FACTS['geo']}; Brent settled at ${MK['brent']:.2f} on {day(MK['asof'])}.",
     }
@@ -171,7 +180,7 @@ def macro():
     return f'''<section class="pane on" id="p-macro" role="tabpanel" aria-labelledby="t-macro">
   <h2>Macro drivers</h2>
   <p class="lede">Six forces that set the return and risk of this book, and how each one reaches the four holdings.</p>
-  <div class="warnbox"><b>{'The bond sell-off extended' if MK['ust10_chg_bp'] > 0 else 'Rates eased'}.</b> The 10-year closed at <b>{MK['ust10']:.2f}%</b> on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {FACTS['ust10_note']}, after hot flash PMIs on {FACTS['pmi_date']}; {FACTS['ust30_note']}. Brent settled {'up' if MK['brent_chg_pct'] > 0 else 'down'} {f(abs(MK['brent_chg_pct']), 1)}% at <b>${MK['brent']:.2f}</b>; the VIX {'rose' if chg > 0 else 'fell'} {f(abs(chg), 1)}% to <b>{SPOT:.2f}</b>.</div>
+  <div class="warnbox"><b>{'The bond sell-off extended' if MK['ust10_chg_bp'] > 0 else 'Yields eased'}.</b> The 10-year closed at <b>{MK['ust10']:.2f}%</b> on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()}, after hot flash PMIs on {FACTS['pmi_date']}; {FACTS['ust30_note']}. Brent settled {'up' if MK['brent_chg_pct'] > 0 else 'down'} {f(abs(MK['brent_chg_pct']), 1)}% at <b>${MK['brent']:.2f}</b>; the VIX {'rose' if chg > 0 else 'fell'} {f(abs(chg), 1)}% to <b>{SPOT:.2f}</b>.</div>
 
   {gauge()}
 
@@ -192,7 +201,7 @@ def regions():
     notes = {
       'Asia / EM': f"{FACTS['imf_asia']}. Equities at {f(FI, 1)}× forward, a {FACTS['em_dm_discount']}. Dollar strength and oil cap the near term.",
       'United States': f"The strongest productivity cycle, but the richest multiple ({f(FQ, 1)}×) and a {MK['ust10']:.2f}% 10-year weigh on the near term.",
-      'Europe': f"{FACTS['ecb']}. The most energy-import-exposed bloc.",
+      'Europe': f"Flash composite PMI {FACTS['eu_pmi']} on {FACTS['eu_pmi_date']} (August {FACTS['eu_pmi_prev']}), the highest since April 2023, but input costs jump on energy. {FACTS['ecb']}. The most energy-import-exposed bloc.",
     }
     cards = []
     for rank, k in enumerate(RANKED, 1):
@@ -477,12 +486,17 @@ def houses():
   <p class="note">This page&#8217;s US forecast is {f(us - top_us, 1)} points above the highest house; {em_first} of {len(Hh)} houses rank EM above the US. J.P. Morgan&#8217;s {jv}% EM volatility sits {rel} this page&#8217;s two regimes ({lo:.1f}%, {hi:.1f}%).</p>"""
 
 def verification_rows():
-    return (('Assumed inputs listed', '3 → <b>7</b>'),
-            ('Liquidity & credit score', '3.0 → <b>2.6</b>'),
-            ('Diversification return', '<b>undisclosed → stated</b>'),
-            ('Fund prices', '22/18 Sep → <b>24 Sep</b>'),
-            ('QQQ net CAGR', '9.51% → <b>9.59%</b>'),
-            ('Baseline on frontier', 'no → <b>yes</b>'))
+    """What the latest revision changed. The left figure of each row is the prior
+    revision's, kept as history; the right one is computed, and validate.py checks it."""
+    H = M.BMNR_HOLDINGS
+    return (('Market data', f"24 Sep → <b>{day(MK['asof'])}</b>"),
+            ('BMNR ETH held', f"5.98M → <b>{H['held'] / 1e6:.2f}M</b>"),
+            ('BMNR premium to crypto', f"1.08× → <b>{M.BMNR['mnav']:.2f}×</b>"),
+            ('QQQ net CAGR', f"9.59% → <b>{f(M.A['QQQ']['net'])}%</b>"),
+            ('Optimized net CAGR', f"7.57% → <b>{f(ST['optimized']['calm']['cagr'])}%</b>"),
+            ('Optimized drawdown, today', f"{neg(25.9)}% → <b>{neg(ST['optimized']['calm']['dd'])}%</b>"),
+            ('Stress volatility vs the VIX', 'fell as it rose → <b>independent</b>'),
+            ('Assumed inputs listed', f"7 → <b>{len(M.ASSUMED)}</b>"))
 
 def portfolios(n_mut, n_corr):
     b, o = ST['baseline'], ST['optimized']
@@ -566,7 +580,7 @@ def portfolios(n_mut, n_corr):
   <p class="src">
     {src}
   </p>
-  <div class="disc"><b>Not investment advice.</b> Forecasts are modelled estimates. A point off QQQ&#8217;s earnings growth moves the recommended book&#8217;s CAGR by {f(abs(top['d_cagr']))} and the gap between the books by {f(abs(top['d_gap']), 3)}. Market data to the {day(MK['asof'], False)} close; fund prices as dated on each slide; BMNR holdings from its {day(M.BMNR_HOLDINGS['asof'], False)} release. BMNR can lose its entire value.</div>
+  <div class="disc"><b>Not investment advice.</b> Forecasts are modelled estimates. A point off QQQ&#8217;s earnings growth moves the recommended book&#8217;s CAGR by {f(abs(top['d_cagr']))} and the gap between the books by {f(abs(top['d_gap']), 3)}. Market data to the {day(MK['asof'], False)} close; fund prices as dated on each slide; BMNR holdings from its {day(M.BMNR_HOLDINGS['released'], False)} release, as of {day(M.BMNR_HOLDINGS['asof'], False)}. BMNR can lose its entire value.</div>
 </section>'''
 
 NAV = '''  <nav class="tabs" role="tablist" aria-label="Sections">

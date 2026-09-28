@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 24 September 2026 close; each fund price carries its own
+Market data to the 25 September 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,15 +39,18 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# QQQ 24 Sep: $741.21, reconciled with the Nasdaq-100's +0.03% from $740.93 on the
-# 23rd. IEMG 24 Sep: $81.70, from successive-day closes (82.22 on the 23rd) inside the
-# day's reported range. QQQ went ex-dividend on 21 Sep, but sources disagree on the
-# amount ($0.7514 vs $0.69), so ttm_div stays at the verified $3.03 until one settles;
-# either way the yield moves by at most 0.01 of a point at this price.
+# QQQ 25 Sep: $744.50 (+$3.40, +0.46%, 4:00 pm), and a 28 Sep quote gives the same
+# figure as its previous close. Two 24 Sep closes circulate for QQQ (741.10 implied by
+# that change, 741.21 held here, 741.32 elsewhere); the 0.03% spread moves QQQ's net
+# CAGR by under 0.01 of a point, so it is recorded rather than resolved. IEMG 25 Sep:
+# $82.55, whose quoted previous close, $81.70, is exactly the 24 Sep close held
+# before. QQQ went ex-dividend on 21 Sep, but sources disagree on the amount ($0.7514
+# vs $0.69), so ttm_div stays at the verified $3.03 until one settles; either way the
+# yield moves by at most 0.01 of a point at this price.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.03, px=741.21, px_asof='2026-09-24',
+    'QQQ':  dict(ttm_div=3.03, px=744.50, px_asof='2026-09-25',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=81.70,  px_asof='2026-09-24',
+    'IEMG': dict(ttm_div=1.80, px=82.55,  px_asof='2026-09-25',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -62,23 +65,29 @@ SGOV_GROSS = 3.875         # midpoint of FED_RANGE; validate.py asserts it
 # extrapolates the hiking path futures price (about 4.1% by December) nor assumes a
 # return to the 3.25% this file carried, which was below both spot and the curve.
 SGOV_ER    = 0.09
-BMNR = dict(eth=9.00, stake_share=0.847, stake_yield=2.62, mnav=1.08, drag=1.40)
-BMNR_HOLDINGS = dict(held=5_983_940, staked=5_067_309, asof='2026-09-21',
-                     eth_px=2688, crypto_b=16.11, total_b=17.1,        # 21 Sep release
-                     px=28.75, px_asof='2026-09-22', shares_m=603.2)   # close, shares out
+BMNR = dict(eth=9.00, stake_share=0.844, stake_yield=2.62, mnav=1.03, drag=1.40)
+BMNR_HOLDINGS = dict(held=6_001_302, staked=5_067_309, asof='2026-09-27', released='2026-09-28',
+                     eth_px=2698, crypto_b=16.21, total_b=17.2,        # 28 Sep release
+                     px=27.56, px_asof='2026-09-25', shares_m=603.2)   # close, shares out
 # mnav above is the crypto-only premium, derived here rather than typed:
 BMNR_MCAP_B = BMNR_HOLDINGS['px'] * BMNR_HOLDINGS['shares_m'] / 1000
 assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1e-9, \
     'BMNR mnav must equal market cap over crypto holdings'
-# From the 21 Sep 2026 holdings release: 5,983,940 ETH at $2,688 (Coinbase), of which
-# 5,067,309 staked -- the same staked count as a fortnight earlier, so the staked
-# SHARE falls to 84.7% as new purchases sit unstaked. The 7-day yield is 2.62%.
-# mnav uses the crypto-only reading, the conservative one: market cap $17.34B
-# ($28.75 x 603.2M shares, 22 Sep) against ~$16.11B of crypto = 1.08x; against total
-# holdings of $17.1B it is 1.01x. The stock rose ~6% on the release, which is what
-# widened the premium.
+# From the 28 Sep 2026 holdings release: 6,001,302 ETH at $2,698 as of 27 Sep (17,362
+# bought that week, which reconciles exactly with 5,983,940 a week earlier), of which
+# 5,067,309 staked -- the same staked count as the two releases before, so the staked
+# SHARE falls to 84.4% as new purchases sit unstaked. The 7-day yield is 2.62%.
+# crypto_b is 6,001,302 x $2,698 = $16.19B of ETH plus 213 BTC (~$0.02B); the release's
+# $17.2B total less $0.30B of stakes in Beast Industries and Eightco and $0.67B of cash
+# gives $16.23B, inside rounding of the $16.21B used.
+# mnav uses the crypto-only reading, the conservative one: market cap $16.62B
+# ($27.56 x 603.2M shares, 25 Sep close) against ~$16.21B of crypto = 1.03x; against
+# total holdings of $17.2B it is 0.97x. The stock fell 4.1% from its 22 Sep $28.75 while
+# holdings rose, which is what narrowed the premium from 1.08x. The premium sits on a
+# rounding edge (1.025x): $0.02B either way moves it a cent, and share issuance funding
+# the week's purchases (about 0.3% more shares) is not yet counted in shares_m.
 
-REVISION = 22                          # bump when publishing; validate.py enforces it
+REVISION = 23                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -96,13 +105,15 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-15', 17.20), ('2026-09-16', 17.71),
               ('2026-09-17', 15.42), ('2026-09-18', 14.81),
               ('2026-09-21', 14.87), ('2026-09-22', 14.21),
-              ('2026-09-23', 15.18), ('2026-09-24', 15.67))
+              ('2026-09-23', 15.18), ('2026-09-24', 15.67),
+              ('2026-09-25', 14.87))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
 VIX_ASOF = VIX_SERIES[-1][0]
+VOL_STRUCK_AT = 15.67   # the VIX close at which the sleeve vols in REGIME were last current
 assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIES[1:])), \
     'a >25% single-session move in the series is a transcription error until proven'
 
@@ -110,9 +121,9 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-MARKET = dict(asof='2026-09-24',
-              brent=106.60, brent_prev=103.08, brent_chg_pct=3.4,
-              ust10=5.20,   ust10_prev=5.12,  ust10_chg_bp=8)
+MARKET = dict(asof='2026-09-25',
+              brent=104.32, brent_prev=106.60, brent_chg_pct=-2.14,
+              ust10=5.17,   ust10_prev=5.20,  ust10_chg_bp=-3)
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
 assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']) < 0.005, \
@@ -130,7 +141,8 @@ ASSUMED = (('QQQ earnings growth', f"{OBS['QQQ']['eps']:.1f}%/yr"),
            ('BMNR ETH return', f"{BMNR['eth']:.0f}%/yr"),
            ('BMNR dilution drag', f"{BMNR['drag']:.2f}%/yr"),
            ('drawdown rule', f"{DD_MULT:.2f} × σ"),
-           ('sleeve drawdowns', 'history-anchored judgements'))
+           ('sleeve drawdowns', 'history-anchored judgements'),
+           ('sleeve volatilities and stress correlations', f'struck at VIX {VOL_STRUCK_AT:.2f}'))
 OBSERVED = ('prices and trailing dividends', 'forward and 10-year average multiples',
             'fund fees', 'policy range', 'BMNR holdings and staking yield',
             'VIX closes and its 2016-2023 mean', 'calm correlations')
@@ -164,12 +176,24 @@ def build():
 
 A = build()
 DD  = {'QQQ': 40.0, 'IEMG': 39.0, 'SGOV': 0.3, 'BMNR': 85.0}
+# The equity vols below are the ones this file carried through Rev. 22, when the VIX
+# closed at 15.67. Through Rev. 22 they were fixed while the normalized regime was
+# their product with VIX_MEAN / VIX_SPOT, so a rising VIX made the "normalized"
+# (stress) risk FALL -- at a VIX of 25 QQQ's mean-reverted vol would have been 15.9%,
+# below today's -- and a 5% fall in the VIX on 25 Sep moved the recommended book's
+# normalized drawdown 1.4 points with nothing else changed. The calm regime is
+# "today's volatility", so it now scales with the spot VIX; the normalized regime is
+# the vol at the long-run mean and does not depend on spot at all. Their ratio is
+# still VIX_MEAN / VIX_SPOT, the UPLIFT. BMNR's vol follows ETH, not the VIX.
+SPOT_SCALE = VIX_SPOT / VOL_STRUCK_AT
+NORM_SCALE = VIX_MEAN / VOL_STRUCK_AT
 UPLIFT = VIX_MEAN / VIX_SPOT
+assert abs(NORM_SCALE / SPOT_SCALE - UPLIFT) < 1e-12, 'regimes must differ by the uplift'
 
 REGIME = {
- 'calm':       dict(vol={'QQQ':21.0,'IEMG':18.0,'SGOV':0.5,'BMNR':95.0},
+ 'calm':       dict(vol={'QQQ':21.0*SPOT_SCALE,'IEMG':18.0*SPOT_SCALE,'SGOV':0.5,'BMNR':95.0},
                     rho={('QQQ','IEMG'):0.66,('QQQ','BMNR'):0.65,('IEMG','BMNR'):0.55}),
- 'normalized': dict(vol={'QQQ':21.0*UPLIFT,'IEMG':18.0*UPLIFT,'SGOV':0.5,'BMNR':95.0*1.15},
+ 'normalized': dict(vol={'QQQ':21.0*NORM_SCALE,'IEMG':18.0*NORM_SCALE,'SGOV':0.5,'BMNR':95.0*1.15},
                     rho={('QQQ','IEMG'):0.85,('QQQ','BMNR'):0.80,('IEMG','BMNR'):0.72}),
 }
 
