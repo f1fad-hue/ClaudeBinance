@@ -1,11 +1,108 @@
 # Verification history
 
-CORRECTIONS: 198
+CORRECTIONS: 214
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 24 — 29 September 2026 (data to the 28 September close)
+
+- **The term-structure "95% band" was a 90% band.** It printed ±1.645σ, the one-sided z,
+  while the same page's other 95% band (the CAGR range) correctly used 1.96. `validate.py`
+  re-derived the band with the same 1.645, so the two agreed on the error. The band is now
+  ±1.96σ, and the validator takes its z from the normal distribution (erf(z/√2) = 0.95)
+  rather than from the generator. The 12-month band widens from ±24.5% to **±29.1%**.
+- **The mutation harness could pass vacuously.** `mutate.py` never ran the unmutated repo.
+  With one baseline failure (this revision not yet recorded) every mutant made `validate.py`
+  exit 1 and was counted as caught: the first run of this pass reported 94 of 94 caught on
+  exactly that basis. It now refuses to run unless the baseline passes. The Rev. 23 run was
+  valid (its baseline passed); the guard makes that a precondition instead of luck.
+- **Three stale facts, all from authoritative sources that had moved on.** The ECB's
+  September staff projections put 2026 growth at **0.9%**, not 0.8% (ECB projections page;
+  Morningstar agrees). The IMF's July update has world growth at **3.0%**, not 3.1%, and
+  China at **4.6%** and India at **6.4%**, where the page carried 4.4% and 6.3% next to a
+  43.6% share of world growth taken from the January figures. The vintages are now stated.
+  SGOV's 30-day SEC yield was an undated 3.74% labelled "pre-hike". The latest dated figure
+  is **3.65%** as of 22 Sep (etf.com; 12-month trailing 3.69%).
+- **"Its highest since 2007" was keyed on the sign of the day's change.** Rev. 23 fixed the
+  down-day case, but a rise that stops short of the high would still have been called the
+  high. The model now carries the high close and its date (`ust10_high`), and the phrase is
+  printed only of a close that equals it. `validate.py` runs the helper on a hypothetical
+  close 2bp under the high.
+- **A stale cause would have been attached to any later day's move.** The lead said yields
+  rose "after hot flash PMIs on 23 Sep", a cause of an earlier session. The cause is now a
+  dated fact (`move_cause`), printed only when its date is the market date. Today's: the US
+  rejected Iran's peace proposal.
+- **BMNR was called "levered ETH exposure".** It carries no leverage to speak of: mNAV is
+  1.03× and the premium is not debt. It is high-beta (95% volatility against ETH's lower
+  figure), and now says so.
+- **Six sentences were true only on one side of a threshold**, and the validator had copied
+  each of them word for word:
+  - the VIX "below" its mean, in two places;
+  - "above the highest house";
+  - "ranks first at every horizon";
+  - "almost the same return per unit of risk";
+  - a VIX trigger distance that would have gone negative;
+  - "sits inside both" for a drawdown below both readings.
+
+  Each is now computed, and the validator derives the word itself.
+- **The revision rows' prior figures were typed twice** (generator and validator). They now
+  live once in `PRIOR` and must appear in bold in the previous revision's entry here.
+- **The VIX's 28 September close is held back.** Sources give 16.07 (+8.07%), 16.10, 16.30,
+  16.34 and 16.37 (+1.50, +10.08%). Two of them reconcile exactly with 14.87, the Rev. 20
+  trap. FRED's last observation is 22 Sep and no Cboe history table has the day. The model
+  records the held date and range (`VIX_HELD`) and keeps VIX_SPOT at 14.87 (25 Sep). The
+  masthead, the lead, the valuation driver and the revisit trigger each say which close
+  they use. Calm-regime risk stays at the 25 Sep level; on any of the reported closes, today's
+  optimized drawdown would be about 2 points deeper, and the normalized figures would not
+  move.
+- **Market data to 28 September.**
+  - Brent settled $105.28 (+$0.96 from $104.32, exact); WTI $92.60 (+$0.19 from $92.41,
+    exact).
+  - 10-year 5.24%, from Treasury's par curve (5.17% on 25 Sep, which is the level held),
+    +7bp and its highest since 2007. Press reports of "+6bp" and "5.23%" differ by one
+    snapshot. The 30-year closed at 5.56%, its highest since 2004.
+  - QQQ $736.53 (−$7.97, −1.07% from $744.50, exact); IEMG $81.62 (−$0.93, −1.13% from
+    $82.55, exact).
+  - BMNR's 28 Sep close is not yet published (range $26.90–27.43), so it stays at $27.56
+    (25 Sep), alongside the 27 Sep holdings.
+- **Forecasts.** QQQ's forward multiple re-prices 23.33× → 23.08× and its net CAGR rises
+  9.54% → **9.65%**. IEMG 8.60% → **8.75%** (dividend yield 2.21%, forward 11.46×). Baseline
+  7.87% → **7.95%**, optimized 7.53% → **7.62%**. Normalized drawdowns are unchanged (−35.5% /
+  −33.0%) because they no longer depend on the spot VIX. Both books are efficient (106 of
+  153), and the unrestricted best-Sharpe book is QQQ 45 / IEMG 45 / SGOV 5 / BMNR 5, still
+  rejected. `audit.py`, which uses no model functions, matches every sleeve and portfolio
+  figure. Allocations unchanged.
+- **Held back, not averaged.**
+  1. The VIX's 28 Sep close (above).
+  2. BMNR's 28 Sep close.
+  3. QQQ's 21 Sep distribution: $0.7514 vs $0.69.
+  4. IEMG's June distribution: $0.66 (the $1.80 trailing held) vs $0.71 ($1.85), 0.06 of a
+     point of yield.
+  5. A 21.95× Nasdaq-100 forward multiple, recorded in Rev. 23.
+- **Judgement scores re-read, not changed.** The US rejected Iran's proposal on 26 Sep and oil
+  rose, but Geopolitical risk is already 1.4 of 5. The 10-year's new high and a 5.56% 30-year
+  sit inside Liquidity & credit's 2.6, and high-yield spreads near 2.8% argue against going
+  lower. Regional order and margins are unchanged.
+- **House cleanup.**
+  - Removed an unused fact (`em_ann_mean`) and a dead variable in the macro pane.
+  - Deleted four stale scratch files, among them a coverage scan written for the
+    hand-written page, which no longer ran.
+  - The README states the hold-back rule and the harness precondition.
+- **Mutation harness: 101 (68 model, 33 generator).** One old mutant, a band built on the
+  unrounded σ, became equivalent once z changed, because the two round alike at every
+  horizon. It was replaced by one that uses the 12-month σ in every row. New mutants cover:
+  - a band built on the one-sided z;
+  - the high keyed on the day's sign;
+  - VIX distance words reversed;
+  - a held VIX narrated as a move;
+  - the masthead VIX undated while held;
+  - the revisit trigger undated while held;
+  - a prior figure absent from the record;
+  - a close short of the high;
+  - a changed held range.
 
 ## Rev. 23 — 28 September 2026 (data to the 25 September close)
 

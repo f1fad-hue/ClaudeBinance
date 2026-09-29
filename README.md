@@ -21,7 +21,7 @@ the single most common defect in this repo's history (see VERIFICATION.md).
 | `allocation.html` | The generated page. Never edit by hand. |
 | `validate.py` | Re-derives every figure on the page without importing `build.py`, checks the model's own consistency, and requires the page to be exactly what `build.py` writes. |
 | `checklist.py` | The original brief as an acceptance test: PASS / FAIL / CONFLICT per requirement. |
-| `mutate.py` | Mutation-tests `validate.py`: corrupts the model (the page must read as stale) and plants bugs in the generator (the independent checks must catch them). |
+| `mutate.py` | Mutation-tests `validate.py`: corrupts the model (the page must read as stale) and plants bugs in the generator (the independent checks must catch them). Refuses to run unless the unmutated repo passes, since a failing baseline would make every mutant look caught. |
 | `sync-artifact.sh` | Validates, then copies the page one way to the publish path. |
 | `VERIFICATION.md` | Every recorded correction, newest first, and what caught it. |
 
@@ -43,7 +43,9 @@ python3 mutate.py                     # prove the checks bite
   does not reconcile fails at import. Two different snapshots can both reconcile from the same
   prior close, which is why the source must be the official close.
 - Price-dependent inputs (dividend yield, forward P/E) derive from one price per fund.
-- A day whose closes still conflict across sources is held back rather than averaged.
+- A close that still conflicts across sources is held back rather than averaged. The model
+  records the held date and the range reported (`VIX_HELD`), and every sentence that quotes the
+  held series says which close it uses.
 - Figures the model cannot compute (a CPI print, a PMI reading) go in `build.py`'s `FACTS`,
   each dated in the sentence that uses it, with sources linked on the page.
 

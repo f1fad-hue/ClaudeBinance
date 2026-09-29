@@ -96,9 +96,10 @@ MUT=[
  ("VIX low date",   "low_date='2026-08-14'",    "low_date='2026-08-21'"),
  ("FOMC date",      "FOMC_DATE  = '2026-09-16'", "FOMC_DATE  = '2026-09-17'"),
  ("BMNR held",      "held=6_001_302",           "held=6_101_302"),
- ("Brent level only", "brent=104.32,",          "brent=105.32,"),
- ("10y level+change", "ust10=5.17,   ust10_prev=5.20,  ust10_chg_bp=-3",
-                      "ust10=5.25,   ust10_prev=5.20,  ust10_chg_bp=5"),
+ ("Brent level only", "brent=105.28,",          "brent=106.28,"),
+ ("10y below its high", "ust10=5.24,   ust10_prev=5.17,  ust10_chg_bp=7,",
+                      "ust10=5.22,   ust10_prev=5.17,  ust10_chg_bp=5,"),
+ ("VIX held range",  "VIX_HELD = dict(asof='2026-09-28', lo=16.07,", "VIX_HELD = dict(asof='2026-09-28', lo=16.17,"),
  ("assumed input dropped", "           ('IEMG currency drag', f\"{OBS", "           ('IEMG FX (observed)', f\"{OBS"),
  ("driver inflation", "('Inflation trajectory',3.0,.15)", "('Inflation trajectory',3.5,.15)"),
  ("driver liquidity", "('Liquidity & credit',4.5,.15)",   "('Liquidity & credit',5.0,.15)"),
@@ -114,7 +115,8 @@ MUT=[
 def G(name, old, new): return (name, old, new)
 GEN = [
  G("VaR column from the wrong book", 'neg(bc["var"][h])', 'neg(oc["var"][h])'),
- G("term band from unrounded sigma", "±{f(1.645 * term[h], 2 if h < 0.1 else 1)}%", "±{f(1.645 * SPOT * math.sqrt(h), 2 if h < 0.1 else 1)}%"),
+ G("every term band from the 12-month sigma", "±{f(1.96 * term[h], 2 if h < 0.1 else 1)}%", "±{f(1.96 * term[1.0], 2 if h < 0.1 else 1)}%"),
+ G("95% band with the one-sided z", "±{f(1.96 * term[h], 2 if h < 0.1 else 1)}%", "±{f(1.645 * term[h], 2 if h < 0.1 else 1)}%"),
  G("regions ranked ascending", "RANKED = sorted(E['regions'], key=lambda k: -E['regions'][k]['mean'])", "RANKED = sorted(E['regions'], key=lambda k: E['regions'][k]['mean'])"),
  G("slide drawdown from the sigma model", "{neg(M.DD[t], 0 if M.DD[t] >= 1 else 1)}%", "{neg(M.REGIME['calm']['vol'][t] * M.DD_MULT, 0)}%"),
  G("CAGR delta reversed", "d_(b['calm']['cagr_d'], o['calm']['cagr_d'], 2)", "d_(o['calm']['cagr_d'], b['calm']['cagr_d'], 2)"),
@@ -125,7 +127,11 @@ GEN = [
  G("standard error from the wrong regime", "f\"±{M.se_level('optimized'):.2f} pts\"", "f\"±{M.se_level('optimized', 'normalized'):.2f} pts\""),
  G("slide terminal from gross", "term = lambda k: f\"${E['sleeves'][k]['terminal']:,}\"", "term = lambda k: f\"${round(10000 * (1 + M.A[k]['gross'] / 100) ** 10):,}\""),
  G("expense row loses its minus", "if signed is None: return f'<td class=\"n\">{MINUS}{x:.2f}</td>'", "if signed is None: return f'<td class=\"n\">{x:.2f}</td>'"),
- G("VIX discount from the prior close", "Spot is {f((1 - SPOT / M.VIX_MEAN) * 100, 1)}% below", "Spot is {f((1 - PREV / M.VIX_MEAN) * 100, 1)}% below"),
+ G("VIX discount from the prior close", "Spot is {vix_rel(SPOT, 1)} the", "Spot is {vix_rel(PREV, 1)} the"),
+ G("VIX distance words reversed", "{'below' if d >= 0 else 'above'}", "{'above' if d >= 0 else 'below'}"),
+ G("held VIX narrated as a move", "    if VIX_STALE:\n        return (f\"The VIX", "    if False:\n        return (f\"The VIX"),
+ G("masthead VIX undated while held", "{f' ({SPOT_DATE})' if VIX_STALE else ''}</span>", "</span>"),
+ G("trigger distance undated while held", "points away{f' at the {SPOT_DATE} close' if VIX_STALE else ''};", "points away;"),
  G("gauge needle axes swapped", "x2=\"{g['needle'][0]}\" y2=\"{g['needle'][1]}\"", "x2=\"{g['needle'][1]}\" y2=\"{g['needle'][0]}\""),
  G("disclaimer dated to BMNR's holdings", "Market data to the {day(MK['asof'], False)} close", "Market data to the {day(M.BMNR_HOLDINGS['asof'], False)} close"),
  G("efficient count off by one", "they are two points on the same curve, the baseline for return and the optimized book for drawdown. {len(EFF)}", "they are two points on the same curve, the baseline for return and the optimized book for drawdown. {len(EFF) + 1}"),
@@ -136,8 +142,9 @@ GEN = [
  G("diversification return from the normalized regime", "{f(M.diversification_return(O))}%, which is not credible", "{f(M.diversification_return(O, 'normalized'))}%, which is not credible"),
  G("both-efficient call-out on the wrong test", "    elif ON['optimized'] and ON['baseline']:", "    elif ON['optimized'] and not ON['baseline']:"),
  G("still-open list truncated", "{'; '.join(f'{a} ({v})' for a, v in M.ASSUMED)}", "{'; '.join(f'{a} ({v})' for a, v in M.ASSUMED[:3])}"),
- G("10-year claims a high on a down day", "    if MK['ust10_chg_bp'] >= 0:\n        return f\"its", "    if True:\n        return f\"its"),
- G("revision row shows gross, not net", "9.59% → <b>{f(M.A['QQQ']['net'])}%</b>", "9.59% → <b>{f(M.A['QQQ']['gross'])}%</b>"),
+ G("10-year high keyed on the day's sign", "    if MK['ust10'] >= MK['ust10_high']:\n        return f\"its", "    if MK['ust10_chg_bp'] >= 0:\n        return f\"its"),
+ G("revision row shows gross, not net", "{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['net'])}%</b>", "{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['gross'])}%</b>"),
+ G("prior figure not in the record", "PRIOR = dict(rev=23, asof='2026-09-25', QQQ=9.54,", "PRIOR = dict(rev=23, asof='2026-09-25', QQQ=9.59,"),
  G("disclaimer drops the holdings date", "release, as of {day(M.BMNR_HOLDINGS['asof'], False)}.", "release."),
  G("donut offsets shifted", 'stroke-dashoffset=\"{o:.2f}\"', 'stroke-dashoffset=\"{o - 1:.2f}\"'),
 ]
@@ -163,6 +170,22 @@ def run(kind, name, old, new):
         return ('caught', name, '')
     finally:
         shutil.rmtree(d, ignore_errors=True)
+
+# The unmutated repo must pass first. Without this guard a baseline failure (an unrecorded
+# revision, say) makes validate.py exit 1 for every mutant and each one reads as "caught":
+# Rev. 24 found exactly that run, 94 of 94 caught by a check that was failing anyway.
+def baseline():
+    d = tempfile.mkdtemp(prefix='mut_base_')
+    try:
+        for f_ in FILES: shutil.copy(os.path.join(REPO, f_), d)
+        r = subprocess.run([sys.executable, 'validate.py'], cwd=d, capture_output=True, text=True, timeout=600)
+        return r.returncode, (r.stdout.strip().splitlines() or [''])[-1]
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+_rc, _last = baseline()
+if _rc != 0:
+    raise SystemExit(f'mutate.py: validate.py fails on the unmutated repo ({_last}); fix that first, '
+                     'or every mutation would read as caught')
 
 jobs = [('model',) + m for m in MUT] + [('gen',) + g for g in GEN]
 with ThreadPoolExecutor(max_workers=4) as ex:

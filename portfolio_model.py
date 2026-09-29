@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 25 September 2026 close; each fund price carries its own
+Market data to the 28 September 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,18 +39,17 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# QQQ 25 Sep: $744.50 (+$3.40, +0.46%, 4:00 pm), and a 28 Sep quote gives the same
-# figure as its previous close. Two 24 Sep closes circulate for QQQ (741.10 implied by
-# that change, 741.21 held here, 741.32 elsewhere); the 0.03% spread moves QQQ's net
-# CAGR by under 0.01 of a point, so it is recorded rather than resolved. IEMG 25 Sep:
-# $82.55, whose quoted previous close, $81.70, is exactly the 24 Sep close held
-# before. QQQ went ex-dividend on 21 Sep, but sources disagree on the amount ($0.7514
-# vs $0.69), so ttm_div stays at the verified $3.03 until one settles; either way the
-# yield moves by at most 0.01 of a point at this price.
+# QQQ 28 Sep: $736.53 (-$7.97, -1.07% from the $744.50 held for 25 Sep, which
+# reconciles exactly). IEMG 28 Sep: $81.62 (-$0.93, -1.13% from $82.55, exact).
+# QQQ went ex-dividend on 21 Sep, but sources disagree on the amount ($0.7514 vs
+# $0.69), so ttm_div stays at the verified $3.03 until one settles; either way the
+# yield moves by at most 0.01 of a point at this price. IEMG's June distribution is
+# likewise quoted as $0.66 (the $1.80 trailing held here, with December's $1.14) and
+# $0.71 ($1.85): 0.06 of a point of yield, held until one settles.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.03, px=744.50, px_asof='2026-09-25',
+    'QQQ':  dict(ttm_div=3.03, px=736.53, px_asof='2026-09-28',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=82.55,  px_asof='2026-09-25',
+    'IEMG': dict(ttm_div=1.80, px=81.62,  px_asof='2026-09-28',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -87,7 +86,7 @@ assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1
 # rounding edge (1.025x): $0.02B either way moves it a cent, and share issuance funding
 # the week's purchases (about 0.3% more shares) is not yet counted in shares_m.
 
-REVISION = 23                          # bump when publishing; validate.py enforces it
+REVISION = 24                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -110,9 +109,18 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
+# A close that cannot be pinned down is held back, not averaged. For 28 Sep sources give
+# 16.07 (+8.07%), 16.10, 16.30, 16.34 and 16.37 (+1.50, +10.08%); two of them reconcile
+# exactly with 14.87, which is the trap Rev. 20 fell into, and neither FRED (last
+# observation 22 Sep) nor a Cboe history table has published it. The page states the
+# held date and range; VIX_SPOT stays on the last verified close.
+VIX_HELD = dict(asof='2026-09-28', lo=16.07, hi=16.37)
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
 VIX_ASOF = VIX_SERIES[-1][0]
+assert VIX_HELD is None or (VIX_HELD['asof'] > VIX_ASOF and VIX_HELD['lo'] <= VIX_HELD['hi']
+                            and all(abs(v / VIX_SPOT - 1) < 0.25 for v in (VIX_HELD['lo'], VIX_HELD['hi']))), \
+    'a held VIX close must post-date the last verified one and be a plausible range'
 VOL_STRUCK_AT = 15.67   # the VIX close at which the sleeve vols in REGIME were last current
 assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIES[1:])), \
     'a >25% single-session move in the series is a transcription error until proven'
@@ -121,13 +129,22 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-MARKET = dict(asof='2026-09-25',
-              brent=104.32, brent_prev=106.60, brent_chg_pct=-2.14,
-              ust10=5.17,   ust10_prev=5.20,  ust10_chg_bp=-3)
+# 28 Sep: Brent settled $105.28 (+$0.96), WTI $92.60 (+$0.19, from the $92.41 settlement
+# recorded on 25 Sep). The 10-year is Treasury's own par-curve close, 5.24% (5.17% on
+# 25 Sep, the level held); press reports of "+6bp to 5.24%" and "5.23%" disagree by a
+# basis point about the prior day or the snapshot, and the official curve settles it.
+# ust10_high is the highest close of the move, so "highest since 2007" is claimed only
+# of a close that equals it.
+MARKET = dict(asof='2026-09-28',
+              brent=105.28, brent_prev=104.32, brent_chg_pct=0.92,
+              ust10=5.24,   ust10_prev=5.17,  ust10_chg_bp=7,
+              ust10_high=5.24, ust10_high_date='2026-09-28')
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
 assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']) < 0.005, \
     '10-year level does not reconcile with its stated change'
+assert MARKET['ust10'] <= MARKET['ust10_high'] and MARKET['ust10_high_date'] <= MARKET['asof'], \
+    'the 10-year cannot close above the high on file'
 
 DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
 
