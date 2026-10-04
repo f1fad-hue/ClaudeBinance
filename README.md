@@ -39,8 +39,8 @@ python3 mutate.py                     # prove the checks bite
 ## Data rules
 
 - Market closes come from **history tables**, not live coverage. Each level is stored with the
-  change its source reported and must reconcile with the close already on file; a level that
-  does not reconcile fails at import. Two different snapshots can both reconcile from the same
+  change its source reported (`VIX_REPORTED`, the `*_prev` fields in `MARKET`) and must
+  reconcile with the close already on file; a level that does not reconcile fails at import. Two different snapshots can both reconcile from the same
   prior close, which is why the source must be the official close.
 - Price-dependent inputs (dividend yield, forward P/E) derive from one price per fund.
 - A close that still conflicts across sources is held back rather than averaged. The model
@@ -57,7 +57,8 @@ python3 mutate.py                     # prove the checks bite
   midpoint held flat.
 - **Risk** uses two regimes: today's volatility, which scales with the spot VIX, and the
   volatility at the VIX's 2016–2023 mean, which does not depend on spot, with crisis
-  correlations. Weights are sized to the second. Ten-year expected drawdown ≈ 1.70 × σ.
+  correlations. Weights are sized to the second. Ten-year expected drawdown ≈ 2.00 × σ, the
+  mean of a daily-step simulation of each book; `validate.py` re-runs a seeded version.
   `validate.py` re-runs the model at a different VIX to prove that independence.
 - **Allocation**: every 5%-step book holding all four sleeves at 5% or more is searched. The
   recommendation must sit on the return/drawdown efficient frontier; SGOV's weight is a stated

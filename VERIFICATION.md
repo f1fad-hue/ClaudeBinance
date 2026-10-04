@@ -1,11 +1,97 @@
 # Verification history
 
-CORRECTIONS: 214
+CORRECTIONS: 224
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 25 — 4 October 2026 (data to the 2 October close)
+
+- **The ten-year drawdown rule understated every drawdown by about 15%.** The model carried
+  expected max drawdown = 1.70 × σ with a "1.65–1.75" band. Neither was ever derived. A
+  seeded simulation of the model's own books (GBM at each book's CAGR and σ, daily steps,
+  ten years) gives a mean of **2.01–2.04×** and a median of 1.89–1.95×. Monthly steps give
+  1.83–1.90× because they skip intra-month troughs. The rule is now **2.00×** with a 1.90–2.05
+  band, and `validate.py` re-runs a 400-path simulation of the recommended book (2.01×).
+  Normalized drawdowns move from −35.5% / −33.0% to **−41.8% / −38.9%**. The ranking and the
+  frontier do not change, because one multiple scales every book. Normal returns understate
+  fat tails, so 2.0× is still a floor. The frontier chart's x-axis was widened to 60% after
+  its own range assertion caught the overflow.
+- **"Highest since 2007" was overtaken.** The 10-year closed at 5.29% on 30 Sep (Treasury par
+  curve). That passes the 2007 peak, and several outlets report the move as the highest since
+  2002. The fact now reads "highest close since 2002" and attaches only to the 30 Sep close.
+  The 30-year's "highest since 2004" is likewise now "since 2002": it touched 5.61% on
+  29 Sep (CNBC, Bloomberg).
+- **"High-yield spreads … stay tight" was no longer true.** The ICE BofA HY OAS widened
+  from 2.80% (24 Sep) to **3.24%** (1 Oct). The note now states both dated levels, and the
+  validator refuses "tight" next to a wider spread. With the dollar at a 16-month high and
+  the 10-year at a 2002 high, Liquidity & credit is re-scored 4.5 → **4.0**.
+- **The gauge note said "Strong growth" as a constant.** The September payrolls print
+  (+29,000 against 84,000 expected, unemployment 4.2%, July–August revised down 60,000) took
+  Growth momentum from 7.0 to **6.0** (3.7 → 3.2 of 5). The note now names growth by its
+  score.
+- **Monetary policy re-scored 2.0 → 2.5.** October-hike odds fell from about 36% to about
+  17% after the jobs report (CME FedWatch; Kalshi 18%), with December still priced. The
+  composite gauge moves **2.4 → 2.3**. Inflation stays at 3.0. August PCE came in at 3.4%
+  (core 3.0%), both below forecast, but a BEA method change trims about 0.2 point of that,
+  and ISM prices paid jumped to 77.9.
+- **The metamorphic VIX test could silently do nothing.** It looked up the last close by
+  printing the float (`15.4`), but the source says `15.40`, so the replacement found
+  nothing. The test then compared the model with itself and reported "calm vol does not
+  scale". It now matches the entry as written, and it checks that the copy changed and runs
+  at the new spot. `mutate.py` had the same float lookup in two mutants, now fixed.
+- **The VIX reconciliation evidence lived only in comments.** Each close's reported change is
+  now data (`VIX_REPORTED`), and the model refuses any close that does not reproduce it. That
+  check would have caught Rev. 20's 15.35 and Rev. 24's candidate 16.37 at import.
+- **Rev. 24's held-VIX branches went untested once the hold lifted.** The three mutants
+  that exercised them became equivalent. The validator now runs `vix_lead`, the masthead and
+  the revisit trigger on a hypothetical held close.
+- **The VIX hold is lifted.** The 29 Sep report ("down 0.2% to 16.04") reconciles only with a
+  28 Sep close of **16.07**; 16.37 would have been −2.0%. The chain then runs:
+  - 30 Sep **16.34** (+1.87%);
+  - 1 Oct **16.39** (open 16.33, high 17.59);
+  - 2 Oct **15.40** (−0.99, −6.03%, exact).
+- **Market data to 2 October.**
+  - Brent settled $102.25 (−$0.06, from $102.31, which settled +4.4% on 1 Oct; EnergyNow).
+  - 10-year 5.28% on Treasury's par curve (5.24, 5.26, 5.29, 5.24 on the four sessions
+    before), so 1bp below the high.
+  - QQQ $749.58 (+1.02% from $742.03; a 52-week high, with the Nasdaq Composite at a
+    record).
+  - IEMG $82.36 (+$1.14, +1.40% from $81.22, exact).
+  - New facts:
+    - eurozone flash September HICP 3.8% (energy 18.8%, core 2.5%; Eurostat);
+    - China's official manufacturing PMI 50.1 (NBS);
+    - ISM manufacturing 54.5;
+    - the G7's 2 Oct agreement to release up to 100 million barrels.
+- **Forecasts.** QQQ re-prices to 23.49× forward; net CAGR 9.65% → **9.47%**. IEMG 8.75% →
+  **8.64%**. Baseline 7.95% → **7.84%**, optimized 7.62% → **7.52%**; the gap is 0.32 points
+  for 2.9 points less normalized drawdown. Both books stay efficient (106 of 153). The
+  unrestricted best-Sharpe book is QQQ 40 / IEMG 50 / SGOV 5 / BMNR 5, still rejected.
+  `audit.py`, which uses no model functions, matches every sleeve and portfolio figure.
+  **Allocations unchanged.**
+- **Held back, not averaged.**
+  1. BMNR stays on its 25 Sep close ($27.56), paired with the 27 Sep holdings. The 2 Oct
+     close ($26.27, −1.72%) has one source, and pairing it with a week-old ETH valuation
+     would mix dates. The next holdings release is due 5 Oct.
+  2. QQQ's 21 Sep distribution ($0.7514 vs $0.69).
+  3. IEMG's June distribution ($0.66 vs $0.71).
+- **Judgements flagged, not changed.** With the corrected rule, QQQ's history-anchored −40%
+  sleeve drawdown now sits below the σ model's calm reading (−41.3%). The "correlated-stress"
+  row (every sleeve at its judged drawdown at once, −32.1% / −30.0%) is also shallower than
+  the normalized σ drawdown. Both say the sleeve judgements are mild beside the corrected
+  rule. They are listed as assumptions. Regional scores were re-read against the euro-area
+  inflation jump, China's PMI and the dollar, and the order and margins are unchanged.
+- **Mutation harness: 106 (70 model, 36 generator), all caught.** New mutants cover:
+  - the band typed instead of read from the model;
+  - spreads called tight;
+  - growth called strong regardless of its score;
+  - the rejected 28 Sep snapshot;
+  - a wrong reported change;
+  - the DD band itself.
+
+  The held-range mutant was retired with the hold.
 
 ## Rev. 24 — 29 September 2026 (data to the 28 September close)
 

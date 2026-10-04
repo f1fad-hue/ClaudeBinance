@@ -74,11 +74,19 @@ for k, v in E['regions'].items():
 # hold: the long-run regime ignores spot; today's regime scales with it.
 def _alt_model(spot):
     src = open('portfolio_model.py').read()
-    old = f"('{M.VIX_ASOF}', {M.VIX_SPOT})"
-    ck('the last VIX close appears once in the model source', src.count(old) == 1, src.count(old), 1)
+    # Match the entry as written ("15.40"), not as Python prints the float ("15.4"):
+    # Rev. 24's lookup used the float and silently found nothing once a close ended in 0.
+    pat = re.compile(r"\('%s', [\d.]+\)" % re.escape(M.VIX_ASOF))
+    ck('the last VIX close appears once in the model source', len(pat.findall(src)) == 1, len(pat.findall(src)), 1)
+    alt = pat.sub(f"('{M.VIX_ASOF}', {spot})", src)
+    # its reported change must move with it, or the model's own reconciliation refuses it
+    prior = M.VIX_SERIES[-2][1]
+    alt = re.sub(r"'%s': -?[\d.]+" % re.escape(M.VIX_ASOF), f"'{M.VIX_ASOF}': {round((spot / prior - 1) * 100, 2)}", alt)
+    ck('the metamorphic copy really changed the spot VIX', alt != src)
     ns = {'__name__': 'alt'}
     with contextlib.redirect_stdout(io.StringIO()):
-        exec(compile(src.replace(old, f"('{M.VIX_ASOF}', {spot})"), 'alt', 'exec'), ns)
+        exec(compile(alt, 'alt', 'exec'), ns)
+    ck('the metamorphic copy runs at the new spot', abs(ns['VIX_SPOT'] - spot) < 1e-9, ns['VIX_SPOT'], spot)
     return ns
 _hi = round(M.VIX_SPOT * 1.2, 2)
 _alt = _alt_model(_hi)
@@ -95,6 +103,24 @@ ck('normalized drawdown of both books ignores the spot VIX',
    all(abs(_alt['stats'](w, 'normalized')['dd'] - ST[n]['normalized']['dd']) < 1e-9 for n, w in M.PORTFOLIOS.items()))
 ck('the regimes differ by the uplift for equities',
    all(abs(M.REGIME['normalized']['vol'][k] / M.REGIME['calm']['vol'][k] - M.UPLIFT) < 1e-9 for k in ('QQQ', 'IEMG')))
+# The drawdown rule, re-derived: simulate the recommended book as GBM at its own CAGR and
+# normalized sigma, daily steps, ten years, and compare the mean maximum drawdown with
+# DD_MULT x sigma. Rev. 24 and earlier carried 1.70 with a "1.65-1.75" band nobody had
+# derived; the simulation says ~2.0. Seeded, so the check is deterministic.
+def _mdd_mult(cagr, sigma, n=400, years=10, steps=252, seed=2026):
+    import random
+    rng = random.Random(seed); a = math.log(1 + cagr) / steps; b = sigma / math.sqrt(steps); tot = 0.0
+    for _ in range(n):
+        x = peak = worst = 0.0
+        for _ in range(years * steps):
+            x += a + b * rng.gauss(0, 1)
+            if x > peak: peak = x
+            elif peak - x > worst: worst = peak - x
+        tot += 1 - math.exp(-worst)
+    return tot / n / sigma
+_sim = _mdd_mult(ST['optimized']['normalized']['cagr'] / 100, ST['optimized']['normalized']['vol'] / 100)
+ck('drawdown rule matches a simulated ten-year mean max drawdown', abs(_sim - M.DD_MULT) < 0.12, round(_sim, 3), M.DD_MULT)
+ck('drawdown multiple sits inside its stated band', M.DD_BAND[0] <= M.DD_MULT <= M.DD_BAND[1], M.DD_MULT, M.DD_BAND)
 ck('optimized drawdown beats baseline in both regimes',
    all(ST['optimized'][r]['dd'] < ST['baseline'][r]['dd'] for r in M.REGIME), '', 'optimized lower')
 
@@ -195,14 +221,18 @@ P = pane('p-macro')
 chg = (SPOT / PREV - 1) * 100
 present('lead: 10-year close and change', f'The 10-year closed at <b>{MK["ust10"]:.2f}%</b> on {day(MK["asof"])} '
         f'({"+" if MK["ust10_chg_bp"] >= 0 else MINUS}{abs(MK["ust10_chg_bp"])}bp)', P)
+_hy = build.FACTS['hy_oas']
+present('liquidity driver states the spread move with both dates', f'High-yield spreads widened to {_hy[0]} ({_hy[1]}) from {_hy[2]} ({_hy[3]})', pane('p-macro'))
+ck('a wider spread is not called tight', float(_hy[0].rstrip('%')) > float(_hy[2].rstrip('%')) and 'stay tight' not in pane('p-macro'), _hy)
 present('liquidity driver 10-year', f'The 10-year closed at {MK["ust10"]:.2f}% on {day(MK["asof"])}', P)
+_HIGH = build.FACTS['ust10_high']   # the dated fact; which close it attaches to is derived here
 if MK['ust10'] == MK['ust10_high']:
-    _note = 'its highest since 2007'
+    _note = f'its {_HIGH}'
 else:
-    _note = f'{(MK["ust10_high"] - MK["ust10"]) * 100:.0f}bp below the {MK["ust10_high"]:.2f}% of {day(MK["ust10_high_date"])}, the highest since 2007'
+    _note = f'{(MK["ust10_high"] - MK["ust10"]) * 100:.0f}bp below the {MK["ust10_high"]:.2f}% of {day(MK["ust10_high_date"])}, the {_HIGH}'
 present('10-year note claims the high only on the high', f'bp), {_note},', P)
-ck('"highest since 2007" is not printed of a close below the high',
-   MK['ust10'] == MK['ust10_high'] or 'bp), its highest since 2007' not in P, MK['ust10'], MK['ust10_high'])
+ck('"highest since" is not printed of a close below the high',
+   MK['ust10'] == MK['ust10_high'] or f'bp), its {_HIGH}' not in P, MK['ust10'], MK['ust10_high'])
 # The generator's direction-sensitive helpers, run on hypothetical inputs. Their output
 # for today's data is checked elsewhere; these catch the latent case -- a rise that stops
 # short of the high, a VIX above its mean -- before the market produces it.
@@ -210,11 +240,21 @@ _MK0 = build.MK
 try:
     build.MK = dict(_MK0, ust10=round(_MK0['ust10_high'] - 0.02, 2), ust10_prev=round(_MK0['ust10_high'] - 0.05, 2), ust10_chg_bp=3)
     ck('helper: a rise that stops short of the high is not called the high',
-       'highest since 2007' in build.ust10_note() and build.ust10_note().startswith('2bp below'), build.ust10_note())
+       _HIGH in build.ust10_note() and build.ust10_note().startswith('2bp below'), build.ust10_note())
     build.MK = dict(_MK0, ust10=_MK0['ust10_high'], ust10_chg_bp=-1)
-    ck('helper: a close at the high is the high, whatever the day\'s sign', build.ust10_note() == 'its highest since 2007', build.ust10_note())
+    ck('helper: a close at the high is the high, whatever the day\'s sign', build.ust10_note() == f'its {_HIGH}', build.ust10_note())
 finally:
     build.MK = _MK0
+_VS0 = build.VIX_STALE
+try:
+    build.VIX_STALE = dict(asof='2099-01-02', lo=10.0, hi=11.0)
+    _vl = build.vix_lead()
+    ck('helper: a held VIX close is stated with its range, not narrated as a move',
+       'is held back' in _vl and '10.00 to 11.00' in _vl and not re.search(r'VIX (rose|fell)', _vl), _vl)
+    ck('helper: the masthead dates a held VIX', f'VIX {build.SPOT:.2f} ({build.SPOT_DATE})</span>' in build.masthead())
+    ck('helper: the revisit trigger dates a held VIX', f' at the {build.SPOT_DATE} close;' in build.portfolios(0, 0))
+finally:
+    build.VIX_STALE = _VS0
 ck('helper: VIX above its mean reads "above"', build.vix_rel(M.VIX_MEAN * 1.2, 0).endswith('above'), build.vix_rel(M.VIX_MEAN * 1.2, 0))
 ck('helper: VIX below its mean reads "below"', build.vix_rel(M.VIX_MEAN * 0.8, 0).endswith('below'), build.vix_rel(M.VIX_MEAN * 0.8, 0))
 _cause_date, _cause = build.FACTS['move_cause']
@@ -229,6 +269,9 @@ if _held:
 else:
     present('lead: VIX move', f'The VIX {"rose" if chg > 0 else "fell"} {hu(abs(chg), 1)}% to <b>{SPOT:.2f}</b>', P)
 g = E['gauge']
+_g5 = dict((n, s_) for n, s_, _ in E['gauge']['drivers'])['Growth momentum']
+present('gauge note names growth by its score', ('Strong growth is' if _g5 >= 3.4 else 'Growth, positive but softening, is' if _g5 >= 3.0
+        else 'Weak growth adds to the drag and is') + ' outweighed by inflation', P)
 present('gauge value', f'<div class="gauge-val">{g["display"]}<small>/5</small></div>', P)
 present('gauge arc', f'stroke-dasharray="{g["arc_dash"]} 251.4"', P)
 present('gauge needle', f'x2="{g["needle"][0]}" y2="{g["needle"][1]}"', P)
@@ -298,6 +341,8 @@ for k in ('QQQ', 'IEMG', 'SGOV', 'BMNR'):
 for a, b in (('QQQ', 'IEMG'), ('QQQ', 'BMNR'), ('IEMG', 'BMNR')):
     present(f'correlation row {a}·{b}', f'<td>ρ {a}·{b}</td><td class="n">{M.REGIME["calm"]["rho"][(a, b)]:.2f}</td>'
             f'<td class="n neg">{M.REGIME["normalized"]["rho"][(a, b)]:.2f}</td>', P)
+present('drawdown rule stated with its simulated band', f'Ten-year expected max drawdown ≈ {M.DD_MULT:.2f} × σ, from a daily-step simulation of each book '
+        f'(median to mean {M.DD_BAND[0]:.2f}–{M.DD_BAND[1]:.2f}×)', P)
 present('uplift and regime drawdowns', f'Volatility mean-reverted to {M.VIX_MEAN} (×{hu(M.UPLIFT)}) and crisis correlations turn the optimized book&#8217;s '
         f'{neg(oc["dd"])}% drawdown into {neg(on["dd"])}%', P)
 rcard = P[P.index('Risk contribution'):P.index('Ten-year view')]
@@ -483,11 +528,10 @@ _rows_page = {k_: (a_, b_) for k_, a_, b_ in
 ck('this revision lists what it changed', len(_rows_page) >= 4, len(_rows_page))
 _now = {'Market data': day(MK['asof']), 'QQQ net CAGR': f'{hu(M.A["QQQ"]["net"], 2)}%',
         'IEMG net CAGR': f'{hu(M.A["IEMG"]["net"], 2)}%', 'Optimized net CAGR': f'{hu(ST["optimized"]["calm"]["cagr"], 2)}%',
-        'Term-structure 95% band': '±1.96σ'}
+        'Drawdown rule': f'{M.DD_MULT:.2f}×σ', 'Macro gauge': f'{E["gauge"]["display"]}',
+        'Optimized drawdown, normalized': f'{MINUS}{hu(ST["optimized"]["normalized"]["dd"], 1)}%'}
 # fact rows: the corrected figure must be what the page now says where the fact is used
-_used = {'ECB 2026 growth projection': lambda v: f'into {v} projected growth' in html,
-         'IMF 2026 world growth': lambda v: f'IMF (July update): {v} world growth' in html,
-         'SGOV 30-day SEC yield': lambda v: f'<span class="v">{v}</span>' in pane('p-assets') and 'SEC yield' in pane('p-assets')}
+_used = {'10-year high': lambda v: f'the highest close {v}' in pane('p-macro')}
 for _k, (_a, _b) in _rows_page.items():
     ck(f'revision row {_k}: current side checked', _k in _now or _k in _used, _k)
     if _k in _now:
@@ -511,7 +555,10 @@ STALE = (('VIX 15.35', 'pre-settlement VIX snapshot, 23 Sep'), ('<b>14.25</b>', 
          ('Market data is as of 11 September', 'stale disclaimer date'), ('0.1055', 'superseded CAL ratio'),
          ('into 0.8% growth', 'ECB growth projection, corrected to 0.9%'), ('IMF: 3.1% world growth', 'pre-July IMF world growth'),
          ('China (4.4%)', 'pre-July IMF China forecast'), ('pre-hike</span>', 'undated SGOV SEC-yield label'),
-         ('Levered ETH', 'BMNR carries no leverage'), ('after hot flash PMIs on', 'a cause of an earlier day\'s move'))
+         ('Levered ETH', 'BMNR carries no leverage'), ('after hot flash PMIs on', 'a cause of an earlier day\'s move'),
+         ('(band 1.65–1.75)', 'underived drawdown band'), ('stay tight', 'spreads widened 44bp in a week'),
+         ('highest since 2007', 'the 10-year passed its 2007 peak on 30 Sep'), ('+162,000 against', 'August payrolls, superseded'),
+         ('July PCE 3.7%', 'July PCE, superseded by August'))
 for s_, why in STALE:
     ck(f'no superseded value ({why})', s_ not in html, s_, 'absent')
 live = {f'{v:.2f}' for v in vals} | {f'{MK[k]:.2f}' for k in ('brent', 'ust10', 'ust10_prev', 'brent_prev')} | {f'{cal[0]:.4f}'}

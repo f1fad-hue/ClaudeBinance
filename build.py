@@ -22,18 +22,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # ── dated facts the model does not compute (sources linked on the page) ─────────
 FACTS = dict(
     pmi_date='23 Sep', pmi_services=58.7, pmi_composite=58.4,
-    payrolls='+162,000 against 53,000 expected (August)',
+    payrolls='+29,000 against 84,000 expected (September), unemployment 4.2%, July–August revised down 60,000',
+    ism='ISM manufacturing 54.5 in September', ism_prices='ISM prices paid 77.9 in September, up from 71.1',
     cpi='August CPI 3.4% y/y; core 2.4% y/y but +0.3% m/m against 0.2% expected; PPI 5.4% y/y',
-    fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year',
+    fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year, but after the jobs report futures give an October hike about 17% (CME FedWatch), from about 36% a week earlier, with December still priced',
     imf_world='IMF (July update): 3.0% world growth in 2026',
-    imf_asia='The IMF’s July update has China at 4.6% and India at 6.4% for 2026; on its January figures the two supply 43.6% of world growth',
-    ust10_high='highest since 2007', ust30_note='the 30-year closed at 5.56%, its highest since 2004',
+    imf_asia='The IMF’s July update has China at 4.6% and India at 6.4% for 2026; on its January figures the two supply 43.6% of world growth. China’s official manufacturing PMI returned to expansion at 50.1 in September',
+    ust10_high='highest close since 2002', ust30_note='the 30-year closed at 5.61%, near the highest since 2002 it reached this week',
     eu_pmi_date='23 Sep', eu_pmi=53.1, eu_pmi_prev=52.0,
-    umich='48.1', hy_oas='2.8%', pce='July PCE 3.7% y/y, core 3.3% (August due 30 Sep)',
+    umich='48.1', hy_oas=('3.24%', '1 Oct', '2.80%', '24 Sep'),
+    pce='August PCE 3.4% y/y, core 3.0%, both below forecast (a BEA method change trims about 0.2 point)',
+    eu_hicp='Flash September inflation jumped to 3.8% (energy 18.8%, core 2.5%)',
     ecb='The ECB hiked to 2.50% on 10 Sep into 0.9% projected growth and 3.0% inflation for 2026',
-    geo='The US–Iran conflict keeps the Strait of Hormuz disrupted; the US rejected Iran’s peace proposal on 26 Sep, though talks are to continue',
+    geo='The US–Iran conflict keeps the Strait of Hormuz disrupted; on 2 Oct the G7 agreed to release up to 100 million barrels of oil and diesel reserves over four months',
     # the day's cause, dated so validate.py can refuse it once MARKET moves on
-    move_cause=('2026-09-28', 'as oil rose after the US rejected Iran’s peace proposal'),
+    move_cause=('2026-10-02', 'reversing an early fall on a weak jobs report'),
     em_dm_discount='40% discount to developed markets (11 Sep) against a 25% long-run norm',
     sgov_sec='3.65%', sgov_sec_label='30-day SEC yield, 22 Sep',
     qqq_hist=(('2000–02 dot-com', '≈−83%'), ('2007–09 financial crisis', '−50 to −53%'),
@@ -115,6 +118,13 @@ def masthead():
     </div>
   </header>'''
 
+def growth_clause():
+    """The gauge note names growth by its own score. Rev. 24 hard-coded "Strong growth",
+    which a 29,000 payrolls print and a 3.2 score made false."""
+    g5 = dict((n, s) for n, s, _ in E['gauge']['drivers'])['Growth momentum']
+    return ('Strong growth is' if g5 >= 3.4 else 'Growth, positive but softening, is' if g5 >= 3.0
+            else 'Weak growth adds to the drag and is')
+
 def gauge():
     g = E['gauge']; s5 = g['score5']
     lab = ('Risk-off' if s5 < 1.8 else 'Neutral — cautious' if s5 < 2.6 else 'Neutral' if s5 < 3.4
@@ -136,7 +146,7 @@ def gauge():
     </svg>
     <div class="gauge-val">{g['display']}<small>/5</small></div>
     <div class="gauge-lab">{lab}</div>
-    <p class="gauge-note">Six weighted drivers, each scored 1–5 where 3 is neutral. Strong growth is outweighed by inflation, a hiking Fed and a realised energy shock.</p>
+    <p class="gauge-note">Six weighted drivers, each scored 1–5 where 3 is neutral. {growth_clause()} outweighed by inflation, a hiking Fed and a realised energy shock.</p>
   </div>'''
 
 def ust10_note():
@@ -170,10 +180,10 @@ def vix_lead():
 def driver_notes():
     disc = (1 - FI / FQ) * 100
     return {
-      'Growth momentum': f"Payrolls {FACTS['payrolls']}; US flash PMIs on {FACTS['pmi_date']} at their fastest pace in over five years (services {FACTS['pmi_services']}, composite {FACTS['pmi_composite']}), though consumer sentiment is weak at {FACTS['umich']} (Michigan, final September). {FACTS['imf_world']}.",
-      'Inflation trajectory': f"{FACTS['cpi']}; {FACTS['pce']}. September flash PMIs show input costs rising on energy.",
+      'Growth momentum': f"Payrolls {FACTS['payrolls']}. Surveys still point up: US flash PMIs on {FACTS['pmi_date']} at their fastest pace in over five years (services {FACTS['pmi_services']}, composite {FACTS['pmi_composite']}) and {FACTS['ism']}; consumer sentiment is weak at {FACTS['umich']} (Michigan, final September). {FACTS['imf_world']}.",
+      'Inflation trajectory': f"{FACTS['cpi']}; {FACTS['pce']}. Pipeline pressure is rising: {FACTS['ism_prices']}.",
       'Monetary policy': f"The Fed hiked {FACTS['fed_vote']} on {day(M.FOMC_DATE)}; {FACTS['fed_dots']}; the range is {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%.",
-      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()}, and {FACTS['ust30_note']}: the long end and oil tighten conditions, though high-yield spreads, near {FACTS['hy_oas']}, stay tight.",
+      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()}, and {FACTS['ust30_note']}. High-yield spreads widened to {FACTS['hy_oas'][0]} ({FACTS['hy_oas'][1]}) from {FACTS['hy_oas'][2]} ({FACTS['hy_oas'][3]}), and the dollar sits at a 16-month high.",
       'Valuation & positioning': f"Nasdaq-100 at {f(FQ, 1)}× forward vs EM at {f(FI, 1)}× — a {f(disc, 0)}% discount. The VIX at {SPOT:.2f} ({SPOT_DATE}) sits {vix_rel(SPOT, 0)} its {M.VIX_MEAN} long-run mean: protection is {'cheap' if SPOT < M.VIX_MEAN else 'dear'}.",
       'Geopolitical risk': f"{FACTS['geo']}; Brent settled at ${MK['brent']:.2f} on {day(MK['asof'])}.",
     }
@@ -223,7 +233,7 @@ def regions():
     notes = {
       'Asia / EM': f"{FACTS['imf_asia']}. Equities at {f(FI, 1)}× forward, a {FACTS['em_dm_discount']}. Dollar strength and oil cap the near term.",
       'United States': f"The strongest productivity cycle, but the richest multiple ({f(FQ, 1)}×) and a {MK['ust10']:.2f}% 10-year weigh on the near term.",
-      'Europe': f"Flash composite PMI {FACTS['eu_pmi']} on {FACTS['eu_pmi_date']} (August {FACTS['eu_pmi_prev']}), the highest since April 2023, but input costs jump on energy. {FACTS['ecb']}. The most energy-import-exposed bloc.",
+      'Europe': f"Flash composite PMI {FACTS['eu_pmi']} on {FACTS['eu_pmi_date']} (August {FACTS['eu_pmi_prev']}), the highest since April 2023. {FACTS['eu_hicp']}. {FACTS['ecb']}. The most energy-import-exposed bloc.",
     }
     cards = []
     for rank, k in enumerate(RANKED, 1):
@@ -320,7 +330,7 @@ def volatility():
       </tbody>
     </table>
   </div>
-  <p class="note">VaR is drift-adjusted at the 5th percentile. Ten-year max drawdown ≈ {M.DD_MULT:.2f} × σ (band 1.65–1.75).</p>
+  <p class="note">VaR is drift-adjusted at the 5th percentile. Ten-year expected max drawdown ≈ {M.DD_MULT:.2f} × σ, from a daily-step simulation of each book (median to mean {M.DD_BAND[0]:.2f}–{M.DD_BAND[1]:.2f}×); fat tails would deepen it.</p>
 
   <h3>Two regimes</h3>
   <div class="tw">
@@ -510,18 +520,18 @@ def houses():
 # The previous revision's figures, for the "this revision" rows. validate.py requires each
 # one to appear in that revision's entry in VERIFICATION.md, so the left side of a row is
 # tied to the record rather than typed twice.
-PRIOR = dict(rev=23, asof='2026-09-25', QQQ=9.54, IEMG=8.60, optimized=7.53, baseline=7.87)
+PRIOR = dict(rev=24, asof='2026-09-28', QQQ=9.65, IEMG=8.75, optimized=7.62, baseline=7.95)
 
 def verification_rows():
     """What this revision changed: prior figure on the left, current on the right."""
     return (('Market data', f"{day(PRIOR['asof'])} → <b>{day(MK['asof'])}</b>"),
+            ('Drawdown rule', f"1.70×σ → <b>{M.DD_MULT:.2f}×σ</b>"),
+            ('Optimized drawdown, normalized', f"{MINUS}33.0% → <b>{neg(ST['optimized']['normalized']['dd'])}%</b>"),
+            ('Optimized net CAGR', f"{PRIOR['optimized']:.2f}% → <b>{f(ST['optimized']['calm']['cagr'])}%</b>"),
             ('QQQ net CAGR', f"{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['net'])}%</b>"),
             ('IEMG net CAGR', f"{PRIOR['IEMG']:.2f}% → <b>{f(M.A['IEMG']['net'])}%</b>"),
-            ('Optimized net CAGR', f"{PRIOR['optimized']:.2f}% → <b>{f(ST['optimized']['calm']['cagr'])}%</b>"),
-            ('Term-structure 95% band', '±1.645σ → <b>±1.96σ</b>'),
-            ('ECB 2026 growth projection', '0.8% → <b>0.9%</b>'),
-            ('IMF 2026 world growth', '3.1% → <b>3.0%</b>'),
-            ('SGOV 30-day SEC yield', f"3.74% → <b>{FACTS['sgov_sec']}</b>"))
+            ('Macro gauge', f"2.4 → <b>{E['gauge']['display']}</b>"),
+            ('10-year high', 'since 2007 → <b>since 2002</b>'))
 
 def portfolios(n_mut, n_corr):
     b, o = ST['baseline'], ST['optimized']

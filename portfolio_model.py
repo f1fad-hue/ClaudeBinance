@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 28 September 2026 close; each fund price carries its own
+Market data to the 2 October 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,17 +39,18 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# QQQ 28 Sep: $736.53 (-$7.97, -1.07% from the $744.50 held for 25 Sep, which
-# reconciles exactly). IEMG 28 Sep: $81.62 (-$0.93, -1.13% from $82.55, exact).
+# QQQ 2 Oct: $749.58 (+1.02% from $742.03 on 1 Oct; open 751.31, high 754.54, a 52-week
+# high, low 747.53). IEMG 2 Oct: $82.36 (+$1.14, +1.40% from $81.22, exact; range
+# 81.77-82.59).
 # QQQ went ex-dividend on 21 Sep, but sources disagree on the amount ($0.7514 vs
 # $0.69), so ttm_div stays at the verified $3.03 until one settles; either way the
 # yield moves by at most 0.01 of a point at this price. IEMG's June distribution is
 # likewise quoted as $0.66 (the $1.80 trailing held here, with December's $1.14) and
 # $0.71 ($1.85): 0.06 of a point of yield, held until one settles.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.03, px=736.53, px_asof='2026-09-28',
+    'QQQ':  dict(ttm_div=3.03, px=749.58, px_asof='2026-10-02',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=81.62,  px_asof='2026-09-28',
+    'IEMG': dict(ttm_div=1.80, px=82.36,  px_asof='2026-10-02',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -86,7 +87,7 @@ assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1
 # rounding edge (1.025x): $0.02B either way moves it a cent, and share issuance funding
 # the week's purchases (about 0.3% more shares) is not yet counted in shares_m.
 
-REVISION = 24                          # bump when publishing; validate.py enforces it
+REVISION = 25                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -105,16 +106,26 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-17', 15.42), ('2026-09-18', 14.81),
               ('2026-09-21', 14.87), ('2026-09-22', 14.21),
               ('2026-09-23', 15.18), ('2026-09-24', 15.67),
-              ('2026-09-25', 14.87))
+              ('2026-09-25', 14.87), ('2026-09-28', 16.07),
+              ('2026-09-29', 16.04), ('2026-09-30', 16.34),
+              ('2026-10-01', 16.39), ('2026-10-02', 15.40))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
-# A close that cannot be pinned down is held back, not averaged. For 28 Sep sources give
-# 16.07 (+8.07%), 16.10, 16.30, 16.34 and 16.37 (+1.50, +10.08%); two of them reconcile
-# exactly with 14.87, which is the trap Rev. 20 fell into, and neither FRED (last
-# observation 22 Sep) nor a Cboe history table has published it. The page states the
-# held date and range; VIX_SPOT stays on the last verified close.
-VIX_HELD = dict(asof='2026-09-28', lo=16.07, hi=16.37)
+# A close that cannot be pinned down is held back, not averaged (VIX_HELD = dict(asof,
+# lo, hi) when one is). Rev. 24 held 28 Sep, where sources gave 16.07 to 16.37 and two
+# reconciled with 14.87. The next session settled it: 29 Sep was reported as "down 0.2%
+# to 16.04", which reconciles with 16.07 and not with 16.37 (that would be -2.0%). The
+# chain then runs 30 Sep 16.34 (+1.87%, from 16.04), 1 Oct 16.39 (open 16.33, high
+# 17.59) and 2 Oct 15.40 (-0.99, -6.03%, from 16.39 exactly).
+VIX_HELD = None
+# The day-on-day changes the sources reported, % to the stated precision. Each close must
+# reproduce its reported change from the close before it, so a wrong snapshot of either
+# day fails here at import -- the check Rev. 20's 15.35 and Rev. 24's 16.37 would have
+# needed. (Dates without a reported change are checked only for plausibility below.)
+VIX_REPORTED = {'2026-09-14': 11.24, '2026-09-22': -4.44, '2026-09-23': 6.83, '2026-09-24': 3.23,
+                '2026-09-25': -5.11, '2026-09-28': 8.07, '2026-09-29': -0.2, '2026-09-30': 1.87,
+                '2026-10-02': -6.03}
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
 VIX_ASOF = VIX_SERIES[-1][0]
@@ -122,6 +133,12 @@ assert VIX_HELD is None or (VIX_HELD['asof'] > VIX_ASOF and VIX_HELD['lo'] <= VI
                             and all(abs(v / VIX_SPOT - 1) < 0.25 for v in (VIX_HELD['lo'], VIX_HELD['hi']))), \
     'a held VIX close must post-date the last verified one and be a plausible range'
 VOL_STRUCK_AT = 15.67   # the VIX close at which the sleeve vols in REGIME were last current
+_VIX_PRIOR = {d1: a for (_, a), (d1, _) in zip(VIX_SERIES, VIX_SERIES[1:])}
+for _d, _pct in VIX_REPORTED.items():
+    _b = dict(VIX_SERIES)[_d]; _a = _VIX_PRIOR[_d]
+    _dp = len(repr(_pct).split('.')[1]) if '.' in repr(_pct) else 0
+    assert abs((_b / _a - 1) * 100 - _pct) <= 0.5 * 10 ** -_dp + 0.02, \
+        f'VIX {_d}: {_b} is {(_b / _a - 1) * 100:+.2f}% from {_a}, but the source reported {_pct:+}%'
 assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIES[1:])), \
     'a >25% single-session move in the series is a transcription error until proven'
 
@@ -129,16 +146,16 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-# 28 Sep: Brent settled $105.28 (+$0.96), WTI $92.60 (+$0.19, from the $92.41 settlement
-# recorded on 25 Sep). The 10-year is Treasury's own par-curve close, 5.24% (5.17% on
-# 25 Sep, the level held); press reports of "+6bp to 5.24%" and "5.23%" disagree by a
-# basis point about the prior day or the snapshot, and the official curve settles it.
-# ust10_high is the highest close of the move, so "highest since 2007" is claimed only
-# of a close that equals it.
-MARKET = dict(asof='2026-09-28',
-              brent=105.28, brent_prev=104.32, brent_chg_pct=0.92,
-              ust10=5.24,   ust10_prev=5.17,  ust10_chg_bp=7,
-              ust10_high=5.24, ust10_high_date='2026-09-28')
+# 2 Oct: Brent settled $102.25 (-$0.06, -0.06% from $102.31, which settled +4.4% on
+# 1 Oct). The 10-year is Treasury's par-curve close: 28 Sep 5.24, 29 Sep 5.26, 30 Sep
+# 5.29, 1 Oct 5.24, 2 Oct 5.28 (CNBC: "rose almost 5bp to 5.281%" after an early fall on
+# the jobs report). ust10_high is the highest close of the move -- 5.29% on 30 Sep, which
+# several outlets call the highest since 2002 (it passed the 2007 peak) -- so the phrase
+# is claimed only of a close that equals it.
+MARKET = dict(asof='2026-10-02',
+              brent=102.25, brent_prev=102.31, brent_chg_pct=-0.06,
+              ust10=5.28,   ust10_prev=5.24,  ust10_chg_bp=4,
+              ust10_high=5.29, ust10_high_date='2026-09-30')
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
 assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']) < 0.005, \
@@ -146,7 +163,14 @@ assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']
 assert MARKET['ust10'] <= MARKET['ust10_high'] and MARKET['ust10_high_date'] <= MARKET['asof'], \
     'the 10-year cannot close above the high on file'
 
-DD_MULT = 1.70                        # 10yr E[maxDD] ~= 1.65-1.75 x sigma
+# Ten-year expected maximum drawdown as a multiple of annual sigma. Rev. 24 and earlier
+# used 1.70 (band 1.65-1.75), never derived. A seeded simulation of the model's own books
+# (GBM at each book's CAGR and sigma, daily steps, ten years) puts the mean at 2.01-2.04x
+# and the median at 1.89-1.95x; monthly steps give 1.83-1.90x, because they miss intra-
+# month troughs. 1.70 understated every drawdown on the page by about 15%. Normal returns
+# understate fat tails, so this is still a floor. validate.py re-runs the simulation.
+DD_MULT = 2.00
+DD_BAND = (1.90, 2.05)                # simulated median to mean across the two books
 
 # Which forecast inputs are observed and which are assumed. The page and checklist
 # list the assumed ones from here. Earlier revisions said "three" -- QQQ growth, the
@@ -265,8 +289,14 @@ def fill(v):
     """Bar/arc fill for a 1-5 score: the floor sits at the left stop, not at zero."""
     return (v - 1) / 4 * 100
 
-DRIVERS = [('Growth momentum',7.0,.25), ('Inflation trajectory',3.0,.15),
-           ('Monetary policy',2.0,.20), ('Liquidity & credit',4.5,.15),
+# Re-scored in Rev. 25 where a driver's own evidence moved: Growth 7.0 -> 6.0 on a
+# 29,000 September payrolls print (84,000 expected, unemployment 4.2%, -60,000 of
+# revisions) against still-strong PMIs; Monetary policy 2.0 -> 2.5 as October-hike odds
+# fell from ~36% to ~17% with December still priced; Liquidity & credit 4.5 -> 4.0 as
+# high-yield spreads widened 2.80% -> 3.24% in a week, the 10-year set a 2002 high and
+# the dollar a 16-month high.
+DRIVERS = [('Growth momentum',6.0,.25), ('Inflation trajectory',3.0,.15),
+           ('Monetary policy',2.5,.20), ('Liquidity & credit',4.0,.15),
            ('Valuation & positioning',4.0,.15), ('Geopolitical risk',2.0,.10)]
 REGIONS = {'Asia / EM':[5.5,6.5,7.0,7.5], 'United States':[5.0,5.5,6.5,7.0],
            'Europe':[3.0,3.5,4.0,5.0]}
@@ -392,7 +422,7 @@ def scenario(nets, regime='calm'):
                              for n in PORTFOLIOS})
 
 # ── efficient frontier, generated so the chart cannot drift from the model ────
-FR_X = (10.0, 50.0,  58.0, 286.0)      # max drawdown %  -> svg x
+FR_X = (10.0, 60.0,  58.0, 286.0)      # max drawdown %  -> svg x (widened in Rev. 25 for the 2.0x rule)
 FR_Y = ( 4.0, 10.0, 148.0,  22.0)      # net CAGR %      -> svg y
 
 def fr_x(dd): lo, hi, a, b = FR_X; return a + (b - a) * (dd - lo) / (hi - lo)

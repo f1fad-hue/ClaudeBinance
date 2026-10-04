@@ -25,7 +25,8 @@ orig = open(os.path.join(REPO, 'portfolio_model.py')).read()
 gen  = open(os.path.join(REPO, 'build.py')).read()
 _REV = int(re.search(r'REVISION = (\d+)', orig).group(1))
 _m = re.search(r"\('(\d{4}-\d\d-\d\d)', ([\d.]+)\)\)\n", orig)   # last VIX_SERIES entry
-_LAST, _SPOT = _m.group(1), float(_m.group(2))
+_LAST, _SPOT_S = _m.group(1), _m.group(2)          # as written ("15.40"), not float-printed
+_SPOT = float(_SPOT_S)
 _MEAN = float(re.search(r'VIX_SERIES\[-1\]\[1\], ([\d.]+)', orig).group(1))
 _SGOV = float(re.search(r'SGOV_GROSS = ([\d.]+)', orig).group(1))
 def _num(pat):
@@ -35,6 +36,8 @@ def _num(pat):
 _B = {f: _num(rf'BMNR = dict\([^)]*{f}=([\d.]+)') for f in ('stake_share','stake_yield','mnav')}
 _P = {(t, f): _num(rf"'{t}':\s+dict\([^)]*{f}=([\d.]+)") for t in ('QQQ','IEMG')
       for f in ('ttm_div','px','basis_px','basis_fwd')}
+# the prior revision's QQQ figure, read from build.py so the mutant survives each roll
+_PQ = re.search(r"PRIOR = dict\([^)]*QQQ=([\d.]+)", gen).group(1)
 _bump = lambda v, d: f'{float(v) + d:.{len(v.split(".")[1]) if "." in v else 0}f}'
 MUT=[
  ("QQQ ttm div",    f"ttm_div={_P['QQQ','ttm_div']}",   f"ttm_div={_bump(_P['QQQ','ttm_div'], 0.40)}"),
@@ -57,10 +60,13 @@ MUT=[
  ("BMNR stake_yld", f"stake_yield={_B['stake_yield']}", f"stake_yield={_bump(_B['stake_yield'], 0.30)}"),
  ("BMNR mnav",      f"mnav={_B['mnav']}",               f"mnav={_bump(_B['mnav'], 0.05)}"),
  ("BMNR drag",      "drag=1.40",                "drag=1.20"),
- ("VIX latest close", f"('{_LAST}', {_SPOT})",  f"('{_LAST}', {_SPOT + 1})"),
- ("VIX series date", f"('{_LAST}', {_SPOT})",  f"('{_LAST[:-2]}20', {_SPOT})"),
+ ("VIX latest close", f"('{_LAST}', {_SPOT_S})",  f"('{_LAST}', {_SPOT + 1:.2f})"),
+ ("VIX series date", f"('{_LAST}', {_SPOT_S})",  f"('{_LAST[:-2]}20', {_SPOT_S})"),
+ ("VIX 28 Sep snapshot", "('2026-09-28', 16.07)", "('2026-09-28', 16.37)"),
+ ("VIX reported change", "'2026-09-29': -0.2,", "'2026-09-29': -2.0,"),
  ("VIX_MEAN",       f"VIX_SERIES[-1][1], {_MEAN}", f"VIX_SERIES[-1][1], {_MEAN + 0.5}"),
- ("DD_MULT",        "DD_MULT = 1.70",           "DD_MULT = 1.75"),
+ ("DD_MULT",        "DD_MULT = 2.00",           "DD_MULT = 2.05"),
+ ("DD band",        "DD_BAND = (1.90, 2.05)",   "DD_BAND = (1.65, 2.05)"),
  ("DD QQQ",         "'QQQ': 40.0",              "'QQQ': 42.0"),
  ("DD IEMG",        "'IEMG': 39.0",             "'IEMG': 36.0"),
  ("DD BMNR",        "'BMNR': 85.0",             "'BMNR': 80.0"),
@@ -81,8 +87,8 @@ MUT=[
                     "'baseline':  {'QQQ':40,'IEMG':30,'SGOV':25,'BMNR':5}"),
  ("optimized QQQ",  "'optimized': {'QQQ':35,'IEMG':30,'SGOV':30,'BMNR':5}",
                     "'optimized': {'QQQ':30,'IEMG':35,'SGOV':30,'BMNR':5}"),
- ("driver growth",  "('Growth momentum',7.0,.25)","('Growth momentum',6.5,.25)"),
- ("driver policy",  "('Monetary policy',2.0,.20)","('Monetary policy',2.5,.20)"),
+ ("driver growth",  "('Growth momentum',6.0,.25)","('Growth momentum',6.5,.25)"),
+ ("driver policy",  "('Monetary policy',2.5,.20)","('Monetary policy',3.0,.20)"),
  ("region asia",    "'Asia / EM':[5.5,6.5,7.0,7.5]","'Asia / EM':[5.0,6.5,7.0,7.5]"),
  ("region europe",  "'Europe':[3.0,3.5,4.0,5.0]", "'Europe':[3.5,3.5,4.0,5.0]"),
  ("JPM us",         "dict(us=6.70, em=7.80",    "dict(us=6.20, em=7.80"),
@@ -96,13 +102,12 @@ MUT=[
  ("VIX low date",   "low_date='2026-08-14'",    "low_date='2026-08-21'"),
  ("FOMC date",      "FOMC_DATE  = '2026-09-16'", "FOMC_DATE  = '2026-09-17'"),
  ("BMNR held",      "held=6_001_302",           "held=6_101_302"),
- ("Brent level only", "brent=105.28,",          "brent=106.28,"),
- ("10y below its high", "ust10=5.24,   ust10_prev=5.17,  ust10_chg_bp=7,",
-                      "ust10=5.22,   ust10_prev=5.17,  ust10_chg_bp=5,"),
- ("VIX held range",  "VIX_HELD = dict(asof='2026-09-28', lo=16.07,", "VIX_HELD = dict(asof='2026-09-28', lo=16.17,"),
+ ("Brent level only", "brent=102.25,",          "brent=103.25,"),
+ ("10y below its high", "ust10=5.28,   ust10_prev=5.24,  ust10_chg_bp=4,",
+                      "ust10=5.27,   ust10_prev=5.24,  ust10_chg_bp=3,"),
  ("assumed input dropped", "           ('IEMG currency drag', f\"{OBS", "           ('IEMG FX (observed)', f\"{OBS"),
  ("driver inflation", "('Inflation trajectory',3.0,.15)", "('Inflation trajectory',3.5,.15)"),
- ("driver liquidity", "('Liquidity & credit',4.5,.15)",   "('Liquidity & credit',5.0,.15)"),
+ ("driver liquidity", "('Liquidity & credit',4.0,.15)",   "('Liquidity & credit',4.5,.15)"),
  ("driver valuation", "('Valuation & positioning',4.0,.15)", "('Valuation & positioning',4.5,.15)"),
  ("driver geopol",  "('Geopolitical risk',2.0,.10)",    "('Geopolitical risk',2.5,.10)"),
  ("region US",      "'United States':[5.0,5.5,6.5,7.0]", "'United States':[5.0,5.5,6.0,7.0]"),
@@ -144,8 +149,11 @@ GEN = [
  G("still-open list truncated", "{'; '.join(f'{a} ({v})' for a, v in M.ASSUMED)}", "{'; '.join(f'{a} ({v})' for a, v in M.ASSUMED[:3])}"),
  G("10-year high keyed on the day's sign", "    if MK['ust10'] >= MK['ust10_high']:\n        return f\"its", "    if MK['ust10_chg_bp'] >= 0:\n        return f\"its"),
  G("revision row shows gross, not net", "{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['net'])}%</b>", "{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['gross'])}%</b>"),
- G("prior figure not in the record", "PRIOR = dict(rev=23, asof='2026-09-25', QQQ=9.54,", "PRIOR = dict(rev=23, asof='2026-09-25', QQQ=9.59,"),
+ G("prior figure not in the record", f"QQQ={_PQ}, IEMG=", f"QQQ={float(_PQ) + 0.01:.2f}, IEMG="),
  G("disclaimer drops the holdings date", "release, as of {day(M.BMNR_HOLDINGS['asof'], False)}.", "release."),
+ G("drawdown band typed, not from the model", "(median to mean {M.DD_BAND[0]:.2f}–{M.DD_BAND[1]:.2f}×)", "(median to mean 1.65–1.75×)"),
+ G("high-yield spreads called tight again", "High-yield spreads widened to {FACTS['hy_oas'][0]}", "High-yield spreads stay tight at {FACTS['hy_oas'][0]}"),
+ G("gauge note calls growth strong regardless", "return ('Strong growth is' if g5 >= 3.4 else", "return ('Strong growth is' if g5 >= 0 else"),
  G("donut offsets shifted", 'stroke-dashoffset=\"{o:.2f}\"', 'stroke-dashoffset=\"{o - 1:.2f}\"'),
 ]
 
