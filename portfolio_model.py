@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 2 October 2026 close; each fund price carries its own
+Market data to the 6 October 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,18 +39,18 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# QQQ 2 Oct: $749.58 (+1.02% from $742.03 on 1 Oct; open 751.31, high 754.54, a 52-week
-# high, low 747.53). IEMG 2 Oct: $82.36 (+$1.14, +1.40% from $81.22, exact; range
-# 81.77-82.59).
+# QQQ 6 Oct: $759.66 (+$3.46, +0.46% from $756.20 on 5 Oct, exact), a record close.
+# IEMG 5 Oct: $83.58, from the iShares fund page (NAV $83.85). Its 6 Oct close is quoted
+# as 83.04 and 83.05 on undated pages, so the fund's own dated close is used instead.
 # QQQ went ex-dividend on 21 Sep, but sources disagree on the amount ($0.7514 vs
 # $0.69), so ttm_div stays at the verified $3.03 until one settles; either way the
 # yield moves by at most 0.01 of a point at this price. IEMG's June distribution is
 # likewise quoted as $0.66 (the $1.80 trailing held here, with December's $1.14) and
 # $0.71 ($1.85): 0.06 of a point of yield, held until one settles.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.03, px=749.58, px_asof='2026-10-02',
+    'QQQ':  dict(ttm_div=3.03, px=759.66, px_asof='2026-10-06',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=82.36,  px_asof='2026-10-02',
+    'IEMG': dict(ttm_div=1.80, px=83.58,  px_asof='2026-10-05',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -65,29 +65,29 @@ SGOV_GROSS = 3.875         # midpoint of FED_RANGE; validate.py asserts it
 # extrapolates the hiking path futures price (about 4.1% by December) nor assumes a
 # return to the 3.25% this file carried, which was below both spot and the curve.
 SGOV_ER    = 0.09
-BMNR = dict(eth=9.00, stake_share=0.844, stake_yield=2.62, mnav=1.03, drag=1.40)
-BMNR_HOLDINGS = dict(held=6_001_302, staked=5_067_309, asof='2026-09-27', released='2026-09-28',
-                     eth_px=2698, crypto_b=16.21, total_b=17.2,        # 28 Sep release
-                     px=27.56, px_asof='2026-09-25', shares_m=603.2)   # close, shares out
+BMNR = dict(eth=9.00, stake_share=0.842, stake_yield=2.63, mnav=0.98, drag=1.40)
+BMNR_HOLDINGS = dict(held=6_016_414, staked=5_067_309, asof='2026-10-04', released='2026-10-05',
+                     eth_px=2726, crypto_b=16.42, total_b=17.4,        # 5 Oct release
+                     px=26.79, px_asof='2026-10-05', shares_m=603.2)   # close, shares out
 # mnav above is the crypto-only premium, derived here rather than typed:
 BMNR_MCAP_B = BMNR_HOLDINGS['px'] * BMNR_HOLDINGS['shares_m'] / 1000
 assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1e-9, \
     'BMNR mnav must equal market cap over crypto holdings'
-# From the 28 Sep 2026 holdings release: 6,001,302 ETH at $2,698 as of 27 Sep (17,362
-# bought that week, which reconciles exactly with 5,983,940 a week earlier), of which
-# 5,067,309 staked -- the same staked count as the two releases before, so the staked
-# SHARE falls to 84.4% as new purchases sit unstaked. The 7-day yield is 2.62%.
-# crypto_b is 6,001,302 x $2,698 = $16.19B of ETH plus 213 BTC (~$0.02B); the release's
-# $17.2B total less $0.30B of stakes in Beast Industries and Eightco and $0.67B of cash
-# gives $16.23B, inside rounding of the $16.21B used.
-# mnav uses the crypto-only reading, the conservative one: market cap $16.62B
-# ($27.56 x 603.2M shares, 25 Sep close) against ~$16.21B of crypto = 1.03x; against
-# total holdings of $17.2B it is 0.97x. The stock fell 4.1% from its 22 Sep $28.75 while
-# holdings rose, which is what narrowed the premium from 1.08x. The premium sits on a
-# rounding edge (1.025x): $0.02B either way moves it a cent, and share issuance funding
-# the week's purchases (about 0.3% more shares) is not yet counted in shares_m.
+# From the 5 Oct 2026 holdings release (8-K): 6,016,414 ETH at $2,726 as of 4 Oct (15,112
+# bought that week; 6,001,302 + 15,112 reconciles exactly), 5,067,309 staked (the same
+# count for the fourth release, so the staked share falls to 84.2%), 7-day yield 2.63%,
+# 214 BTC, $643M of cash and securities, $17.4B in all. crypto_b is 6,016,414 x $2,726 =
+# $16.40B of ETH plus 214 BTC (~$0.02B).
+# Close 5 Oct, the first session after the holdings date: $26.79 (+2.25%; a later quote's
+# -$0.56 to $26.23 implies the same prior close). Market cap $16.16B against $16.42B of
+# crypto = 0.98x: the stock now trades below its ETH, and the "premium" term turns into a
+# discount that closes at +0.20%/yr. A cent either way leaves 0.98x unchanged.
+# On 7 Oct the chairman said BitMine will stop buying ETH at 5% of supply (a "hard cap",
+# about 90,000 ETH away). That removes the share issuance behind most of the 1.40%/yr
+# dilution drag, but the company has also bought back shares this year and the share
+# count here (603.2M) predates both; the drag is held, and listed as an assumption.
 
-REVISION = 25                          # bump when publishing; validate.py enforces it
+REVISION = 26                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -108,7 +108,8 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-23', 15.18), ('2026-09-24', 15.67),
               ('2026-09-25', 14.87), ('2026-09-28', 16.07),
               ('2026-09-29', 16.04), ('2026-09-30', 16.34),
-              ('2026-10-01', 16.39), ('2026-10-02', 15.40))
+              ('2026-10-01', 16.39), ('2026-10-02', 15.31),
+              ('2026-10-05', 15.52), ('2026-10-06', 15.01))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
@@ -116,8 +117,14 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
 # lo, hi) when one is). Rev. 24 held 28 Sep, where sources gave 16.07 to 16.37 and two
 # reconciled with 14.87. The next session settled it: 29 Sep was reported as "down 0.2%
 # to 16.04", which reconciles with 16.07 and not with 16.37 (that would be -2.0%). The
-# chain then runs 30 Sep 16.34 (+1.87%, from 16.04), 1 Oct 16.39 (open 16.33, high
-# 17.59) and 2 Oct 15.40 (-0.99, -6.03%, from 16.39 exactly).
+# chain then runs 30 Sep 16.34 (+1.87%, from 16.04) and 1 Oct 16.39 (open 16.33, high
+# 17.59). Rev. 25 then published 15.40 for 2 Oct (-0.99, -6.03%) from a single social-
+# media post. The close was 15.31 (-1.08, -6.59%: Yahoo's history, Investing.com's table
+# with open 16.15 and low 15.30, StreetStats), and 5 Oct's "+1.4% to 15.52" reconciles
+# only with 15.31 (from 15.40 it would be +0.8%). The 15.40 post reconciled with 16.39
+# too, because its change came from the same post: a change is evidence only when it
+# comes from a second source. VIX_SOURCES now records how many independent sources
+# agree on each close from 2 Oct on.
 VIX_HELD = None
 # The day-on-day changes the sources reported, % to the stated precision. Each close must
 # reproduce its reported change from the close before it, so a wrong snapshot of either
@@ -125,7 +132,9 @@ VIX_HELD = None
 # needed. (Dates without a reported change are checked only for plausibility below.)
 VIX_REPORTED = {'2026-09-14': 11.24, '2026-09-22': -4.44, '2026-09-23': 6.83, '2026-09-24': 3.23,
                 '2026-09-25': -5.11, '2026-09-28': 8.07, '2026-09-29': -0.2, '2026-09-30': 1.87,
-                '2026-10-02': -6.03}
+                '2026-10-02': -6.59, '2026-10-05': 1.4, '2026-10-06': -3.29}
+VIX_SOURCES = {'2026-10-02': 3, '2026-10-05': 3, '2026-10-06': 3}
+assert all(n >= 2 for n in VIX_SOURCES.values()), 'a close needs two independent sources'
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
 VIX_ASOF = VIX_SERIES[-1][0]
@@ -146,16 +155,15 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-# 2 Oct: Brent settled $102.25 (-$0.06, -0.06% from $102.31, which settled +4.4% on
-# 1 Oct). The 10-year is Treasury's par-curve close: 28 Sep 5.24, 29 Sep 5.26, 30 Sep
-# 5.29, 1 Oct 5.24, 2 Oct 5.28 (CNBC: "rose almost 5bp to 5.281%" after an early fall on
-# the jobs report). ust10_high is the highest close of the move -- 5.29% on 30 Sep, which
-# several outlets call the highest since 2002 (it passed the 2007 peak) -- so the phrase
-# is claimed only of a close that equals it.
-MARKET = dict(asof='2026-10-02',
-              brent=102.25, brent_prev=102.31, brent_chg_pct=-0.06,
-              ust10=5.28,   ust10_prev=5.24,  ust10_chg_bp=4,
-              ust10_high=5.29, ust10_high_date='2026-09-30')
+# 6 Oct: Brent settled $100.58 (+$0.26 from $100.32, which settled -1.9% on 5 Oct after
+# Saudi Arabia cut its November price to Asia). The 10-year is the par-curve / H.15 close:
+# 5.31% on 5 Oct, the highest since April 2002 (CNBC), then 5.27% on 6 Oct (-4bp).
+# ust10_high is the highest close of the move, so "highest close since 2002" is claimed
+# only of a close that equals it.
+MARKET = dict(asof='2026-10-06',
+              brent=100.58, brent_prev=100.32, brent_chg_pct=0.26,
+              ust10=5.27,   ust10_prev=5.31,  ust10_chg_bp=-4,
+              ust10_high=5.31, ust10_high_date='2026-10-05')
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
 assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']) < 0.005, \
@@ -183,7 +191,8 @@ ASSUMED = (('QQQ earnings growth', f"{OBS['QQQ']['eps']:.1f}%/yr"),
            ('BMNR dilution drag', f"{BMNR['drag']:.2f}%/yr"),
            ('drawdown rule', f"{DD_MULT:.2f} × σ"),
            ('sleeve drawdowns', 'history-anchored judgements'),
-           ('sleeve volatilities and stress correlations', f'struck at VIX {VOL_STRUCK_AT:.2f}'))
+           ('sleeve volatilities and stress correlations', f'struck at VIX {VOL_STRUCK_AT:.2f}'),
+           ('allocation-rule settings', '5-point steps, gauge below 2.6, trend band ±2% weighted 1/1/2, transmission map'))
 OBSERVED = ('prices and trailing dividends', 'forward and 10-year average multiples',
             'fund fees', 'policy range', 'BMNR holdings and staking yield',
             'VIX closes and its 2016-2023 mean', 'calm correlations')
@@ -238,9 +247,10 @@ REGIME = {
                     rho={('QQQ','IEMG'):0.85,('QQQ','BMNR'):0.80,('IEMG','BMNR'):0.72}),
 }
 
+# The strategic book for a ten-year horizon. The optimized book is NOT typed: tilt_book()
+# derives it below from the four pillars, one rule each, and assigns it here.
 PORTFOLIOS = {
  'baseline':  {'QQQ':45,'IEMG':25,'SGOV':25,'BMNR':5},
- 'optimized': {'QQQ':35,'IEMG':30,'SGOV':30,'BMNR':5},
 }
 
 def rho(R, x, y):
@@ -308,6 +318,142 @@ def gauge():
     # a linear map commutes with a weighted average - this must hold
     assert abs(composite5 - to5(composite10)) < 1e-9, 'rescale/average must commute'
     return composite10, composite5
+
+# ── correlated transmission: how today's macro reaches each sleeve ────────────
+# +1 tailwind, 0 two-sided, -1 headwind. A judgement, listed as one. It decides which
+# sleeve funds a defensive move: the equity sleeve the macro hurts most.
+CORRELATED = {'SGOV': (1, 'Tailwind'), 'QQQ': (0, 'Two-sided'),
+              'IEMG': (1, 'Tailwind'), 'BMNR': (-1, 'Headwind')}
+
+# ── market trend: total returns over 3, 6 and 12 months to the last quarter end ────
+# Each market is read from the sponsor or index provider's own table where one exists:
+#   S&P 500     iShares IVV benchmark row, 30 Sep: 2.30 / 17.85 / 15.74 (Cetera, FactSet:
+#               Q3 2.30; Evercore Q2 15.2, which chains to 17.85).
+#   Nasdaq-100  Q3 0.58 from Nasdaq's monthly total returns (-6.59, +4.24, +3.30; QQQ
+#               itself +0.53 Yahoo, +0.56 ETFreplay); 6 months chains Invesco's Q2 NAV
+#               +27.68 (the same report also prints 27.54); 12 months 24.00 from the
+#               XNDX factsheet (QQQ +23.75, net of its fee).
+#   MSCI EM     iShares EEM benchmark row, 30 Sep: -0.37 / 23.59 / 29.22 (Cetera and MAI
+#               both -0.4 for Q3). IEMG tracks the broader IMI; funds can lag their index
+#               over short windows (EEM trailed by 4.2 points over six months).
+#   STOXX 600   iShares STOXX Europe 600 fact sheet, 30 Sep, in EUR: ~-0.7 / 10.64 /
+#               16.56 (Reuters: about +10% in Q2; a broker note: about -1% in Q3).
+#   Ether       CoinGecko Q3 +70.6 (CoinGlass +71.2), Q2 -25.28, which chains to +27.5 over
+#               six months; 12 months 2,687 against ~4,150 on 30 Sep 2025 (Coinspeaker;
+#               Digrin 4,145.96) = -35.3. BMNR's own stock: +68.7% / -58.5% over 3 / 12
+#               months to 5 Oct (MarketBeat).
+TREND_ASOF = '2026-09-30'
+TREND = {
+ 'S&P 500':          dict(r=(2.30, 17.85, 15.74), cur='USD', sleeve=None,   region='United States'),
+ 'Nasdaq-100':       dict(r=(0.58, 28.42, 24.00), cur='USD', sleeve='QQQ',  region=None),
+ 'MSCI EM':          dict(r=(-0.37, 23.59, 29.22), cur='USD', sleeve='IEMG', region='Asia / EM'),
+ 'STOXX Europe 600': dict(r=(-0.70, 10.64, 16.56), cur='EUR', sleeve=None,   region='Europe'),
+ 'Ether':            dict(r=(70.6, 27.5, -35.3),   cur='USD', sleeve='BMNR', region=None),
+}
+# The pieces each multi-period figure was built from, so validate.py can rebuild it:
+# compounded period returns (%) or a start and end level.
+TREND_CHAIN = {('Nasdaq-100', 0): (-6.59, 4.24, 3.30), ('Nasdaq-100', 1): (27.68, 0.58),
+               ('S&P 500', 1): (15.2, 2.30), ('Ether', 1): (-25.28, 70.6)}
+TREND_LEVELS = {('Ether', 2): (4150, 2687)}
+# A move inside +/-2% is noise, not a trend; the 12-month reading counts double because
+# it is the most persistent of the three in the time-series momentum literature.
+# Quarter-end closes, so the page can say how far each fund has moved since the window
+# ended: QQQ 739.77 (FinancialContent, Investing.com, MarketBeat), IEMG 81.16 (Yahoo's
+# dated history; Investing.com's header).
+QE_CLOSE = {'QQQ': 739.77, 'IEMG': 81.16}
+TREND_DEADBAND = 2.0
+TREND_WEIGHTS = (1, 1, 2)
+
+def trend_sign(x, band=None):
+    band = TREND_DEADBAND if band is None else band
+    return 1 if x > band else -1 if x < -band else 0
+
+def trend_score(r):
+    return sum(w * trend_sign(x) for w, x in zip(TREND_WEIGHTS, r))
+
+def trend_verdict(score):
+    return 'Uptrend' if score >= 2 else 'Downtrend' if score <= -2 else 'Mixed'
+
+def relative_trend(a, b):
+    """Per-horizon lead of market a over market b (+1 a, -1 b, 0 inside the band), and
+    the weighted net. Positive net = a has the stronger trend."""
+    signs = tuple(trend_sign(x - y) for x, y in zip(TREND[a]['r'], TREND[b]['r']))
+    return signs, sum(w * s for w, s in zip(TREND_WEIGHTS, signs))
+
+# ── the allocation rule: one move per pillar, in 5-point steps, from the baseline ──
+RULE = dict(step=5, floor=5, bmnr_cap=5, gauge_cautious=2.6, gauge_constructive=3.4,
+            trend_tilt=2)
+REGION_SLEEVE = {'Asia / EM': 'IEMG', 'United States': 'QQQ'}
+SLEEVE_MARKET = {d['sleeve']: k for k, d in TREND.items() if d['sleeve']}
+
+def drawdown_step(w):
+    """The rule's last pillar. If a book one 5-point step away beats w on both normalized
+    drawdown and net CAGR, return the one with the least drawdown (ties: the higher CAGR).
+    A dominating book further away is counted, not taken. Rev. 26's first version jumped
+    to the nearest dominating book anywhere; in a US-lead counterfactual that undid the
+    regional step with a 60-point move for 0.01 points of CAGR, noise far inside the
+    forecast's error. Returns (book or None, dominating neighbours, dominating books)."""
+    st = RULE['step']; s0 = stats(w, 'normalized')
+    def beats(v):
+        sv = stats(v, 'normalized')
+        return sv['dd'] <= s0['dd'] and sv['cagr'] >= s0['cagr'] and (sv['dd'] < s0['dd'] or sv['cagr'] > s0['cagr'])
+    far = [v for v in admissible(w['BMNR']) if beats(v)]
+    near = [v for v in far if sum(abs(v[k] - w[k]) for k in w) == 2 * st]
+    best = min(near, key=lambda v: (stats(v, 'normalized')['dd'], -stats(v, 'normalized')['cagr'])) if near else None
+    return best, len(near), len(far)
+
+def tilt_book():
+    """Derive the optimized book from the strategic one. Each pillar may move one 5-point
+    step; a step that would breach a floor or the BMNR cap is not taken. Returns the book
+    and, per pillar, (pillar, reading, move, book after)."""
+    w = dict(PORTFOLIOS['baseline']); steps = []; st = RULE['step']
+    def move(src, dst):
+        if src is None or dst is None or src == dst: return None
+        if w[src] - st < RULE['floor']: return None
+        if dst == 'BMNR' and w[dst] + st > RULE['bmnr_cap']: return None
+        w[src] -= st; w[dst] += st
+        return f'{src} −{st}, {dst} +{st}'
+    def log(pillar, reading, mv):
+        steps.append((pillar, reading, mv or 'no move', dict(w)))
+    # 1 regional rankings: the leader must lead at the 3-month AND the 10-year horizon
+    ranked = sorted(REGIONS, key=lambda k: -sum(REGIONS[k]) / 4)
+    top, sec = ranked[0], ranked[1]
+    leader = REGION_SLEEVE.get(top)
+    both = REGIONS[top][0] > REGIONS[sec][0] and REGIONS[top][3] > REGIONS[sec][3]
+    mv = move(REGION_SLEEVE.get(sec), leader) if both else None
+    log('Regional rankings', (top, sec, both), mv)
+    # 2 broad + correlated sentiment: a cautious gauge adds to the reserve, funded by the
+    # equity sleeve the transmission map rates worst (ties: the larger weight)
+    g5 = gauge()[1]
+    eq = [k for k in ('QQQ', 'IEMG', 'BMNR') if w[k] - st >= RULE['floor']]
+    funder = min(eq, key=lambda k: (CORRELATED[k][0], -w[k])) if eq else None
+    if g5 < RULE['gauge_cautious']:   mv = move(funder, 'SGOV')
+    elif g5 >= RULE['gauge_constructive']: mv = move('SGOV', leader)
+    else: mv = None
+    log('Broad and correlated macro sentiment', (g5, funder), mv)
+    # 3 volatility: a VIX above its long-run mean is when the reserve is spent
+    mv = move('SGOV', leader) if VIX_SPOT >= VIX_MEAN else None
+    log('Volatility', (VIX_SPOT, VIX_MEAN), mv)
+    # 4 market trend: a sleeve in a downtrend gives a step to cash; a clear relative
+    # lead between the two equity sleeves earns a step
+    mv = None
+    for k in ('QQQ', 'IEMG', 'BMNR'):
+        if trend_verdict(trend_score(TREND[SLEEVE_MARKET[k]]['r'])) == 'Downtrend':
+            mv = move(k, 'SGOV') or mv
+    signs, net = relative_trend(SLEEVE_MARKET['QQQ'], SLEEVE_MARKET['IEMG'])
+    if abs(net) >= RULE['trend_tilt']:
+        mv = move('IEMG', 'QQQ') if net > 0 else move('QQQ', 'IEMG')
+    log('Market trend', (signs, net), mv)
+    # 5 drawdown control: one more 5-point step, like every other pillar
+    best, near, far = drawdown_step(w)
+    mv = None
+    if best:
+        src = next(k for k in w if best[k] < w[k]); dst = next(k for k in w if best[k] > w[k])
+        mv = f'{src} −{st}, {dst} +{st}'
+        w.clear(); w.update(best)
+    log('Drawdown control', (near, far), mv)
+    assert sum(w.values()) == 100 and all(v % 5 == 0 and v >= RULE['floor'] for v in w.values())
+    return dict(book=dict(w), steps=steps)
 
 def donut(w, r=64):
     C = 2*math.pi*r; off = 0.0; out = []
@@ -453,6 +599,10 @@ def efficient(regime='normalized', bmnr=5):
            if not any(d <= p[0] and c >= p[1] and (d < p[0] or c > p[1]) for d, c, _ in pts)]
     return sorted(eff), len(pts)
 
+# the optimized book, derived (every helper the rule needs is defined above this line)
+TILT = tilt_book()
+PORTFOLIOS['optimized'] = TILT['book']
+
 def frontier_svg(regime='normalized'):
     """The whole chart, emitted from the model. Axes auto-label over FR_X/FR_Y."""
     eff, _ = efficient(regime)
@@ -469,11 +619,11 @@ def frontier_svg(regime='normalized'):
         y = fr_y(c)
         g.append(f'<line x1="44" y1="{y:.1f}" x2="288" y2="{y:.1f}" stroke="#EDF0F4" stroke-width="1"/>'
                  f'<text x="38" y="{y+3:.1f}" fill="#8A94A6" font-family="IBM Plex Mono, monospace" '
-                 f'font-size="8" text-anchor="end">{c}%</text>')
+                 f'font-size="9.5" text-anchor="end">{c}%</text>')
     step = 5 if (FR_X[1] - FR_X[0]) / 5 <= 8 else 10
     for dd in range(int(FR_X[0]), int(FR_X[1]) + 1, step):
         g.append(f'<text x="{fr_x(dd):.1f}" y="160" fill="#8A94A6" font-family="IBM Plex Mono, '
-                 f'monospace" font-size="8" text-anchor="middle">&#8722;{dd}%</text>')
+                 f'monospace" font-size="9.5" text-anchor="middle">&#8722;{dd}%</text>')
     pts = ' '.join(f'{fr_x(dd):.1f},{fr_y(c):.1f}' for dd, c, _ in eff)
     g.append(f'<polyline points="{pts}" fill="none" stroke="#0F5E63" stroke-width="1.8" '
              f'stroke-linejoin="round"/>')
@@ -481,17 +631,17 @@ def frontier_svg(regime='normalized'):
     g.append(f'<circle cx="{fr_x(b["dd"]):.1f}" cy="{fr_y(b["cagr"]):.1f}" r="4" fill="#FFFFFF" '
              f'stroke="#B3402F" stroke-width="2"/>'
              f'<text x="{fr_x(b["dd"])+8:.1f}" y="{fr_y(b["cagr"])+3:.1f}" fill="#B3402F" '
-             f'font-family="Public Sans, sans-serif" font-size="8.5" text-anchor="start" '
+             f'font-family="Public Sans, sans-serif" font-size="9.5" text-anchor="start" '
              f'font-weight="600">Baseline</text>')
     g.append(f'<circle cx="{fr_x(o["dd"]):.1f}" cy="{fr_y(o["cagr"]):.1f}" r="4.5" fill="#0F5E63"/>'
              f'<text x="{fr_x(o["dd"])-8:.1f}" y="{fr_y(o["cagr"])+3:.1f}" fill="#0F5E63" '
-             f'font-family="Public Sans, sans-serif" font-size="8.5" text-anchor="end" '
+             f'font-family="Public Sans, sans-serif" font-size="9.5" text-anchor="end" '
              f'font-weight="600">Optimized</text>')
     g.append('<text x="166" y="171" fill="#8A94A6" font-family="Public Sans, sans-serif" '
-             'font-size="8" text-anchor="middle" letter-spacing="0.4">MAX DRAWDOWN, VOLATILITY '
+             'font-size="9.5" text-anchor="middle" letter-spacing="0.4">MAX DRAWDOWN, VOLATILITY '
              'NORMALIZED</text>')
     g.append('<text x="12" y="88" fill="#8A94A6" font-family="Public Sans, sans-serif" '
-             'font-size="8" text-anchor="middle" letter-spacing="0.4" transform="rotate(-90 12 88)">'
+             'font-size="9.5" text-anchor="middle" letter-spacing="0.4" transform="rotate(-90 12 88)">'
              'NET CAGR</text>')
     return ''.join(g) + '</svg>'
 

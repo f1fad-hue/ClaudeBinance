@@ -23,20 +23,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FACTS = dict(
     pmi_date='23 Sep', pmi_services=58.7, pmi_composite=58.4,
     payrolls='+29,000 against 84,000 expected (September), unemployment 4.2%, July–August revised down 60,000',
-    ism='ISM manufacturing 54.5 in September', ism_prices='ISM prices paid 77.9 in September, up from 71.1',
+    ism='ISM manufacturing 54.5 and services 54.9 in September', ism_prices='ISM prices paid 77.9 in manufacturing and 74.0 in services, the highest since July 2022',
     cpi='August CPI 3.4% y/y; core 2.4% y/y but +0.3% m/m against 0.2% expected; PPI 5.4% y/y',
-    fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year, but after the jobs report futures give an October hike about 17% (CME FedWatch), from about 36% a week earlier, with December still priced',
+    fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year, and the 7 Oct minutes show most think one likely by year end; futures price a hold in October (about 80%) and a December hike',
     imf_world='IMF (July update): 3.0% world growth in 2026',
     imf_asia='The IMF’s July update has China at 4.6% and India at 6.4% for 2026; on its January figures the two supply 43.6% of world growth. China’s official manufacturing PMI returned to expansion at 50.1 in September',
-    ust10_high='highest close since 2002', ust30_note='the 30-year closed at 5.61%, near the highest since 2002 it reached this week',
+    ust10_high='highest close since 2002', ust30_note='the 30-year closed at 5.64%, near levels last seen in 2002',
     eu_pmi_date='23 Sep', eu_pmi=53.1, eu_pmi_prev=52.0,
-    umich='48.1', hy_oas=('3.24%', '1 Oct', '2.80%', '24 Sep'),
+    umich='48.1', hy_oas=('3.12%', '5 Oct', '2.80%', '24 Sep'),
     pce='August PCE 3.4% y/y, core 3.0%, both below forecast (a BEA method change trims about 0.2 point)',
     eu_hicp='Flash September inflation jumped to 3.8% (energy 18.8%, core 2.5%)',
     ecb='The ECB hiked to 2.50% on 10 Sep into 0.9% projected growth and 3.0% inflation for 2026',
-    geo='The US–Iran conflict keeps the Strait of Hormuz disrupted; on 2 Oct the G7 agreed to release up to 100 million barrels of oil and diesel reserves over four months',
+    geo='The US–Iran conflict keeps the Strait of Hormuz disrupted, though Middle East exports are recovering (Saudi Arabia cut its November price to Asia); the G7 agreed on 2 Oct to release up to 100 million barrels of oil and diesel reserves',
     # the day's cause, dated so validate.py can refuse it once MARKET moves on
-    move_cause=('2026-10-02', 'reversing an early fall on a weak jobs report'),
+    move_cause=('2026-10-06', 'as the sell-off paused ahead of the Fed minutes'),
+    bmnr_stop='On 7 Oct the chairman said BitMine will stop buying ETH at 5% of supply',
     em_dm_discount='40% discount to developed markets (11 Sep) against a 25% long-run norm',
     sgov_sec='3.65%', sgov_sec_label='30-day SEC yield, 22 Sep',
     qqq_hist=(('2000–02 dot-com', '≈−83%'), ('2007–09 financial crisis', '−50 to −53%'),
@@ -51,10 +52,17 @@ SOURCES = (
                    ('Siblis EM valuations', 'https://siblisresearch.com/data/emerging-markets-valuations/'),
                    ('MSCI EM discount', 'https://www.msci.com/indexes/markets-in-motion/visualizations/em-gains-but-discount-to-developed-markets-deepens'))),
     ('Policy & macro', (('FOMC statement, 16 Sep 2026', 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm'),
+                        ('FOMC minutes, 7 Oct 2026', 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261007a.htm'),
+                        ('ISM services, September', 'https://www.prnewswire.com/news-releases/services-pmi-at-54-9-september-2026-ism-services-pmi-report-302898421.html'),
                         ('ECB, September 2026', 'https://www.ecb.europa.eu/press/press_conference/visual-mps/2026/html/mopo_statement_explained_september.en.html'),
                         ('BLS CPI', 'https://www.bls.gov/news.release/cpi.nr0.htm'),
                         ('S&P Global flash PMI', 'https://www.pmi.spglobal.com/Public/Home/PressRelease/35c60149cdbe461fb6bc3c959a58a551'),
                         ('IMF WEO', 'https://www.imf.org/external/datamapper/index.php'))),
+    ('Trend', (('iShares IVV (S&P 500)', 'https://www.ishares.com/us/products/239726/ishares-core-sp-500-etf'),
+               ('iShares EEM (MSCI EM)', 'https://www.ishares.com/us/products/239637/ishares-msci-emerging-markets-etf'),
+               ('iShares STOXX Europe 600', 'https://www.ishares.com/ch/individual/en/products/251931/ishares-stoxx-europe-600-ucits-etf-de-fund'),
+               ('Nasdaq-100 factsheet', 'https://indexes.nasdaqomx.com/docs/FS_XNDX.pdf'),
+               ('Invesco QQQ quarterly', 'https://www.invesco.com/qqq-etf/en/etf-insights/qqq-quarterly-outlook.html'))),
     ('Rates & volatility', (('FRED 10-yr Treasury', 'https://fred.stlouisfed.org/series/dgs10'),
                             ('Cboe VIX history', 'https://www.cboe.com/tradable-products/vix/vix-historical-data'),
                             ('FRED VIX', 'https://fred.stlouisfed.org/series/VIXCLS'),
@@ -62,7 +70,7 @@ SOURCES = (
     ('Outside forecasts', (('J.P. Morgan LTCMA 2026', 'https://am.jpmorgan.com/us/en/asset-management/institutional/insights/portfolio-insights/ltcma/'),
                            ('Vanguard VCMM', 'https://corporate.vanguard.com/content/corporatesite/us/en/corp/vemo/vemo-return-forecasts'),
                            ('BlackRock CMAs', 'https://www.blackrock.com/institutions/en-global/institutional-insights/thought-leadership/capital-market-assumptions'))),
-    ('BMNR', (('Holdings release, 28 Sep 2026', 'https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-over-6-million-tokens-with-total-crypto-cash--marketable-securities-holdings-of-17-2-billion-302891056.html'),
+    ('BMNR', (('Holdings release, 5 Oct 2026', 'https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-6-02-million-tokens-and-total-crypto-and-total-cash--marketable-securities-holdings-of-17-4-billion-302897949.html'),
               ('SEC filings', 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001829311'))),
 )
 
@@ -74,6 +82,7 @@ def sgn(x, dp=2):
     v = M.r2h(x, dp)
     return ('+' if v > 0 else MINUS if v < 0 else '±') + f'{abs(v):.{dp}f}'
 MONTHS = 'January February March April May June July August September October November December'.split()
+def mf(x, dp=1): return f(x, dp).replace('-', MINUS)
 def usd(x): return ('+' if x > 0 else MINUS if x < 0 else '') + f'${abs(x):,.0f}'
 def day(iso, short=True):
     m = MONTHS[int(iso[5:7]) - 1]
@@ -104,6 +113,8 @@ COL = {'QQQ': '#2B5CE6', 'IEMG': '#0F9B8E', 'SGOV': '#8A94A6', 'BMNR': '#E07A2F'
 RV = {k: (M.A[k]['net'] - M.A['SGOV']['net']) / M.REGIME['calm']['vol'][k] for k in ('QQQ', 'IEMG')}
 REL = 'level with' if abs(RV['QQQ'] - RV['IEMG']) < 0.01 else ('ahead of' if RV['IEMG'] > RV['QQQ'] else 'behind')
 REL_CAP = REL[0].upper() + REL[1:]
+
+SIG = {1: 'up', 0: 'nu', -1: 'down'}   # not 'dn': that is the donut card's class
 
 def tone(s5):
     return 'var(--pos)' if s5 >= 3.4 else 'var(--neg)' if s5 < 2.0 else 'var(--warn)'
@@ -200,10 +211,10 @@ def macro():
     </div>''')
     q, i, sg, bm = M.A['QQQ'], M.A['IEMG'], M.A['SGOV'], M.A['BMNR']
     trans = (
-      ('SGOV', 'sgov', 'up', 'Tailwind', f"Bills reprice with the Fed. The {M.SGOV_GROSS:g}% policy midpoint nets {f(sg['net'])}% at near-zero duration — the one sleeve a rising 10-year cannot hurt."),
-      ('QQQ', 'qqq', 'nu', 'Two-sided', f"Earnings momentum is real, but at {f(FQ, 1)}× forward — above its {M.OBS['QQQ']['pe_end']}× average — it is the sleeve most exposed to a {MK['ust10']:.2f}% 10-year."),
-      ('IEMG', 'iemg', 'up', 'Tailwind', f"The cheapest bloc at {f(FI, 1)}×, below its {M.OBS['IEMG']['pe_end']}× average. A stronger dollar and ${MK['brent']:.2f} oil are the near-term headwinds."),
-      ('BMNR', 'bmnr', 'dn', 'Headwind', f"High-beta ETH exposure with a {M.REGIME['calm']['rho'][('QQQ','BMNR')]:.2f} correlation to QQQ: it fails when equities fail, and tightening drains crypto liquidity."),
+      ('SGOV', 'sgov', SIG[M.CORRELATED['SGOV'][0]], M.CORRELATED['SGOV'][1], f"Bills reprice with the Fed. The {M.SGOV_GROSS:g}% policy midpoint nets {f(sg['net'])}% at near-zero duration — the one sleeve a rising 10-year cannot hurt."),
+      ('QQQ', 'qqq', SIG[M.CORRELATED['QQQ'][0]], M.CORRELATED['QQQ'][1], f"Earnings momentum is real, but at {f(FQ, 1)}× forward — above its {M.OBS['QQQ']['pe_end']}× average — it is the sleeve most exposed to a {MK['ust10']:.2f}% 10-year."),
+      ('IEMG', 'iemg', SIG[M.CORRELATED['IEMG'][0]], M.CORRELATED['IEMG'][1], f"The cheapest bloc at {f(FI, 1)}×, below its {M.OBS['IEMG']['pe_end']}× average. A stronger dollar and ${MK['brent']:.2f} oil are the near-term headwinds."),
+      ('BMNR', 'bmnr', SIG[M.CORRELATED['BMNR'][0]], M.CORRELATED['BMNR'][1], f"High-beta ETH exposure with a {M.REGIME['calm']['rho'][('QQQ','BMNR')]:.2f} correlation to QQQ: it fails when equities fail, and tightening drains crypto liquidity."),
     )
     tr = '\n'.join(f'''    <div class="corr-row">
       <div class="tick" style="background:var(--{c})">{t}</div>
@@ -268,6 +279,68 @@ def regions():
   <div class="call" style="margin-top:14px"><b>Allocation consequence.</b> {REG_NAME[top]} leads by {lead[0]:.1f} at 3 months and {lead[1]:.1f} at 10 years{', which is why the optimized book tilts toward IEMG' if top == 'Asia / EM' and O['IEMG'] > B['IEMG'] else ''}. The four mandated sleeves hold no direct Europe exposure, which the rankings support.</div>
 </section>'''
 
+TREND_LABEL = {'S&P 500': 'United States', 'Nasdaq-100': 'QQQ&#8217;s index', 'MSCI EM': 'IEMG&#8217;s market · Asia / EM',
+               'STOXX Europe 600': 'Europe · in euros', 'Ether': 'BMNR&#8217;s asset'}
+HORIZON = ('3 months', '6 months', '12 months')
+
+TREND_SIG = {'Uptrend': 'up', 'Mixed': 'nu', 'Downtrend': 'down'}
+
+def trend_rows():
+    out = []
+    for name, d in M.TREND.items():
+        sc = M.trend_score(d['r']); v = M.trend_verdict(sc)
+        cls = lambda x: ' pos' if x > M.TREND_DEADBAND else ' neg' if x < -M.TREND_DEADBAND else ''
+        cells = ''.join(f'<td class="n{cls(x)}">{sgn(x, 1)}%</td>' for x in d['r'])
+        # the verdict sits under the market's name: as a fifth column it ran off a phone screen
+        out.append(f'        <tr><td>{escape(name)}<br><span class="tsub">{TREND_LABEL[name]}</span><br>'
+                   f'<span class="sig {TREND_SIG[v]}">{v} ({sgn(sc, 0) if sc else 0})</span></td>{cells}</tr>')
+    return '\n'.join(out)
+
+def region_trend_leaders():
+    """For each horizon, which regional market led: the trend's own regional ranking."""
+    reg = {d['region']: d['r'] for d in M.TREND.values() if d['region']}
+    return [max(reg, key=lambda k: reg[k][h]) for h in range(3)]
+
+def trend_pane():
+    signs, net = M.relative_trend(M.SLEEVE_MARKET['QQQ'], M.SLEEVE_MARKET['IEMG'])
+    q, e = M.TREND[M.SLEEVE_MARKET['QQQ']]['r'], M.TREND[M.SLEEVE_MARKET['IEMG']]['r']
+    who = {1: 'QQQ', -1: 'IEMG', 0: 'neither'}
+    rel = '; '.join(f"{HORIZON[h]} {who[signs[h]]} ({mf(q[h])} vs {mf(e[h])})" for h in range(3))
+    lead = region_trend_leaders()
+    agree = [HORIZON[h] for h in range(3) if lead[h] == RANKED[0]]
+    differ = [f"over {HORIZON[h]} it ranks {the(lead[h])} first" for h in range(3) if lead[h] != RANKED[0]]
+    agree_txt = ((f"The trend ranks {REG_NAME[RANKED[0]]} first over {' and '.join(agree)}, as the regional scores do" if agree else
+                  f"Unlike the regional scores, the trend never ranks {REG_NAME[RANKED[0]]} first")
+                 + (f"; {'; '.join(differ)}." if differ else "."))
+    since = '; '.join(f"{k} {sgn((M.PRICES[k]['px'] / M.QE_CLOSE[k] - 1) * 100, 1)}% to {day(M.PRICES[k]['px_asof'])}" for k in ('QQQ', 'IEMG'))
+    down = [k for k in ('QQQ', 'IEMG', 'BMNR') if M.trend_verdict(M.trend_score(M.TREND[M.SLEEVE_MARKET[k]]['r'])) == 'Downtrend']
+    return f'''<section class="pane" id="p-trend" role="tabpanel" aria-labelledby="t-trend">
+  <h2>Market trend</h2>
+  <p class="lede">Total returns over 3, 6 and 12 months to {day(M.TREND_ASOF, False)}, the last quarter end, for each market the four sleeves and three regions trade in.</p>
+
+  <div class="tw">
+    <table class="trend">
+      <thead><tr><th>Market · trend</th><th>3 mo</th><th>6 mo</th><th>12 mo</th></tr></thead>
+      <tbody>
+{trend_rows()}
+      </tbody>
+    </table>
+  </div>
+  <p class="note">A move inside ±{M.TREND_DEADBAND:g}% counts as flat. The trend score adds +1 or −1 per horizon, with 12 months counted double ({M.TREND_WEIGHTS[0]}/{M.TREND_WEIGHTS[1]}/{M.TREND_WEIGHTS[2]}); +2 or more is an uptrend, −2 or less a downtrend. Index total returns from the sponsors&#8217; and index providers&#8217; own tables; a fund can trail its index over short windows. Since the quarter end: {since}.</p>
+
+  <h3>QQQ against IEMG</h3>
+  <div class="card">
+    <p class="gauge-note" style="text-align:left;max-width:none;margin:0">{rel}. Weighted, that nets <b>{sgn(net, 0) if net else 0}</b> — {'short of' if abs(net) < M.RULE['trend_tilt'] else 'past'} the ±{M.RULE['trend_tilt']} that would move 5 points between them.</p>
+  </div>
+
+  <h3>Trend against the regional ranking</h3>
+  <div class="card">
+    <p class="gauge-note" style="text-align:left;max-width:none;margin:0">{agree_txt} Europe&#8217;s figures are in euros, so they rank the region&#8217;s market, not a dollar holding.</p>
+  </div>
+
+  <div class="call" style="margin-top:16px"><b>What the trend says.</b> {('No equity sleeve is in a downtrend, so none is cut' if not down else 'In a downtrend: ' + ', '.join(down))}; ether is {M.trend_verdict(M.trend_score(M.TREND['Ether']['r'])).lower()} — a 3-month rebound against a 12-month loss — which supports holding BMNR at its 5% cap, not raising it.</div>
+</section>'''
+
 def volatility():
     term = E['vix']['term']
     trows = '\n'.join(f'        <tr><td>{lab}</td><td class="n">{math.sqrt(h):.3f}</td><td class="n">{term[h]:.2f}%</td><td class="n">±{f(1.96 * term[h], 2 if h < 0.1 else 1)}%</td></tr>'
@@ -309,7 +382,7 @@ def volatility():
   <h3>Term structure</h3>
   <div class="tw">
     <table>
-      <thead><tr><th>Horizon</th><th>√(h/12)</th><th>Implied σ</th><th>95% band</th></tr></thead>
+      <thead><tr><th>Horizon</th><th>√(h/12)</th><th>Implied <span class="sym">σ</span></th><th>95% band</th></tr></thead>
       <tbody>
 {trows}
       </tbody>
@@ -321,7 +394,7 @@ def volatility():
   <div class="tw">
     <table>
       <thead><tr><th>Horizon</th><th colspan="2">Baseline</th><th colspan="2">Optimized</th></tr>
-      <tr><th></th><th>σ</th><th>VaR</th><th>σ</th><th>VaR</th></tr></thead>
+      <tr><th></th><th class="sym">σ</th><th>VaR</th><th class="sym">σ</th><th>VaR</th></tr></thead>
       <tbody>
 {vrows}
         <tr class="hl"><td>10 yr max DD</td><td class="n" colspan="2">{neg(bc["dd"])}%</td><td class="n" colspan="2">{neg(oc["dd"])}%</td></tr>
@@ -404,7 +477,7 @@ def sleeves():
              ('ETH treasury', f"{H['held']:,}"), ('ETH staked', f"{H['staked'] / H['held'] * 100:.1f}%"),
              ('mNAV (total / crypto)', f"{M.BMNR_MCAP_B / H['total_b']:.2f}× / {M.BMNR['mnav']:.2f}×"),
              ('Annualised σ', f"~{V['BMNR']:.0f}%"), ('$10,000 → 10 yr', term('BMNR'))),
-            f"<b>Capped convexity.</b> {b['eth']:.1f}% ETH appreciation {sgn(b['stake'])}% staking {sgn(b['mnav'])}% premium normalisation {sgn(b['drag'])}% dilution drag = {b['net']:.2f}%. Total loss costs {O['BMNR']}% of capital."),
+            f"<b>Capped convexity.</b> {b['eth']:.1f}% ETH appreciation {sgn(b['stake'])}% staking {sgn(b['mnav'])}% {'premium normalisation' if M.BMNR['mnav'] >= 1 else 'discount closing'} {sgn(b['drag'])}% dilution drag = {b['net']:.2f}%. {FACTS['bmnr_stop']}, which ends the share issuance behind most of that drag; it is held until the share count is updated. Total loss costs {O['BMNR']}% of capital."),
     ]
     dots = ''.join('<b class="on"></b>' if n == 0 else '<b></b>' for n in range(len(slides)))
     return f'''<section class="pane" id="p-assets" role="tabpanel" aria-labelledby="t-assets">
@@ -430,7 +503,7 @@ def donut(name, label, sub, win):
 {circ}
         </g>
         <text x="90" y="86" text-anchor="middle" fill="{'#0F5E63' if win else '#10161F'}" font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">{st['cagr_d']:.2f}</text>
-        <text x="90" y="102" text-anchor="middle" fill="#8A94A6" font-family="Public Sans, sans-serif" font-size="9" letter-spacing="0.8">NET CAGR %</text>
+        <text x="90" y="102" text-anchor="middle" fill="#8A94A6" font-family="Public Sans, sans-serif" font-size="12" letter-spacing="0.5">NET CAGR %</text>
       </svg>
       <div class="leg">
 {leg}
@@ -520,18 +593,64 @@ def houses():
 # The previous revision's figures, for the "this revision" rows. validate.py requires each
 # one to appear in that revision's entry in VERIFICATION.md, so the left side of a row is
 # tied to the record rather than typed twice.
-PRIOR = dict(rev=24, asof='2026-09-28', QQQ=9.65, IEMG=8.75, optimized=7.62, baseline=7.95)
+PRIOR = dict(rev=25, asof='2026-10-02', QQQ=9.47, IEMG=8.64, optimized=7.52, baseline=7.84)
+
+def the(region):
+    return ('the ' if region == 'United States' else '') + REG_NAME[region]
+
+def book_txt(w):
+    return f"QQQ {w['QQQ']} / IEMG {w['IEMG']} / SGOV {w['SGOV']} / BMNR {w['BMNR']}"
+
+def build_steps():
+    """The rule's five steps as the page states them, from M.TILT."""
+    out = []
+    for pillar, rd, mv, after in M.TILT['steps']:
+        if pillar == 'Regional rankings':
+            top, sec, both = rd; a, b = E['regions'][top]['scores'], E['regions'][sec]['scores']
+            why = (f"{REG_NAME[top]} leads {the(sec)} at 3 months ({a[0]} vs {b[0]}) and at 10 years ({a[3]} vs {b[3]})"
+                   if both else f"{REG_NAME[top]} does not lead {the(sec)} at both 3 months and 10 years")
+        elif pillar == 'Broad and correlated macro sentiment':
+            g5, funder = rd
+            band = ('below ' + f"{M.RULE['gauge_cautious']}" if g5 < M.RULE['gauge_cautious'] else
+                    'at or above ' + f"{M.RULE['gauge_constructive']}" if g5 >= M.RULE['gauge_constructive'] else 'in the neutral band')
+            why = (f"The gauge reads {E['gauge']['display']}, {band}, so the reserve grows; the transmission map rates {funder} "
+                   f"&#8216;{M.CORRELATED[funder][1].lower()}&#8217;, the equity sleeve the macro hurts most, so it funds the step")
+        elif pillar == 'Volatility':
+            vx, mean = rd
+            why = (f"The VIX at {vx:.2f} sits {vix_rel(vx, 0)} its {mean} mean: " +
+                   ('the reserve is held and the weights are sized to normalized volatility' if vx < mean else 'stress is when the reserve is spent'))
+        elif pillar == 'Market trend':
+            signs, net = rd
+            down = [k for k in ('QQQ', 'IEMG', 'BMNR') if M.trend_verdict(M.trend_score(M.TREND[M.SLEEVE_MARKET[k]]['r'])) == 'Downtrend']
+            why = ((f"No sleeve&#8217;s market is in a downtrend" if not down else f"In a downtrend: {', '.join(down)}") +
+                   (f"; QQQ against IEMG nets {sgn(net, 0) if net else 0}, short of ±{M.RULE['trend_tilt']}" if abs(net) < M.RULE['trend_tilt'] else
+                    f"; QQQ against IEMG nets {sgn(net, 0)}, a clear lead"))
+        else:
+            near, far = rd
+            why = ('Nothing admissible beats the book on both return and normalized drawdown' if far == 0 else
+                   f"{near} of the books one step away beat{'s' if near == 1 else ''} it on both return and normalized drawdown, "
+                   f"so the one with the least drawdown replaces it" if near else
+                   f"No book one step away beats it; {far} further away {'does' if far == 1 else 'do'}, but a pillar moves one step, "
+                   f"so the signals&#8217; book stands")
+        out.append(f"<b>{pillar} — {mv}.</b> {why}. Book: {book_txt(after)}.")
+    return out
+
+def change_triggers():
+    g5 = E['gauge']['score5']; _, net = M.relative_trend(M.SLEEVE_MARKET['QQQ'], M.SLEEVE_MARKET['IEMG'])
+    return (f"the gauge reaching {M.RULE['gauge_cautious']} (now {E['gauge']['display']}), the VIX reaching {M.VIX_MEAN} (now {SPOT:.2f}), "
+            f"the QQQ–IEMG trend net reaching ±{M.RULE['trend_tilt']} (now {sgn(net, 0) if net else 0}), "
+            f"or {REG_NAME[RANKED[0]]} losing its lead at 3 months or 10 years")
 
 def verification_rows():
     """What this revision changed: prior figure on the left, current on the right."""
     return (('Market data', f"{day(PRIOR['asof'])} → <b>{day(MK['asof'])}</b>"),
-            ('Drawdown rule', f"1.70×σ → <b>{M.DD_MULT:.2f}×σ</b>"),
-            ('Optimized drawdown, normalized', f"{MINUS}33.0% → <b>{neg(ST['optimized']['normalized']['dd'])}%</b>"),
+            ('Optimized book', 'typed → <b>derived by rule</b>'),
+            ('Market trend, 3/6/12 months', 'absent → <b>a tab</b>'),
+            ('VIX close, 2 Oct', '15.40 → <b>15.31</b>'),
             ('Optimized net CAGR', f"{PRIOR['optimized']:.2f}% → <b>{f(ST['optimized']['calm']['cagr'])}%</b>"),
             ('QQQ net CAGR', f"{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['net'])}%</b>"),
             ('IEMG net CAGR', f"{PRIOR['IEMG']:.2f}% → <b>{f(M.A['IEMG']['net'])}%</b>"),
-            ('Macro gauge', f"2.4 → <b>{E['gauge']['display']}</b>"),
-            ('10-year high', 'since 2007 → <b>since 2002</b>'))
+            ('BMNR net CAGR', f"9.51% → <b>{f(M.A['BMNR']['net'])}%</b>"))
 
 def portfolios(n_mut, n_corr):
     b, o = ST['baseline'], ST['optimized']
@@ -569,16 +688,24 @@ def portfolios(n_mut, n_corr):
       f"<b>Where the model was overruled.</b> The best return-per-risk book, QQQ {BEST['QQQ']} / IEMG {BEST['IEMG']} / SGOV {BEST['SGOV']} / BMNR {BEST['BMNR']} (Sharpe {M.stats(BEST, 'calm')['sharpe']:.3f} vs {o['calm']['sharpe']:.3f}), holds a {BEST['SGOV']}% reserve. Rejected.",
     )
     rat = '\n'.join(f'    <div>{r}</div>' for r in rationale)
+    steps_html = '\n'.join(f'    <div>{r}</div>' for r in build_steps())
     src = '<br>\n    '.join(f"{escape(g)} — " + ' · '.join(f'<a href="{u}">{escape(t)}</a>' for t, u in links) for g, links in SOURCES)
     return f'''<section class="pane" id="p-port" role="tabpanel" aria-labelledby="t-port">
   <h2>Baseline vs optimized</h2>
-  <p class="lede">Both hold all four sleeves in steps of 5, and both are built for a 10-year horizon. The baseline is a plain strategic split; the optimized book is tilted by macro sentiment, regional rankings and volatility analysis across 3, 6 and 12 months.</p>
+  <p class="lede">Both hold all four sleeves in steps of 5, and both are built for a 10-year horizon. The baseline is a plain strategic split; the optimized book is derived from it by rule, one step per pillar: regional rankings, broad and correlated macro sentiment, volatility and market trend across 3, 6 and 12 months, then a drawdown check.</p>
 
   <div class="duo">
 {donut('baseline', 'Baseline', 'Strategic', False)}
 {donut('optimized', 'Optimized', 'Macro-tilted', True)}
   </div>
   <p class="vs">{shift_line()}</p>
+
+  <h3>How the optimized book is built</h3>
+  <p class="note" style="margin:0 0 10px">From the strategic baseline, each pillar may move one 5-point step; a step that would take a sleeve under 5% or BMNR over its cap is not taken.</p>
+  <div class="num">
+{steps_html}
+  </div>
+  <p class="note">The book changes on {change_triggers()}.</p>
 
   <h3>Forecast comparison</h3>
 {compare_table()}
@@ -623,6 +750,8 @@ NAV = '''  <nav class="tabs" role="tablist" aria-label="Sections">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12l5.5-5.5"/><path d="M21 3v6h-6"/></svg><span>Macro</span></button>
     <button class="tab" id="t-regions" type="button" data-p="p-regions" role="tab" aria-selected="false" aria-controls="p-regions">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18"/></svg><span>Regions</span></button>
+    <button class="tab" id="t-trend" type="button" data-p="p-trend" role="tab" aria-selected="false" aria-controls="p-trend">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg><span>Trend</span></button>
     <button class="tab" id="t-vol" type="button" data-p="p-vol" role="tab" aria-selected="false" aria-controls="p-vol">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16l4-7 4 5 3-9 3 7 4-4"/></svg><span>Volatility</span></button>
     <button class="tab" id="t-assets" type="button" data-p="p-assets" role="tab" aria-selected="false" aria-controls="p-assets">
@@ -680,7 +809,7 @@ def render():
     css = open(os.path.join(HERE, 'page.css')).read()
     n_mut, n_corr = counts()
     return '\n'.join((HEAD, '<style>', css.rstrip('\n'), '</style>', '', '<div class="app">', '  ' + masthead(), '',
-                      macro(), '', regions(), '', volatility(), '', sleeves(), '', portfolios(n_mut, n_corr),
+                      macro(), '', regions(), '', trend_pane(), '', volatility(), '', sleeves(), '', portfolios(n_mut, n_corr),
                       '', NAV, '</div>', '', SCRIPT, ''))
 
 if __name__ == '__main__':

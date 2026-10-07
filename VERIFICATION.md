@@ -1,11 +1,168 @@
 # Verification history
 
-CORRECTIONS: 224
+CORRECTIONS: 241
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 26 — 7 October 2026 (data to the 6 October close)
+
+Seventeen corrections: ten in what Rev. 25 published or tested, seven caught in this pass
+before publishing.
+
+- **Rev. 25 published the 2 October VIX close as 15.40; it was 15.31.** The figure came from
+  one social-media post that also gave its own day-on-day change (−6.03%), and that change
+  reconciled with 1 Oct's 16.39. So the reconciliation rule passed a wrong close because its
+  only evidence came from the same source. Three independent sources give **15.31** (−6.59%,
+  low 15.30), and 5 Oct's "+1.4% to 15.52" reconciles only from 15.31. A close now needs two
+  independent sources (`VIX_SOURCES`, asserted at import), and a change counts as evidence
+  only when it comes from a second source. Rev. 25's calm volatilities were scaled from a
+  spot 0.6% too high; that is superseded by this revision's 15.01.
+- **The optimized book was typed, not derived.** The page said it was "based on" sentiment,
+  volatility and regional rankings, and the checklist tested phrases and the direction of the
+  tilt, but the weights were entered by hand. They now come from `tilt_book()`, which starts
+  from the strategic baseline and lets each pillar move one 5-point step: regional rankings,
+  broad and correlated sentiment, volatility, market trend, then drawdown control. The Portfolios
+  tab lists each step with its reading and the book after it, and says what would change it.
+  `validate.py` re-implements the rule without calling the model's version, checks the step
+  log, and runs five counterfactuals (VIX above its mean, a QQQ trend lead, a constructive
+  gauge, a US lead and an EM downtrend). The rule returns **QQQ 35 / IEMG 30 / SGOV 30 /
+  BMNR 5**, the book Rev. 25 had typed. **Allocations unchanged.**
+- **The BMNR slide said "premium normalisation" whatever the mNAV.** The 5 Oct release
+  puts the stock at **0.98×** its holdings, a discount, so the build-up term is now a small
+  tailwind ("discount closing"). The wording follows the sign of the term, and the validator
+  checks it.
+- **The transmission map's labels were typed twice.** The macro pane's Tailwind / Two-sided /
+  Headwind labels were literals in `build.py`, separate from the scores the rule uses. Both now
+  read `CORRELATED` in the model, and a mutant that retypes one label is caught.
+- **Checklist item 7 counted the wrong list.** It counted arguments from the page's first
+  numbered list. Once the rule's steps appeared above the rationale, it credited the rationale
+  with 11 arguments instead of 6. It now reads only the Rationale section.
+- **Checklist item 14 tested phrases.** It now requires that the published book is the rule's
+  output, that every pillar named in the brief is a step shown on the page, and that the trend
+  tab exists. A new item, 14b, checks the trend table cell by cell against the model.
+- **Four layout defects had shipped, found by testing the page at phone widths.** A Pixel 7
+  (412px) and a 360px screen, the narrowest common Android width, were emulated in Chromium.
+  1. **BMNR's "Headwind" tag rendered as a padded, bordered box.** The signal pill's class
+     (`dn`) was also the donut card's class, and the card's rule came later in the stylesheet.
+     The pill class is now `down`. The validator refuses a pill class that any other rule
+     styles.
+  2. **Two volatility headers printed σ as Σ.** Table headers are uppercased, and the capital
+     of σ (standard deviation) is Σ (summation). The headers now opt out (`.sym`), and the
+     validator refuses a Greek letter in an uppercased header.
+  3. **Chart labels rendered at 8.1–8.3px.** These were the frontier chart's axis labels and
+     the donuts' "NET CAGR %". They are now 9.5–12 viewBox units, at least 9.6px on screen at
+     both widths.
+  4. **Three tables hid columns behind a sideways scroll.** At 360px these were the
+     volatility, comparison and score tables. Narrow screens now get tighter cell padding and
+     wrapping row labels; no table overflows at 360px.
+- Caught before publishing:
+  1. A precedence error in `build_steps()` dropped the downtrend sentence from the trend step
+     (`a + b if c else d`); now parenthesized.
+  2. "Asia / Emerging leads United States" now reads "leads the United States".
+  3. The relative-trend note printed an ASCII hyphen ("0.6 vs -0.4"); the hygiene check caught
+     it, and `mf()` now formats it.
+  4. **Drawdown control could undo the signals on noise.** The first version jumped to any
+     admissible book that beat the result on both axes. In the US-lead counterfactual the
+     signals produce QQQ 45 / IEMG 20 / SGOV 30 / BMNR 5, and the step then leapt 60 points
+     to QQQ 20 / IEMG 50 / SGOV 25 / BMNR 5 — overweighting the bloc that had just lost the
+     ranking — for **0.01 points** of CAGR and **0.002 points** of drawdown. Choosing the
+     nearest dominating book instead did not help, because it was the only one. The step now
+     moves one 5-point step like every other pillar: to the neighbour that beats the book on
+     both axes with the least drawdown. A dominating book further away is counted and
+     reported, not taken. No book has such a neighbour on live inputs. So the validator also
+     re-runs the step on all 153 books with QQQ set to earn less than cash, which exercises
+     the move and its tie-break, and it checks that a US lead now stays a QQQ overweight.
+  5. One new mutant ("transmission labels typed") retyped the same label it removed, so it
+     changed nothing and could not be caught. It now plants a different label.
+  6. **The new trend table's verdict ran off a phone screen.** As a fifth column, "Uptrend
+     (+4)" sat 81px past the edge at 412px and showed as "Upt…". The verdict is now a pill
+     under each market's name, and the table is four columns wide. The Android test had
+     skipped anything inside a horizontal scroller, so it passed this; it now fails any table
+     that overflows.
+  7. The first mutation run left one survivor: a rule that picks the sentiment step's funder by
+     weight alone. On live inputs the map and the weights both pick QQQ, so the validator could
+     not tell them apart. A counterfactual now turns the map against IEMG and requires IEMG to
+     fund the step.
+
+**New this revision.**
+
+- **Market trend tab.** It shows 3-, 6- and 12-month total returns to 30 Sep for the market
+  each sleeve and region trades in, from the sponsors' and index providers' own tables:
+  - S&P 500 **+2.30 / +17.85 / +15.74%** (iShares IVV benchmark row; Evercore's Q2 chain);
+  - Nasdaq-100 **+0.58 / +28.42 / +24.00%** (Nasdaq monthly total returns and the XNDX
+    factsheet; QQQ's NAV 23.75% over 12 months);
+  - MSCI EM **−0.37 / +23.59 / +29.22%** (iShares EEM benchmark row; two Q3 reviews);
+  - STOXX Europe 600 **−0.70 / +10.64 / +16.56%** in euros (iShares fact sheet);
+  - Ether **+70.6 / +27.5 / −35.3%** (CoinGecko and CoinGlass quarters; 30 Sep 2025 at about
+    4,150 from two sources).
+
+  A move inside ±2% is flat, and 12 months counts double. Every equity market is in an
+  uptrend (+3 or +4), and ether is mixed (0). Where a figure was built from parts
+  (`TREND_CHAIN`, `TREND_LEVELS`), the validator rebuilds it. QQQ against EM nets **−1** (US
+  ahead at 6 months, EM at 12, level at 3), short of the ±2 that would move a step. The trend
+  agrees with the regional ranking at 6 and 12 months and disagrees at 3 months (the S&P 500
+  led). The page says so instead of hiding it.
+- **Why the rule lands on 35/30/30/5:**
+  - Asia / Emerging leads at 3 months (3.0 vs 2.8) and at 10 years (3.9 vs 3.7), so QQQ −5,
+    IEMG +5.
+  - The gauge reads 2.3, below 2.6. The reserve grows, funded by QQQ, the equity sleeve the
+    map rates two-sided.
+  - The VIX at 15.01 sits below its 18.9 mean, so the reserve is held.
+  - No downtrend, and the trend net is −1, so no trend move.
+  - Nothing admissible beats the result on both net CAGR and normalized drawdown.
+  - The page names the triggers: the gauge reaching 2.6, the VIX reaching 18.9, the trend net
+    reaching ±2, or Asia losing its 3-month or 10-year lead.
+- **Market data to 6 October.**
+  - VIX 15.31 (2 Oct), 15.52 (5 Oct, +1.4%), **15.01** (6 Oct, −3.29%), three sources each.
+  - Brent settled $100.32 (5 Oct), then **$100.58** (6 Oct, +0.26%), after Saudi Arabia's
+    price cut and the G7 reserve release.
+  - 10-year **5.31%** on 5 Oct (Treasury par curve; the highest close since April 2002), then
+    **5.27%** on 6 Oct. The 30-year closed at 5.66% and then 5.64%.
+  - QQQ **$759.66** (6 Oct, +$3.46 from $756.20; a record close, with the S&P 500 and Nasdaq
+    at records).
+  - IEMG **$83.58** (5 Oct, iShares fund page).
+  - BMNR **$26.79** (5 Oct), paired with the 5 Oct release (6,016,414 ETH held as of 4 Oct,
+    5,067,309 staked, $17.4 billion in total).
+  - ICE BofA HY OAS **3.12%** (5 Oct, FRED), back from 3.24% but still above 24 Sep's 2.80%.
+  - New facts:
+    - ISM services 54.9, with prices paid 74.0, the highest since July 2022;
+    - the 7 Oct FOMC minutes, where most officials see another hike as likely by year end, with
+      about 80% odds of an October hold;
+    - BitMine's chairman saying on 7 Oct that it will stop buying ETH at 5% of supply.
+- **Gauge re-read, unchanged at 2.3.** Narrower spreads are offset by a 2002-high 10-year;
+  services strength is offset by payrolls and the minutes. The six drivers keep their scores.
+  The regional scores keep their order and margins.
+- **Forecasts.**
+  - QQQ re-prices to 23.80× forward; net CAGR 9.47% → **9.34%**.
+  - IEMG 8.64% → **8.45%**.
+  - BMNR 9.51% → **10.01%** (the mNAV moved from a premium to 0.98×; the dilution drag is held
+    at 1.40%/yr pending the end of issuance).
+  - Baseline 7.84% → **7.76%** and optimized 7.52% → **7.44%**: a 0.32-point gap for 2.9
+    points less normalized drawdown (−38.9% vs −41.8%).
+  - Both books stay efficient (106 of 153 with BMNR at 5%). The best-Sharpe book, QQQ 45 /
+    IEMG 45 / SGOV 5 / BMNR 5, is still rejected for its 5% reserve.
+- **Held back, not averaged.**
+  1. IEMG's 6 Oct close ($83.04 vs $83.05).
+  2. BMNR's 6 Oct close ($26.20 vs $26.23).
+  3. QQQ's September distribution ($0.7514 vs $0.69).
+  4. IEMG's June distribution ($0.66 vs $0.71).
+  5. BMNR's share count, while buybacks run and issuance ends.
+- **Mutation harness: 135 (87 model, 48 generator), all caught.** New
+  mutants cover:
+  - the book typed over the rule;
+  - each rule threshold;
+  - the funder chosen by weight only;
+  - transmission labels and signs;
+  - one trend return per market;
+  - a chain part, the deadband, the weights, the window and the quarter-end close;
+  - drawdown control leaping past one step, and its tie-break taken by return;
+  - in the generator, the trend verdict, signs, net, step books, leader horizon,
+    since-quarter base, trigger VIX and typed labels;
+  - the four layout fixes: the pill class, the σ header, the verdict column and the verdict's
+    colour.
 
 ## Rev. 25 — 4 October 2026 (data to the 2 October close)
 

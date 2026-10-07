@@ -201,7 +201,7 @@ for tag in ('section', 'div', 'table', 'article', 'svg', 'nav', 'script', 'style
 ids = re.findall(r'\bid="([^"]+)"', html)
 ck('ids are unique', len(ids) == len(set(ids)), len(ids), len(set(ids)))
 panes = re.findall(r'<section class="pane[^"]*" id="([^"]+)" role="tabpanel"', html)
-ck('five panes, one per tab', sorted(panes) == sorted(re.findall(r'data-p="([^"]+)"', html)) and len(panes) == 5, panes)
+ck('six panes, one per tab', sorted(panes) == sorted(re.findall(r'data-p="([^"]+)"', html)) and len(panes) == 6, panes)
 ck('exactly one pane starts visible', html.count('class="pane on"') == 1)
 revs = re.findall(r'<span>Rev\. (\d+) ·', html)
 ck('one revision stamp, the current one', revs == [str(M.REVISION)], revs, M.REVISION)
@@ -311,6 +311,154 @@ present('ranking lead stated', f'{names[top]} leads by {M.r2h(E["regions"][top][
 present('EM multiple in the Asia note', f'Equities at {hu(FI, 1)}× forward', P)
 present('US note: multiple and 10-year', f'the richest multiple ({hu(FQ, 1)}×) and a {MK["ust10"]:.2f}% 10-year', P)
 
+# trend
+P = pane('p-trend')
+ck('trend window ends at a quarter end on or before the market date',
+   M.TREND_ASOF[5:] in ('03-31', '06-30', '09-30', '12-31') and M.TREND_ASOF <= MK['asof'], M.TREND_ASOF)
+def _chain(rs): 
+    x = 1.0
+    for r in rs: x *= 1 + r / 100
+    return (x - 1) * 100
+for (name, h), parts in M.TREND_CHAIN.items():
+    ck(f'trend {name} {(3, 6, 12)[h]}-month figure rebuilds from its parts', abs(_chain(parts) - M.TREND[name]['r'][h]) < 0.06,
+       M.TREND[name]['r'][h], round(_chain(parts), 2))
+for (name, h), (a, b) in M.TREND_LEVELS.items():
+    ck(f'trend {name} {(3, 6, 12)[h]}-month figure rebuilds from its levels', abs((b / a - 1) * 100 - M.TREND[name]['r'][h]) < 0.06,
+       M.TREND[name]['r'][h], round((b / a - 1) * 100, 2))
+def _sign(x, band): return 1 if x > band else -1 if x < -band else 0
+def _score(r): return sum(wt * _sign(x, M.TREND_DEADBAND) for wt, x in zip(M.TREND_WEIGHTS, r))
+def _verdict(sc): return 'Uptrend' if sc >= 2 else 'Downtrend' if sc <= -2 else 'Mixed'
+ck('12-month trend counts at least as much as either shorter horizon', M.TREND_WEIGHTS[2] >= max(M.TREND_WEIGHTS[:2]))
+for name, d in M.TREND.items():
+    sc = _score(d['r'])
+    cells = ''.join(f'<td class="n{" pos" if x > M.TREND_DEADBAND else " neg" if x < -M.TREND_DEADBAND else ""}">{sgn(x, 1)}%</td>' for x in d['r'])
+    _tag = {'Uptrend': 'up', 'Mixed': 'nu', 'Downtrend': 'down'}[_verdict(sc)]
+    present(f'trend row {name}', f'<span class="sig {_tag}">{_verdict(sc)} ({sgn(sc, 0) if sc else 0})</span></td>{cells}</tr>', P)
+_qm, _em = M.TREND['Nasdaq-100']['r'], M.TREND['MSCI EM']['r']
+_rs = tuple(_sign(a - b, M.TREND_DEADBAND) for a, b in zip(_qm, _em)); _net = sum(wt * x for wt, x in zip(M.TREND_WEIGHTS, _rs))
+present('relative trend net stated', f'that nets <b>{sgn(_net, 0) if _net else 0}</b>', P)
+present('relative trend threshold stated', f'the ±{M.RULE["trend_tilt"]} that would move 5 points', P)
+for k in ('QQQ', 'IEMG'):
+    present(f'{k} move since the quarter end', f'{k} {sgn((M.PRICES[k]["px"] / M.QE_CLOSE[k] - 1) * 100, 1)}% to {day(M.PRICES[k]["px_asof"])}', P)
+_reg = {d['region']: d['r'] for d in M.TREND.values() if d['region']}
+_lead = [max(_reg, key=lambda k: _reg[k][h]) for h in range(3)]
+_top = max(E['regions'], key=lambda k: E['regions'][k]['mean'])
+_agree = [('3 months', '6 months', '12 months')[h] for h in range(3) if _lead[h] == _top]
+present('trend against the ranking, re-derived', f'The trend ranks {names[_top]} first over {" and ".join(_agree)}', P)
+for h in range(3):
+    if _lead[h] != _top:
+        present(f'trend leader named where it differs ({("3", "6", "12")[h]} months)',
+                f'over {("3 months", "6 months", "12 months")[h]} it ranks {"the " if _lead[h] == "United States" else ""}{names[_lead[h]]} first', P)
+ck('every sleeve but cash has a trend market', {d['sleeve'] for d in M.TREND.values() if d['sleeve']} == {'QQQ', 'IEMG', 'BMNR'})
+
+# the allocation rule, re-implemented here from its stated settings, and run on the
+# live inputs and on four counterfactuals against the model's own tilt_book()
+def _dd_step(w):
+    # one 5-point step to the neighbour that beats w on both normalized axes with the
+    # least drawdown; neighbours are built here, not filtered from the model's search
+    s0 = M.stats(w, 'normalized'); st_ = M.RULE['step']; best = None
+    for a in w:
+        for b in w:
+            if a == b: continue
+            v = dict(w); v[a] -= st_; v[b] += st_
+            if v[a] < M.RULE['floor'] or v['BMNR'] > M.RULE['bmnr_cap'] or v['BMNR'] != w['BMNR']: continue
+            sv = M.stats(v, 'normalized')
+            if sv['dd'] <= s0['dd'] and sv['cagr'] >= s0['cagr'] and (sv['dd'] < s0['dd'] or sv['cagr'] > s0['cagr']):
+                if best is None or (sv['dd'], -sv['cagr']) < best[0]: best = ((sv['dd'], -sv['cagr']), v)
+    return best[1] if best else None
+_dd_books = M.admissible(5)
+_dd_diff = [w_ for w_ in _dd_books if M.drawdown_step(w_)[0] != _dd_step(w_)]
+ck(f'drawdown step agrees with an independent version on all {len(_dd_books)} books', not _dd_diff, _dd_diff[:2])
+# On live inputs no book has a dominating neighbour, so the step never fires and the two
+# versions would agree vacuously. With QQQ's return set below cash, every QQQ step into
+# SGOV or IEMG dominates, so the step and its least-drawdown tie-break are both exercised.
+_dd_saved = M.A['QQQ']['net']
+try:
+    M.A['QQQ']['net'] = M.A['SGOV']['net'] - 0.5
+    _dd_diff = [w_ for w_ in _dd_books if M.drawdown_step(w_)[0] != _dd_step(w_)]
+    _dd_two = sum(1 for w_ in _dd_books if M.drawdown_step(w_)[1] >= 2)
+finally:
+    M.A['QQQ']['net'] = _dd_saved
+ck('drawdown step agrees with it when QQQ earns less than cash', not _dd_diff, _dd_diff[:2])
+ck('that counterfactual exercises the tie-break (two or more dominating neighbours)', _dd_two > 0, _dd_two)
+
+def _rule(regions, g5, vix, trend, corr):
+    w = dict(M.PORTFOLIOS['baseline']); st_ = M.RULE['step']; log = []
+    def mv(a, b):
+        if a is None or b is None or a == b or w[a] - st_ < M.RULE['floor']: return False
+        if b == 'BMNR' and w[b] + st_ > M.RULE['bmnr_cap']: return False
+        w[a] -= st_; w[b] += st_; return True
+    order = sorted(regions, key=lambda k: -sum(regions[k]))
+    t, s2 = order[0], order[1]
+    lead_ = {'Asia / EM': 'IEMG', 'United States': 'QQQ'}.get(t)
+    log.append(mv({'Asia / EM': 'IEMG', 'United States': 'QQQ'}.get(s2), lead_) if regions[t][0] > regions[s2][0] and regions[t][3] > regions[s2][3] else False)
+    cand = [k for k in ('QQQ', 'IEMG', 'BMNR') if w[k] - st_ >= M.RULE['floor']]
+    fund = sorted(cand, key=lambda k: (corr[k][0], -w[k]))[0] if cand else None
+    log.append(mv(fund, 'SGOV') if g5 < M.RULE['gauge_cautious'] else mv('SGOV', lead_) if g5 >= M.RULE['gauge_constructive'] else False)
+    log.append(mv('SGOV', lead_) if vix >= M.VIX_MEAN else False)
+    mk = {'QQQ': 'Nasdaq-100', 'IEMG': 'MSCI EM', 'BMNR': 'Ether'}
+    moved = False
+    for k in ('QQQ', 'IEMG', 'BMNR'):
+        if _verdict(_score(trend[mk[k]]['r'])) == 'Downtrend': moved = mv(k, 'SGOV') or moved
+    sg = tuple(_sign(a - b, M.TREND_DEADBAND) for a, b in zip(trend['Nasdaq-100']['r'], trend['MSCI EM']['r']))
+    nt = sum(wt * x for wt, x in zip(M.TREND_WEIGHTS, sg))
+    if abs(nt) >= M.RULE['trend_tilt']: moved = mv('IEMG', 'QQQ') if nt > 0 else mv('QQQ', 'IEMG')
+    log.append(moved)
+    best = _dd_step(w)
+    if best: w = best
+    log.append(best is not None)
+    return w, log
+_RULE_BOOK, _rlog = _rule(M.REGIONS, E['gauge']['score5'], M.VIX_SPOT, M.TREND, M.CORRELATED)
+ck('the optimized book is what the rule produces', _RULE_BOOK == M.PORTFOLIOS['optimized'], M.PORTFOLIOS['optimized'], _RULE_BOOK)
+ck('the rule log matches the model step by step',
+   [s_[2] != 'no move' for s_ in M.TILT['steps']] == _rlog, [s_[2] for s_ in M.TILT['steps']], _rlog)
+ck('the drawdown step finds nothing that dominates the derived book',
+   not [v for v in M.admissible(5) if (lambda a, b: a['dd'] <= b['dd'] and a['cagr'] >= b['cagr'] and (a['dd'] < b['dd'] or a['cagr'] > b['cagr']))(M.stats(v, 'normalized'), M.stats(_RULE_BOOK, 'normalized'))])
+import copy as _cp
+def _scenario(label, **chg):
+    saved = {k: getattr(M, k) for k in chg}
+    try:
+        for k, v in chg.items(): setattr(M, k, v)
+        g5 = M.gauge()[1]
+        mine, _ = _rule(M.REGIONS, g5, M.VIX_SPOT, M.TREND, M.CORRELATED)
+        tb = M.tilt_book(); theirs = tb['book']
+        ck(f'rule counterfactual ({label}): model and validator agree', mine == theirs, theirs, mine)
+        _scenario.steps = tb['steps']
+        return mine
+    finally:
+        for k, v in saved.items(): setattr(M, k, v)
+_b = _scenario('VIX above its mean', VIX_SPOT=M.VIX_MEAN + 1)
+ck('a stressed VIX spends the reserve', _b['SGOV'] == M.PORTFOLIOS['optimized']['SGOV'] - M.RULE['step'], _b)
+_t = _cp.deepcopy(M.TREND); _t['Nasdaq-100'] = dict(_t['Nasdaq-100'], r=tuple(x + 10 for x in _t['MSCI EM']['r']))
+_b = _scenario('QQQ trend clearly ahead', TREND=_t)
+ck('a clear QQQ trend lead earns QQQ a step', _b['QQQ'] == M.PORTFOLIOS['optimized']['QQQ'] + M.RULE['step'], _b)
+_b = _scenario('constructive gauge', DRIVERS=[(n, 9.0, w_) for n, _, w_ in M.DRIVERS])
+ck('a constructive gauge shrinks the reserve below the baseline\'s', _b['SGOV'] == M.PORTFOLIOS['baseline']['SGOV'] - M.RULE['step'], _b)
+_r = dict(M.REGIONS); _r['United States'], _r['Asia / EM'] = M.REGIONS['Asia / EM'], M.REGIONS['United States']
+_b = _scenario('the US leads the ranking', REGIONS=_r)
+ck('a US lead turns the regional step toward QQQ', _scenario.steps[0][2] == f'IEMG {MINUS}5, QQQ +5', _scenario.steps[0][2])
+ck('drawdown control does not undo a US lead', _b['QQQ'] > _b['IEMG'], _b)
+# On live inputs the transmission map and the weights both pick QQQ to fund the sentiment
+# step, so a rule that ignored the map would agree; turn the map against IEMG to tell them apart.
+_b = _scenario('transmission map turns against IEMG', CORRELATED=dict(M.CORRELATED, IEMG=(-1, 'Headwind')))
+ck('the sentiment step is funded by the sleeve the map rates worst, not the largest',
+   _scenario.steps[1][1][1] == 'IEMG' and _b['IEMG'] == M.PORTFOLIOS['optimized']['IEMG'] - M.RULE['step'], _scenario.steps[1][1], _b)
+_t = _cp.deepcopy(M.TREND); _t['MSCI EM'] = dict(_t['MSCI EM'], r=(-10.0, -12.0, -15.0))
+_b = _scenario('EM in a downtrend', TREND=_t)
+ck('a downtrend in IEMG\'s market moves a step to cash', _b['SGOV'] > M.PORTFOLIOS['optimized']['SGOV'], _b)
+
+P = pane('p-port')
+for _i, (pillar, rd, mvtxt, after) in enumerate(M.TILT['steps']):
+    present(f'rule step {_i + 1} stated with its move and resulting book', f'<b>{pillar} — {mvtxt}.</b>', P)
+    present(f'rule step {_i + 1} book', f"Book: QQQ {after['QQQ']} / IEMG {after['IEMG']} / SGOV {after['SGOV']} / BMNR {after['BMNR']}.", P)
+present('rule triggers stated with today\'s readings',
+        f'the gauge reaching {M.RULE["gauge_cautious"]} (now {E["gauge"]["display"]}), the VIX reaching {M.VIX_MEAN} (now {SPOT:.2f}), '
+        f'the QQQ–IEMG trend net reaching ±{M.RULE["trend_tilt"]} (now {sgn(_net, 0) if _net else 0})', P)
+present('funding sleeve named from the transmission map',
+        f'the transmission map rates {sorted([k for k in ("QQQ", "IEMG", "BMNR") if M.PORTFOLIOS["baseline"][k] - 5 >= 5 or k != "BMNR"], key=lambda k: (M.CORRELATED[k][0], -M.PORTFOLIOS["baseline"][k]))[0]}', P)
+for k, (sgn_, lab) in M.CORRELATED.items():
+    present(f'transmission label {k} from the model', f'<span class="sig {({1: "up", 0: "nu", -1: "down"})[sgn_]}">{lab}</span>', pane('p-macro'))
+
 # volatility
 P = pane('p-vol')
 # A "95% band" written as ± is two-sided: z solves erf(z / sqrt 2) = 0.95. Rev. 23 and
@@ -389,7 +537,8 @@ present('BMNR slide market cap', f'Market cap</span><span class="v">${H["px"] * 
 present('BMNR slide treasury', f'ETH treasury</span><span class="v">{H["held"]:,}', slides['BMNR'])
 present('BMNR slide staked share', f'ETH staked</span><span class="v">{H["staked"] / H["held"] * 100:.1f}%', slides['BMNR'])
 present('BMNR slide mNAV', f'{H["px"] * H["shares_m"] / 1000 / H["total_b"]:.2f}× / {M.BMNR["mnav"]:.2f}×', slides['BMNR'])
-present('BMNR slide build-up', f'{b_["eth"]:.1f}% ETH appreciation {sgn(b_["stake"])}% staking {sgn(b_["mnav"])}% premium normalisation '
+present('BMNR slide build-up', f'{b_["eth"]:.1f}% ETH appreciation {sgn(b_["stake"])}% staking {sgn(b_["mnav"])}% '
+        f'{"premium normalisation" if M.BMNR["mnav"] >= 1 else "discount closing"} '
         f'{sgn(b_["drag"])}% dilution drag = {b_["net"]:.2f}%', slides['BMNR'])
 
 # portfolios
@@ -529,9 +678,13 @@ ck('this revision lists what it changed', len(_rows_page) >= 4, len(_rows_page))
 _now = {'Market data': day(MK['asof']), 'QQQ net CAGR': f'{hu(M.A["QQQ"]["net"], 2)}%',
         'IEMG net CAGR': f'{hu(M.A["IEMG"]["net"], 2)}%', 'Optimized net CAGR': f'{hu(ST["optimized"]["calm"]["cagr"], 2)}%',
         'Drawdown rule': f'{M.DD_MULT:.2f}×σ', 'Macro gauge': f'{E["gauge"]["display"]}',
-        'Optimized drawdown, normalized': f'{MINUS}{hu(ST["optimized"]["normalized"]["dd"], 1)}%'}
+        'Optimized drawdown, normalized': f'{MINUS}{hu(ST["optimized"]["normalized"]["dd"], 1)}%',
+        'BMNR net CAGR': f'{hu(M.A["BMNR"]["net"], 2)}%'}
 # fact rows: the corrected figure must be what the page now says where the fact is used
-_used = {'10-year high': lambda v: f'the highest close {v}' in pane('p-macro')}
+_used = {'10-year high': lambda v: f'the highest close {v}' in pane('p-macro'),
+         'Optimized book': lambda v: v == 'derived by rule' and _RULE_BOOK == M.PORTFOLIOS['optimized'] and 'How the optimized book is built' in P,
+         'Market trend, 3/6/12 months': lambda v: v == 'a tab' and 'id="p-trend"' in html,
+         'VIX close, 2 Oct': lambda v: abs(dict(M.VIX_SERIES)['2026-10-02'] - float(v)) < 1e-9}
 for _k, (_a, _b) in _rows_page.items():
     ck(f'revision row {_k}: current side checked', _k in _now or _k in _used, _k)
     if _k in _now:
@@ -547,6 +700,19 @@ for _k, (_a, _b) in _rows_page.items():
 vis = re.sub(r'<style>.*?</style>|<svg.*?</svg>|<script>.*?</script>|<[^>]+>', ' ', html, flags=re.S)
 ascii_minus = re.findall(r'(?<![\w/–-])-\d[\d.]*%', vis)
 ck('no ASCII hyphen on a signed figure', not ascii_minus, ascii_minus[:5], 'none')
+# Layout defects a string check can see. Rev. 26 found three that had shipped: a signal
+# pill sharing the donut card's class (so BMNR's tag rendered as a padded box), table
+# headers uppercasing σ into Σ, and a trend verdict in a fifth column that ran off a phone.
+_css = re.search(r'<style>(.*?)</style>', html, re.S).group(1)
+_sig_cls = set(re.findall(r'class="sig (\w+)"', html))
+_clash = [c for c in _sig_cls if re.search(r'(?:^|[\s}>,])\.%s(?=[\s{.:,>\[])' % c, _css)]
+ck('signal pill classes are not also another component\'s class', not _clash, _clash, 'none')
+ck('every signal pill class is styled as a pill', all(f'.sig.{c}{{' in _css for c in _sig_cls), sorted(_sig_cls))
+_greek_bare = [t for t in re.findall(r'<th(?! class="sym")[^>]*>(.*?)</th>', html) if re.search('[α-ω]', re.sub(r'<span class="sym">[^<]*</span>', '', t))]
+ck('no Greek letter in an uppercased table header (σ would print as Σ)', not _greek_bare and '.sym{text-transform:none}' in _css, _greek_bare)
+_tr_head = re.search(r'<table class="trend">\s*<thead><tr>(.*?)</tr>', html, re.S)
+ck('trend table keeps its verdict beside the market, four columns wide', _tr_head is not None and _tr_head.group(1).count('<th') == 4,
+   _tr_head.group(1) if _tr_head else None)
 # Superseded values, anchored to the markup they lived in. The meta-check compares
 # the figures INSIDE each entry with every figure the model now emits, so an entry
 # that has become correct again fails loudly instead of failing a correct page.

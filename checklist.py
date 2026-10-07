@@ -50,7 +50,7 @@ if LIVE:
     live_note = ('live page identical to the validated file; host shell sets a device-width viewport and a light colour scheme'
                  if live_ok else 'LIVE PAGE DIFFERS from the repo file, or its shell lacks the mobile viewport')
 req(1, 'Live HTTPS URL for Android, bottom tab bar, light theme',
-    bool(tabs) and light and no_dark and html.count('data-p="') == 5 and mobile_css and live_ok,
+    bool(tabs) and light and no_dark and html.count('data-p="') == 6 and mobile_css and live_ok,
     f'{html.count("data-p=")} fixed bottom tabs; light tokens only, no dark override; {live_note}')
 
 # 2 ── all four sleeves in both portfolios
@@ -92,9 +92,13 @@ req(6, 'Gauge of overall macro driver sentiment, 1 to 5', scale_ok and regions_m
     f'reads {E["gauge"]["display"]}/5; regional rankings share the scale')
 
 # 7 ── rationale report
+# The page has two numbered lists since Rev. 26 (the rule's steps and the rationale);
+# counting from the first one credited the rationale with the rule's five steps.
+_rat = html[html.index('<h3>Rationale</h3>'):html.index('<h3>Verification log</h3>')]
+_args = re.findall(r'<div><b>', _rat[:_rat.index('Recommendation.')])
 req(7, 'Rationale report for the optimized allocation',
-    'Rationale' in html and html.count('<div class="num">') == 1 and 'Recommendation.' in html,
-    f'{len(re.findall(r"<div><b>", html[html.index(chr(60)+"div class=" + chr(34) + "num" + chr(34) + ">"):]))} numbered arguments plus a recommendation')
+    _rat.count('<div class="num">') == 1 and len(_args) >= 4 and 'Recommendation.' in _rat,
+    f'{len(_args)} numbered arguments plus a recommendation')
 
 # 8 ── regional ranking system
 # Earlier this read only the model and hardcoded "Asia > US > Europe", so a
@@ -158,22 +162,37 @@ req(13, 'Baseline portfolio built on a 10-year horizon',
     'both are built for a 10-year horizon' in html and 'The baseline is a plain strategic split' in html,
     'plain strategic split for the 10-year horizon, no macro tilt')
 
-# 14 ── optimized driven by macro + regional rankings (+ volatility, added later)
-# Two phrases on the page do not show the book is BASED on its inputs. The tilt
-# must follow them: overweight the sleeve of the top-ranked bloc, hold more reserve
-# while spot volatility sits below its mean (the normalised regime is the larger
-# risk), and come out with the lower normalised drawdown.
+# 14 ── optimized book derived from sentiment, volatility, trend and regional rankings
+# Through Rev. 25 the optimized book was typed and this check asked whether it leaned
+# the right way. It is now derived by a rule, so the check asks that the published
+# book IS the rule's output, that every pillar the brief names is a step of that rule
+# on the page, and that the tilt still follows the inputs it claims to follow.
 _top = _by_mean[0]
 _sleeve = {'Asia / EM': 'IEMG', 'United States': 'QQQ'}.get(_top)
 _Bw, _Ow = E['weights']['baseline'], E['weights']['optimized']
+_pillars = [st[0] for st in M.TILT['steps']]
+_need = ('Regional rankings', 'Broad and correlated macro sentiment', 'Volatility', 'Market trend', 'Drawdown control')
+_steps_on_page = all(f'<div><b>{p} — ' in html for p in _need)
+rule_ok = (M.PORTFOLIOS['optimized'] == M.TILT['book'] and tuple(_pillars) == _need and _steps_on_page and
+           'How the optimized book is built' in html and 'id="p-trend"' in html and 'Correlated transmission' in html)
 tilt_ok = (_sleeve is not None and _Ow[_sleeve] > _Bw[_sleeve] and
            (M.VIX_SPOT >= M.VIX_MEAN or _Ow['SGOV'] >= _Bw['SGOV']) and
            E['portfolios']['optimized']['normalized']['dd'] < E['portfolios']['baseline']['normalized']['dd'])
-req(14, 'Optimized portfolio from broad + correlated sentiment, volatility and regional rankings, 3/6/12mo, 10-yr',
-    'Macro-tilted' in html and 'volatility analysis across 3, 6 and 12 months' in html and
-    'Correlated transmission' in html and tilt_ok,
-    f'{_sleeve} {_Bw[_sleeve]}→{_Ow[_sleeve]}% for the top-ranked bloc; SGOV {_Bw["SGOV"]}→{_Ow["SGOV"]}% '
-    f'with VIX {M.VIX_SPOT} below its {M.VIX_MEAN} mean; lower normalised drawdown')
+req(14, 'Optimized portfolio from broad + correlated sentiment, volatility, market trend and regional rankings, 3/6/12mo, 10-yr',
+    'Macro-tilted' in html and rule_ok and tilt_ok,
+    f'derived by rule in {len(_pillars)} steps, each on the page; {_sleeve} {_Bw[_sleeve]}→{_Ow[_sleeve]}% for the top-ranked bloc; '
+    f'SGOV {_Bw["SGOV"]}→{_Ow["SGOV"]}% with the gauge at {E["gauge"]["display"]} and VIX {M.VIX_SPOT} below its {M.VIX_MEAN} mean')
+
+# 14b ── market trend at 3, 6 and 12 months (added to the brief in Rev. 26)
+_tr = html[html.index('id="p-trend"'):html.index('id="p-vol"')]
+_cells = {mk: re.findall(r'<td class="n[^"]*">([+−][\d.]+%)</td>', seg)
+          for mk, seg in ((mk, _tr[_tr.index(mk.replace('&', '&amp;')):]) for mk in M.TREND)}
+_trend_ok = all(len(c) >= 3 and [float(x.replace('−', '-')[:-1]) for x in c[:3]] ==
+                [round(v, 1) for v in M.TREND[mk]['r']] for mk, c in _cells.items())
+_cover = {d['sleeve'] for d in M.TREND.values() if d['sleeve']} == {'QQQ', 'IEMG', 'BMNR'} and \
+         {d['region'] for d in M.TREND.values() if d['region']} == set(E['regions'])
+req('14b', 'Market trend analysis at 3, 6 and 12 months for the holdings and regions', _trend_ok and _cover and 'QQQ against IEMG' in _tr,
+    f'{len(M.TREND)} markets x 3 horizons to {M.TREND_ASOF}, matching the model; every sleeve and region covered')
 
 # 15 ── max CAGR net of fees subject to controlling drawdown
 # Two objectives, so "best" means Pareto-efficient: no admissible allocation offers
