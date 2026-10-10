@@ -1,11 +1,146 @@
 # Verification history
 
-CORRECTIONS: 241
+CORRECTIONS: 254
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 27 — 10 October 2026 (data to the 9 October close)
+
+Thirteen corrections, all in what Rev. 26 or earlier published or wrote down. Every market
+close below was cross-checked across at least two independent sources. A few figures rest on
+their publisher's own page, the primary source: SGOV's SEC yield (iShares), the spread
+(FRED), Vanguard's ranges and the Morningstar survey. The page fetcher could not resolve
+hosts this session, so every read came through web search.
+
+- **QQQ's trailing dividend was a quarter stale.** Rev. 25 and 26 held it at $3.03 because
+  the September payout was "quoted as $0.7514 and $0.69". The $0.69 was **September 2025's**
+  payout ($0.69395), not a second reading of 2026's. Once QQQ went ex on 21 Sep, the four
+  quarters on file should have been Dec-25 0.79408 + Mar-26 0.73282 + Jun-26 0.81349 +
+  Sep-26 0.75143 = **$3.09** (StockAnalysis's dated history; Investing.com and Dividend.com
+  agree). The yield moves 0.40% → **0.41%**.
+- **IEMG's held dividend had the same misreading.** Its "$0.71 June figure" was June 2025's
+  payout. The $1.80 on file was right (Dec-25 1.1389 + Jun-26 0.6584); the hold was not
+  needed.
+- **QQQ's 2020 drawdown was understated.** The Volatility tab said ≈−27%. Peak to trough it
+  was about **−28.6%** (Portfolioslab; "close to 30%" in Advisor Perspectives' Bloomberg
+  data).
+- **QQQ's 2007–09 drawdown was understated at the deep end.** The tab said "−50 to −53%";
+  Bloomberg data puts it at about **−53.5%**. The 2000–02 (≈−83%) and 2022 (now
+  "−35 to −36%": −35.1% Portfolioslab, −35.6% for QQQM) figures stand.
+- **Vanguard's EM forecast was wrong.** The house table used 4.3% (midpoint of "3.3–5.3").
+  Vanguard's June 2026 model run gives **2.0–4.0%** (midpoint 3.0%); its Q1 run gave
+  3.6–5.6%. Neither matches the old range. The US range (4.2–6.2) was right.
+- **Fidelity's US figure could not be traced.** The 4.4% ("midpoint 3.4–5.4") matches no
+  source found. The survey that carries Fidelity's 8.1% EM figure (Morningstar, 20-year
+  2025–44, nominal) gives **5.8%** for US equities, so both now come from that one dated
+  source.
+- **BlackRock's US figure was 5.2%, not 5.0%,** in the survey it came from (as of 30 Sep
+  2025). Each house row now carries its vintage. The page's US forecast is now 2.9 points
+  above the highest house, and 3 of 4 houses still rank EM above the US.
+- **The dollar claim was typed into the generator, undated.** "The dollar sits at a 16-month
+  high" was a literal in `build.py`, not a dated fact. By 5 Oct the index had touched an
+  **18-month high** (two sources; CNBC lists 102.54 as its 52-week high that day), so the
+  sentence had gone stale with nothing to flag it. It is now a dated fact.
+- **The Michigan label was typed too.** "(Michigan, final September)" was a literal beside
+  the figure, so updating the figure alone would have mislabeled it. The label now travels
+  with the figure: **46.3**, preliminary October, near the 44.8 record low of May.
+- **"High-yield spreads widened" was typed.** The verb is now read from the two dated levels
+  (3.15% on 8 Oct against 2.80% on 24 Sep), and a helper test runs it on a narrowing.
+- **The macro headline was keyed on the day's sign.** "The bond sell-off extended" printed
+  for any rise. On 9 Oct the 10-year rose 2bp to 5.24%, 7bp under its 5.31% high, in a week
+  it fell. It now says "extended" only of a rise to a close at the high, and today reads
+  "Yields edged up". The validator derives the headline itself and tests both cases.
+- **The VIX mean's description was wrong.** The model called 18.9 the "2016–2023 mean of
+  annual closes". Year-end closes average about 17.3; 18.9 is close to the mean of the
+  yearly averages of daily closes. FRED re-confirms 2022 (25.64) and 2023 (16.85), but
+  2016–2021 could not be retrieved this session, and the commonly quoted averages give
+  **18.8**. That is left as an open item rather than changed from memory: 0.1 of a VIX
+  point, about 0.2 points of normalized drawdown, and no effect on the rule at a 14.84 VIX.
+- **MSCI EM was labeled "IEMG's market" without saying IEMG tracks the broader MSCI EM IMI.**
+  The trend note now says MSCI EM stands in for that benchmark. The IMI's own 3/6/12-month
+  returns to 30 Sep were not retrievable this session.
+
+**Market data to 9 October.**
+
+- VIX 15.08 (7 Oct, +0.47%), 15.41 (8 Oct), **14.84** (9 Oct, −3.70%). There were two or
+  three sources each, among them FRED and Cboe's own page. One aggregator printed 14.88
+  "down 3.4%", which matches an intraday level, not the close.
+- Brent settled **$104.72** on 9 Oct (+0.42% from $104.28; Yahoo, Investing.com). It rose
+  4.1% on 8 Oct as Iran stepped up attacks on tankers in the Strait of Hormuz and Hurricane
+  Isaias shut in most US Gulf of Mexico output; President Trump then ruled out striking Iran
+  before the 3 Nov midterms. Sources disagree on 7 Oct, so the chain is anchored on 8–9 Oct.
+- 10-year: 5.28% (7 Oct, after touching its highest level since April 2002 intraday), 5.22% (8 Oct)
+  and **5.24%** (9 Oct; FRED, Treasury, Investing.com 5.244). The highest close is still
+  5.31% on 5 Oct. The 30-year closed at 5.60%.
+- QQQ **$751.27** (9 Oct; Yahoo, Twelve Data), after the 8 Oct chip sell-off.
+- IEMG **$82.04** (7 Oct; the iShares page's dated closing price and StockAnalysis).
+- HY OAS **3.15%** (8 Oct, FRED; 3.09% on 7 Oct).
+- SGOV's 30-day SEC yield **3.71%** (7 Oct, iShares).
+- New facts:
+  - jobless claims 197,000, the lowest since July;
+  - Michigan's one-year inflation expectations 4.7%;
+  - October hold odds of about 78% before the minutes;
+  - the ECB's account showing September's hike was unanimous.
+- Not yet out: the IMF's October WEO (13 Oct) and September CPI (14 Oct).
+- BitMine's chairman confirmed on 7 Oct (TOKEN2049; CoinDesk, Decrypt) that buying stops at
+  5% of supply; BMNR fell 6% that day.
+
+**Gauge and regions re-read, held.** Claims at a three-month low and strong ISM surveys
+offset Michigan's slide; firmer oil and inflation expectations sit against an inflation
+score that is already low. The hawkish minutes leave October odds where they were, and
+spreads a touch wider plus a firmer dollar sit against a 10-year below its high. The gauge
+stays **2.3**. The regional order and margins are unchanged, and the trend window (30 Sep)
+is unchanged.
+
+**Forecasts.**
+
+| Figure | Rev. 26 | Rev. 27 | Why |
+|---|---|---|---|
+| QQQ net CAGR | 9.34% | **9.45%** | Re-prices to 23.54× forward; the trailing dividend is corrected |
+| IEMG net CAGR | 8.45% | **8.68%** | Re-prices to 11.52× at $82.04; yield 2.19% |
+| Baseline | 7.76% | **7.87%** | |
+| Optimized | 7.44% | **7.55%** | |
+
+- The gap is still 0.32 points, for 2.9 points less normalized drawdown (−38.9% vs −41.8%).
+- Calm drawdowns ease to −31.5% and −29.2% with the VIX at 14.84.
+- The rule's five steps are unchanged, and it returns **QQQ 35 / IEMG 30 / SGOV 30 /
+  BMNR 5**. The optimized book stays efficient. The baseline is now beaten, by a hair, by
+  QQQ 15 / IEMG 60 / SGOV 20 / BMNR 5 (+0.01 points of CAGR, 0.1 of normalized drawdown),
+  and the page says so; 106 of 153 allocations are efficient.
+- With the baseline off the frontier, only one branch of the frontier call-out renders. Two
+  mutants on the other branch then survived the first mutation run. The validator now
+  renders every branch on hypothetical frontier memberships.
+- The best-Sharpe book is now QQQ 40 / IEMG 50 / SGOV 5 / BMNR 5, still rejected for its
+  5% reserve.
+- **Allocations unchanged.**
+
+**Held back, not averaged.**
+
+1. IEMG after 7 Oct: 8 Oct is quoted as $80.50 and $80.35, and 9 Oct's $81.40 has one
+   source. At $81.40, IEMG's net forecast would be about 8.77%.
+2. BMNR stays on its 5 Oct close, paired with the 5 Oct holdings release. Its 9 Oct close
+   is quoted as $24.03 and $24.04, and ether's 9 Oct close (near $2,490) is unconfirmed. At
+   those levels the mNAV would be about 0.97×. The next release is due 12 Oct.
+3. Brent's 7 Oct settlement ($101.90, $100.92 and $100.20 in three sources).
+4. BlackRock's reported August 2026 update (9.0% US / 8.8% EM), from one tracker.
+
+**Mutation harness: 140 (88 model, 52 generator), all caught.**
+
+- The first run left two survivors and three skips. The survivors were on the frontier
+  call-out's inactive branch (fixed above). The skips were mutants whose targets were Rev.
+  26's values (Brent, the 10-year, the typed spread verb). Skips already failed the run, but
+  the summary line counted them as "run"; it now reports them.
+- New mutants cover:
+  - the stale QQQ dividend;
+  - the understated 2020 drawdown;
+  - the typed spread verb and dollar claim;
+  - the headline keyed back on the day's sign.
+
+**Phone check.** `phone.mjs` at 412px and 360px: six tabs, nothing off-screen, no table
+hiding columns, text ≥ 9px.
 
 ## Rev. 26 — 7 October 2026 (data to the 6 October close)
 

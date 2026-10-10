@@ -222,8 +222,21 @@ chg = (SPOT / PREV - 1) * 100
 present('lead: 10-year close and change', f'The 10-year closed at <b>{MK["ust10"]:.2f}%</b> on {day(MK["asof"])} '
         f'({"+" if MK["ust10_chg_bp"] >= 0 else MINUS}{abs(MK["ust10_chg_bp"])}bp)', P)
 _hy = build.FACTS['hy_oas']
-present('liquidity driver states the spread move with both dates', f'High-yield spreads widened to {_hy[0]} ({_hy[1]}) from {_hy[2]} ({_hy[3]})', pane('p-macro'))
-ck('a wider spread is not called tight', float(_hy[0].rstrip('%')) > float(_hy[2].rstrip('%')) and 'stay tight' not in pane('p-macro'), _hy)
+_hy_now, _hy_then = float(_hy[0].rstrip('%')), float(_hy[2].rstrip('%'))
+_hy_verb = 'widened' if _hy_now > _hy_then else 'narrowed' if _hy_now < _hy_then else 'held'
+present('liquidity driver states the spread move, its direction read from the levels, with both dates',
+        f'High-yield spreads {_hy_verb} to {_hy[0]} ({_hy[1]}) from {_hy[2]} ({_hy[3]})', pane('p-macro'))
+ck('a wider spread is not called tight', _hy_now <= _hy_then or 'stay tight' not in pane('p-macro'), _hy)
+_FH0 = build.FACTS['hy_oas']
+try:
+    build.FACTS['hy_oas'] = ('2.90%', '1 Jan', '3.10%', '1 Dec')
+    ck('helper: a spread that fell is called narrowed', build.spread_verb() == 'narrowed', build.spread_verb())
+finally:
+    build.FACTS['hy_oas'] = _FH0
+# the lead's headline: "the sell-off extended" only of a rise to a close at the high
+_hl = ('The bond sell-off extended' if MK['ust10'] >= MK['ust10_high'] and MK['ust10_chg_bp'] > 0 else
+       'Yields edged up' if MK['ust10_chg_bp'] > 0 else 'Yields eased' if MK['ust10_chg_bp'] < 0 else 'Yields held')
+present('lead headline follows the close against its high, not the day\'s sign alone', f'<div class="warnbox"><b>{_hl}.</b>', pane('p-macro'))
 present('liquidity driver 10-year', f'The 10-year closed at {MK["ust10"]:.2f}% on {day(MK["asof"])}', P)
 _HIGH = build.FACTS['ust10_high']   # the dated fact; which close it attaches to is derived here
 if MK['ust10'] == MK['ust10_high']:
@@ -243,6 +256,10 @@ try:
        _HIGH in build.ust10_note() and build.ust10_note().startswith('2bp below'), build.ust10_note())
     build.MK = dict(_MK0, ust10=_MK0['ust10_high'], ust10_chg_bp=-1)
     ck('helper: a close at the high is the high, whatever the day\'s sign', build.ust10_note() == f'its {_HIGH}', build.ust10_note())
+    build.MK = dict(_MK0, ust10=round(_MK0['ust10_high'] - 0.07, 2), ust10_chg_bp=2)
+    ck('helper: a rise short of the high is not "the sell-off extended"', build.bond_headline() == 'Yields edged up', build.bond_headline())
+    build.MK = dict(_MK0, ust10=_MK0['ust10_high'], ust10_chg_bp=3)
+    ck('helper: a rise to the high is "the sell-off extended"', build.bond_headline() == 'The bond sell-off extended', build.bond_headline())
 finally:
     build.MK = _MK0
 _VS0 = build.VIX_STALE
@@ -590,6 +607,21 @@ ON = {n: any(w == M.PORTFOLIOS[n] for _, _, w in EFF) for n in M.PORTFOLIOS}
 dom = [(dd_, dc_, w) for dd_, dc_, w in ((M.stats(w, 'normalized')['dd'], M.stats(w, 'normalized')['cagr'], w) for w in M.admissible(5))
        if dd_ <= bn['dd'] and dc_ >= bn['cagr'] and (dd_ < bn['dd'] or dc_ > bn['cagr'])]
 ck('both-efficient call-out matches the efficiency test', ('<b>Both books are efficient.</b>' in P) == (ON['optimized'] and ON['baseline']), ON)
+# The call-out's other branches, rendered on hypothetical frontier memberships: with live
+# inputs only one branch is on the page, so a defect in the others would pass unseen
+# (Rev. 27's baseline fell off the frontier and two mutants on the both-efficient branch
+# survived until this was added).
+_ON0 = build.ON
+try:
+    build.ON = dict(baseline=True, optimized=True)
+    _pb = build.portfolios(0, 0)
+    ck('helper: both efficient renders the both-efficient call-out with the live count',
+       '<b>Both books are efficient.</b>' in _pb and f'drawdown. {len(EFF)} allocations are efficient.' in _pb, ON)
+    build.ON = dict(baseline=True, optimized=False)
+    ck('helper: an inefficient recommendation is not called efficient',
+       'Both books are efficient' not in build.portfolios(0, 0) and 'Optimized on the frontier: no' in build.portfolios(0, 0))
+finally:
+    build.ON = _ON0
 ck('frontier call-out matches the efficiency test',
    ('The recommended book is efficient; the baseline, by a hair, is not.' in P) == (ON['optimized'] and not ON['baseline'] and len(dom) == 1), ON)
 if len(dom) == 1:
@@ -684,7 +716,10 @@ _now = {'Market data': day(MK['asof']), 'QQQ net CAGR': f'{hu(M.A["QQQ"]["net"],
 _used = {'10-year high': lambda v: f'the highest close {v}' in pane('p-macro'),
          'Optimized book': lambda v: v == 'derived by rule' and _RULE_BOOK == M.PORTFOLIOS['optimized'] and 'How the optimized book is built' in P,
          'Market trend, 3/6/12 months': lambda v: v == 'a tab' and 'id="p-trend"' in html,
-         'VIX close, 2 Oct': lambda v: abs(dict(M.VIX_SERIES)['2026-10-02'] - float(v)) < 1e-9}
+         'VIX close, 2 Oct': lambda v: abs(dict(M.VIX_SERIES)['2026-10-02'] - float(v)) < 1e-9,
+         'QQQ trailing dividend': lambda v: v == f'${M.PRICES["QQQ"]["ttm_div"]:.2f}',
+         'QQQ 2020 drawdown': lambda v: f'<span class="k">2020 COVID crash</span><span class="v" style="color:var(--neg)">{v}</span>' in pane('p-vol'),
+         'Vanguard EM forecast': lambda v: f'<tr><td>Vanguard, Jun 2026</td><td class="n">5.2%</td><td class="n">{v}</td></tr>' in P}
 for _k, (_a, _b) in _rows_page.items():
     ck(f'revision row {_k}: current side checked', _k in _now or _k in _used, _k)
     if _k in _now:
@@ -724,7 +759,12 @@ STALE = (('VIX 15.35', 'pre-settlement VIX snapshot, 23 Sep'), ('<b>14.25</b>', 
          ('Levered ETH', 'BMNR carries no leverage'), ('after hot flash PMIs on', 'a cause of an earlier day\'s move'),
          ('(band 1.65–1.75)', 'underived drawdown band'), ('stay tight', 'spreads widened 44bp in a week'),
          ('highest since 2007', 'the 10-year passed its 2007 peak on 30 Sep'), ('+162,000 against', 'August payrolls, superseded'),
-         ('July PCE 3.7%', 'July PCE, superseded by August'))
+         ('July PCE 3.7%', 'July PCE, superseded by August'),
+         ('style="color:var(--neg)">≈−27%</span>', 'QQQ 2020 drawdown, understated (−28.6%)'),
+         ('style="color:var(--neg)">−50 to −53%</span>', 'QQQ 2007–09 drawdown, understated (−53.5%)'),
+         ('Michigan, final September', 'September sentiment, superseded by October'),
+         ('sits at a 16-month high', 'undated dollar claim, superseded'), ('30-day SEC yield, 22 Sep', 'SGOV yield, superseded'),
+         ('<td>Vanguard</td>', 'undated house row'), ('<td class="n">4.4%</td><td class="n">8.1%</td>', 'untraced Fidelity US figure'))
 for s_, why in STALE:
     ck(f'no superseded value ({why})', s_ not in html, s_, 'absent')
 live = {f'{v:.2f}' for v in vals} | {f'{MK[k]:.2f}' for k in ('brent', 'ust10', 'ust10_prev', 'brent_prev')} | {f'{cal[0]:.4f}'}

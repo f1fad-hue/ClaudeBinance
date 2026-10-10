@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 6 October 2026 close; each fund price carries its own
+Market data to the 9 October 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,18 +39,22 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# QQQ 6 Oct: $759.66 (+$3.46, +0.46% from $756.20 on 5 Oct, exact), a record close.
-# IEMG 5 Oct: $83.58, from the iShares fund page (NAV $83.85). Its 6 Oct close is quoted
-# as 83.04 and 83.05 on undated pages, so the fund's own dated close is used instead.
-# QQQ went ex-dividend on 21 Sep, but sources disagree on the amount ($0.7514 vs
-# $0.69), so ttm_div stays at the verified $3.03 until one settles; either way the
-# yield moves by at most 0.01 of a point at this price. IEMG's June distribution is
-# likewise quoted as $0.66 (the $1.80 trailing held here, with December's $1.14) and
-# $0.71 ($1.85): 0.06 of a point of yield, held until one settles.
+# QQQ 9 Oct: $751.27 (+$3.69, +0.49% from $747.58 on 8 Oct; Yahoo's close, Twelve Data).
+# IEMG 7 Oct: $82.04, the iShares fund page's dated closing price and StockAnalysis's
+# history (NAV $82.37). 8 Oct is quoted as $80.50 and $80.35, and 9 Oct's $81.40 has a
+# single source, so the latest close two sources agree on is used.
+# Trailing dividends, four quarters for QQQ and two halves for IEMG (StockAnalysis's
+# dated history; Investing.com and Dividend.com agree to the cent):
+#   QQQ  Dec-25 0.79408 + Mar-26 0.73282 + Jun-26 0.81349 + Sep-26 0.75143 = $3.09.
+#   IEMG Dec-25 1.1389 + Jun-26 0.6584 = $1.80.
+# Rev. 25 and 26 held QQQ at $3.03 because the September payout was "quoted as $0.7514 and
+# $0.69". The $0.69 was September 2025's payout ($0.69395), not a second reading of 2026's,
+# so the trailing sum was a quarter stale from the 21 Sep ex-date. IEMG's "$0.71" was June
+# 2025's payout in the same way; its $1.80 was right.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.03, px=759.66, px_asof='2026-10-06',
+    'QQQ':  dict(ttm_div=3.09, px=751.27, px_asof='2026-10-09',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=83.58,  px_asof='2026-10-05',
+    'IEMG': dict(ttm_div=1.80, px=82.04,  px_asof='2026-10-07',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -87,7 +91,7 @@ assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1
 # dilution drag, but the company has also bought back shares this year and the share
 # count here (603.2M) predates both; the drag is held, and listed as an assumption.
 
-REVISION = 26                          # bump when publishing; validate.py enforces it
+REVISION = 27                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -109,7 +113,9 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-09-25', 14.87), ('2026-09-28', 16.07),
               ('2026-09-29', 16.04), ('2026-09-30', 16.34),
               ('2026-10-01', 16.39), ('2026-10-02', 15.31),
-              ('2026-10-05', 15.52), ('2026-10-06', 15.01))
+              ('2026-10-05', 15.52), ('2026-10-06', 15.01),
+              ('2026-10-07', 15.08), ('2026-10-08', 15.41),
+              ('2026-10-09', 14.84))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
@@ -125,6 +131,10 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
 # too, because its change came from the same post: a change is evidence only when it
 # comes from a second source. VIX_SOURCES now records how many independent sources
 # agree on each close from 2 Oct on.
+# 7 Oct 15.08 (+0.07, +0.47%: Investing.com's table, Yahoo's ticker). 8 Oct 15.41 (FRED,
+# Investing.com, StreetStats). 9 Oct 14.84 (-0.57, -3.70%: Investing.com, Yahoo, Cboe's
+# own page); one aggregator printed 14.88 "down 3.4%", which reconciles with nothing on
+# file and matches an intraday level, so it is not a second reading of the close.
 VIX_HELD = None
 # The day-on-day changes the sources reported, % to the stated precision. Each close must
 # reproduce its reported change from the close before it, so a wrong snapshot of either
@@ -132,11 +142,18 @@ VIX_HELD = None
 # needed. (Dates without a reported change are checked only for plausibility below.)
 VIX_REPORTED = {'2026-09-14': 11.24, '2026-09-22': -4.44, '2026-09-23': 6.83, '2026-09-24': 3.23,
                 '2026-09-25': -5.11, '2026-09-28': 8.07, '2026-09-29': -0.2, '2026-09-30': 1.87,
-                '2026-10-02': -6.59, '2026-10-05': 1.4, '2026-10-06': -3.29}
-VIX_SOURCES = {'2026-10-02': 3, '2026-10-05': 3, '2026-10-06': 3}
+                '2026-10-02': -6.59, '2026-10-05': 1.4, '2026-10-06': -3.29,
+                '2026-10-07': 0.47, '2026-10-09': -3.70}
+VIX_SOURCES = {'2026-10-02': 3, '2026-10-05': 3, '2026-10-06': 3,
+               '2026-10-07': 2, '2026-10-08': 3, '2026-10-09': 3}
 assert all(n >= 2 for n in VIX_SOURCES.values()), 'a close needs two independent sources'
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
-VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9   # 2016-2023 mean of annual closes
+# The 2016-2023 mean of the yearly averages of daily closes (FRED VIXCLS, annual
+# average). Rev. 27 re-confirmed 2022 (25.64) and 2023 (16.85) but could not retrieve
+# 2016-2021 this session; the commonly quoted averages give 18.8, so this is an open item
+# (0.1 of a VIX point; 0.5% on every normalized volatility). Earlier comments called it a
+# mean of "annual closes", i.e. year-end closes, which average about 17.3: not this figure.
+VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9
 VIX_ASOF = VIX_SERIES[-1][0]
 assert VIX_HELD is None or (VIX_HELD['asof'] > VIX_ASOF and VIX_HELD['lo'] <= VIX_HELD['hi']
                             and all(abs(v / VIX_SPOT - 1) < 0.25 for v in (VIX_HELD['lo'], VIX_HELD['hi']))), \
@@ -155,14 +172,18 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-# 6 Oct: Brent settled $100.58 (+$0.26 from $100.32, which settled -1.9% on 5 Oct after
-# Saudi Arabia cut its November price to Asia). The 10-year is the par-curve / H.15 close:
-# 5.31% on 5 Oct, the highest since April 2002 (CNBC), then 5.27% on 6 Oct (-4bp).
+# 9 Oct: Brent settled $104.72 (+$0.44, +0.42%; Yahoo's settlement, Investing.com's prior
+# close) from $104.28 on 8 Oct, when it rose 4.1% as Iran stepped up tanker attacks and a
+# Gulf hurricane shut in output. 7 Oct is quoted as $101.90, $100.92 and $100.20, so the
+# chain is anchored on 8-9 Oct only. The 10-year is the par-curve / H.15 close: 5.28% on
+# 7 Oct (after its highest intraday level since April 2002), 5.22% on 8 Oct, 5.24% on
+# 9 Oct (FRED, Treasury via ETF Trends, Investing.com 5.244). The highest close is still
+# 5 Oct's 5.31%.
 # ust10_high is the highest close of the move, so "highest close since 2002" is claimed
 # only of a close that equals it.
-MARKET = dict(asof='2026-10-06',
-              brent=100.58, brent_prev=100.32, brent_chg_pct=0.26,
-              ust10=5.27,   ust10_prev=5.31,  ust10_chg_bp=-4,
+MARKET = dict(asof='2026-10-09',
+              brent=104.72, brent_prev=104.28, brent_chg_pct=0.42,
+              ust10=5.24,   ust10_prev=5.22,  ust10_chg_bp=2,
               ust10_high=5.31, ust10_high_date='2026-10-05')
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
@@ -304,7 +325,8 @@ def fill(v):
 # revisions) against still-strong PMIs; Monetary policy 2.0 -> 2.5 as October-hike odds
 # fell from ~36% to ~17% with December still priced; Liquidity & credit 4.5 -> 4.0 as
 # high-yield spreads widened 2.80% -> 3.24% in a week, the 10-year set a 2002 high and
-# the dollar a 16-month high.
+# the dollar a 16-month high (an 18-month high by 5 Oct). Re-read in Rev. 27 and held: see
+# VERIFICATION.md.
 DRIVERS = [('Growth momentum',6.0,.25), ('Inflation trajectory',3.0,.15),
            ('Monetary policy',2.5,.20), ('Liquidity & credit',4.0,.15),
            ('Valuation & positioning',4.0,.15), ('Geopolitical risk',2.0,.10)]
@@ -534,9 +556,14 @@ def cal_line(regime='normalized', mix=None, cash_vol=None):
 # people's numbers, quoted to be disagreed with in the open -- not inputs.
 INSTITUTIONAL = {
     'J.P. Morgan LTCMA 2026': dict(us=6.70, em=7.80, em_vol=20.9, note='US large cap; EM vol 20.9%'),
-    'Fidelity':               dict(us=4.40, em=8.10, note='US large cap midpoint 3.4-5.4; US growth 2.3-4.3'),
-    'Vanguard':               dict(us=5.20, em=4.30, note='midpoints of 4.2-6.2 and 3.3-5.3'),
-    'BlackRock':              dict(us=5.00, em=7.10, note='EM figure is non-US broadly'),
+    # Rev. 27 re-traced each row. Fidelity's US figure (4.40, "midpoint 3.4-5.4") could not
+    # be traced; the survey that carries its 8.1% EM figure gives 5.8% for US equities.
+    # Vanguard's June 2026 run has EM at 2.0-4.0 (its Q1 run 3.6-5.6), not 3.3-5.3.
+    # BlackRock's "5.0" was 5.2 in the survey it came from. BlackRock's August 2026 update
+    # is reported by one tracker at 9.0% US / 8.8% EM; unconfirmed, so not used.
+    'Fidelity, 20-yr':        dict(us=5.80, em=8.10, note='20-year (2025-44) nominal, via Morningstar 2026 survey'),
+    'Vanguard, Jun 2026':     dict(us=5.20, em=3.00, note='midpoints of 4.2-6.2 and 2.0-4.0, 30 Jun 2026 run'),
+    'BlackRock, Sep 2025':    dict(us=5.20, em=7.10, note='as of 30 Sep 2025, via Morningstar; EM figure is non-US broadly'),
 }
 ALT_SOURCE = 'J.P. Morgan LTCMA 2026'
 

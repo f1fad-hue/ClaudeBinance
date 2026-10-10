@@ -25,23 +25,30 @@ FACTS = dict(
     payrolls='+29,000 against 84,000 expected (September), unemployment 4.2%, July–August revised down 60,000',
     ism='ISM manufacturing 54.5 and services 54.9 in September', ism_prices='ISM prices paid 77.9 in manufacturing and 74.0 in services, the highest since July 2022',
     cpi='August CPI 3.4% y/y; core 2.4% y/y but +0.3% m/m against 0.2% expected; PPI 5.4% y/y',
-    fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year, and the 7 Oct minutes show most think one likely by year end; futures price a hold in October (about 80%) and a December hike',
+    fed_vote='12–0', fed_dots='16 of 18 officials see at least one more hike this year, and the 7 Oct minutes show most think one likely by year end; futures price a hold in October (about 78%) and a December hike',
     imf_world='IMF (July update): 3.0% world growth in 2026',
     imf_asia='The IMF’s July update has China at 4.6% and India at 6.4% for 2026; on its January figures the two supply 43.6% of world growth. China’s official manufacturing PMI returned to expansion at 50.1 in September',
-    ust10_high='highest close since 2002', ust30_note='the 30-year closed at 5.64%, near levels last seen in 2002',
+    ust10_high='highest close since 2002', ust30_note='the 30-year closed at 5.60%, near levels last seen in 2002',
     eu_pmi_date='23 Sep', eu_pmi=53.1, eu_pmi_prev=52.0,
-    umich='48.1', hy_oas=('3.12%', '5 Oct', '2.80%', '24 Sep'),
+    umich=('46.3', 'Michigan, preliminary October', 'near its 44.8 record low of May'),
+    claims='initial jobless claims fell to 197,000, the lowest since July',
+    infl_exp='one-year inflation expectations rose to 4.7% (Michigan, preliminary October)',
+    hy_oas=('3.15%', '8 Oct', '2.80%', '24 Sep'),
+    dollar=('an 18-month high', '5 Oct'),
     pce='August PCE 3.4% y/y, core 3.0%, both below forecast (a BEA method change trims about 0.2 point)',
     eu_hicp='Flash September inflation jumped to 3.8% (energy 18.8%, core 2.5%)',
-    ecb='The ECB hiked to 2.50% on 10 Sep into 0.9% projected growth and 3.0% inflation for 2026',
-    geo='The US–Iran conflict keeps the Strait of Hormuz disrupted, though Middle East exports are recovering (Saudi Arabia cut its November price to Asia); the G7 agreed on 2 Oct to release up to 100 million barrels of oil and diesel reserves',
+    ecb='The ECB hiked to 2.50% on 10 Sep into 0.9% projected growth and 3.0% inflation for 2026; its account (8 Oct) shows the decision was unanimous',
+    geo='Iran stepped up attacks on tankers in the Strait of Hormuz on 8 Oct as Hurricane Isaias shut in most US Gulf of Mexico output; President Trump then ruled out striking Iran before the 3 Nov midterms, with the blockade kept in force; the G7 agreed on 2 Oct to release up to 100 million barrels of oil and diesel reserves',
     # the day's cause, dated so validate.py can refuse it once MARKET moves on
-    move_cause=('2026-10-06', 'as the sell-off paused ahead of the Fed minutes'),
+    move_cause=('2026-10-09', 'as Treasuries steadied at the end of a volatile week'),
     bmnr_stop='On 7 Oct the chairman said BitMine will stop buying ETH at 5% of supply',
     em_dm_discount='40% discount to developed markets (11 Sep) against a 25% long-run norm',
-    sgov_sec='3.65%', sgov_sec_label='30-day SEC yield, 22 Sep',
-    qqq_hist=(('2000–02 dot-com', '≈−83%'), ('2007–09 financial crisis', '−50 to −53%'),
-              ('2020 COVID crash', '≈−27%'), ('2022 rate hikes', '−33 to −37%')),
+    sgov_sec='3.71%', sgov_sec_label='30-day SEC yield, 7 Oct',
+    # peak to trough: Nasdaq-100 2000-02; QQQ 2007-09 (Bloomberg, via Advisor Perspectives),
+    # 2020 (Portfolioslab; "close to 30%" elsewhere) and 2021-22 (Portfolioslab -35.1%, QQQM
+    # -35.6%). Rev. 26 and earlier said -27% for 2020 and -50 to -53% for 2007-09.
+    qqq_hist=(('2000–02 dot-com', '≈−83%'), ('2007–09 financial crisis', '≈−53.5%'),
+              ('2020 COVID crash', '≈−28.6%'), ('2022 rate hikes', '−35 to −36%')),
 )
 
 SOURCES = (
@@ -69,6 +76,7 @@ SOURCES = (
                             ('CME FedWatch', 'https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html'))),
     ('Outside forecasts', (('J.P. Morgan LTCMA 2026', 'https://am.jpmorgan.com/us/en/asset-management/institutional/insights/portfolio-insights/ltcma/'),
                            ('Vanguard VCMM', 'https://corporate.vanguard.com/content/corporatesite/us/en/corp/vemo/vemo-return-forecasts'),
+                           ('Morningstar survey, 2026 (Fidelity, BlackRock)', 'https://www.morningstar.com/markets/experts-forecast-stock-bond-returns-2026-edition'),
                            ('BlackRock CMAs', 'https://www.blackrock.com/institutions/en-global/institutional-insights/thought-leadership/capital-market-assumptions'))),
     ('BMNR', (('Holdings release, 5 Oct 2026', 'https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-6-02-million-tokens-and-total-crypto-and-total-cash--marketable-securities-holdings-of-17-4-billion-302897949.html'),
               ('SEC filings', 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001829311'))),
@@ -169,6 +177,21 @@ def ust10_note():
     return (f"{round((MK['ust10_high'] - MK['ust10']) * 100):.0f}bp below the {MK['ust10_high']:.2f}% of "
             f"{day(MK['ust10_high_date'])}, the {FACTS['ust10_high']}")
 
+def spread_verb():
+    """The spread's direction between its two dated levels, read from the levels: Rev. 26
+    and earlier typed "widened", which would have stayed on the page the day it narrowed."""
+    now, then = (float(FACTS['hy_oas'][i].rstrip('%')) for i in (0, 2))
+    return 'widened' if now > then else 'narrowed' if now < then else 'held'
+
+def bond_headline():
+    """The macro lead's headline. "The sell-off extended" only of a close at a new high;
+    Rev. 26 and earlier keyed it on the day's sign, so a 2bp uptick 7bp under the high, in
+    a week the 10-year fell, would have been called an extension of the sell-off."""
+    if MK['ust10'] >= MK['ust10_high'] and MK['ust10_chg_bp'] > 0:
+        return 'The bond sell-off extended'
+    return ('Yields edged up' if MK['ust10_chg_bp'] > 0 else
+            'Yields eased' if MK['ust10_chg_bp'] < 0 else 'Yields held')
+
 def vix_rel(x, dp):
     """The VIX's distance from its long-run mean, in words that stay true either side."""
     d = (1 - x / M.VIX_MEAN) * 100
@@ -191,10 +214,10 @@ def vix_lead():
 def driver_notes():
     disc = (1 - FI / FQ) * 100
     return {
-      'Growth momentum': f"Payrolls {FACTS['payrolls']}. Surveys still point up: US flash PMIs on {FACTS['pmi_date']} at their fastest pace in over five years (services {FACTS['pmi_services']}, composite {FACTS['pmi_composite']}) and {FACTS['ism']}; consumer sentiment is weak at {FACTS['umich']} (Michigan, final September). {FACTS['imf_world']}.",
-      'Inflation trajectory': f"{FACTS['cpi']}; {FACTS['pce']}. Pipeline pressure is rising: {FACTS['ism_prices']}.",
+      'Growth momentum': f"Payrolls {FACTS['payrolls']}. Surveys are split: US flash PMIs on {FACTS['pmi_date']} at their fastest pace in over five years (services {FACTS['pmi_services']}, composite {FACTS['pmi_composite']}) and {FACTS['ism']}, but consumer sentiment fell to {FACTS['umich'][0]} ({FACTS['umich'][1]}), {FACTS['umich'][2]}; {FACTS['claims']}. {FACTS['imf_world']}.",
+      'Inflation trajectory': f"{FACTS['cpi']}; {FACTS['pce']}. Pipeline pressure is rising: {FACTS['ism_prices']}, and {FACTS['infl_exp']}.",
       'Monetary policy': f"The Fed hiked {FACTS['fed_vote']} on {day(M.FOMC_DATE)}; {FACTS['fed_dots']}; the range is {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%.",
-      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()}, and {FACTS['ust30_note']}. High-yield spreads widened to {FACTS['hy_oas'][0]} ({FACTS['hy_oas'][1]}) from {FACTS['hy_oas'][2]} ({FACTS['hy_oas'][3]}), and the dollar sits at a 16-month high.",
+      'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()}, and {FACTS['ust30_note']}. High-yield spreads {spread_verb()} to {FACTS['hy_oas'][0]} ({FACTS['hy_oas'][1]}) from {FACTS['hy_oas'][2]} ({FACTS['hy_oas'][3]}), and the dollar index touched {FACTS['dollar'][0]} on {FACTS['dollar'][1]}.",
       'Valuation & positioning': f"Nasdaq-100 at {f(FQ, 1)}× forward vs EM at {f(FI, 1)}× — a {f(disc, 0)}% discount. The VIX at {SPOT:.2f} ({SPOT_DATE}) sits {vix_rel(SPOT, 0)} its {M.VIX_MEAN} long-run mean: protection is {'cheap' if SPOT < M.VIX_MEAN else 'dear'}.",
       'Geopolitical risk': f"{FACTS['geo']}; Brent settled at ${MK['brent']:.2f} on {day(MK['asof'])}.",
     }
@@ -223,7 +246,7 @@ def macro():
     return f'''<section class="pane on" id="p-macro" role="tabpanel" aria-labelledby="t-macro">
   <h2>Macro drivers</h2>
   <p class="lede">Six forces that set the return and risk of this book, and how each one reaches the four holdings.</p>
-  <div class="warnbox"><b>{'The bond sell-off extended' if MK['ust10_chg_bp'] > 0 else 'Yields eased'}.</b> The 10-year closed at <b>{MK['ust10']:.2f}%</b> on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()},{CAUSE}; {FACTS['ust30_note']}. Brent settled {'up' if MK['brent_chg_pct'] > 0 else 'down'} {f(abs(MK['brent_chg_pct']), 1)}% at <b>${MK['brent']:.2f}</b>. {vix_lead()}</div>
+  <div class="warnbox"><b>{bond_headline()}.</b> The 10-year closed at <b>{MK['ust10']:.2f}%</b> on {day(MK['asof'])} ({'+' if MK['ust10_chg_bp'] >= 0 else MINUS}{abs(MK['ust10_chg_bp'])}bp), {ust10_note()},{CAUSE}; {FACTS['ust30_note']}. Brent settled {'up' if MK['brent_chg_pct'] > 0 else 'down'} {f(abs(MK['brent_chg_pct']), 1)}% at <b>${MK['brent']:.2f}</b>. {vix_lead()}</div>
 
   {gauge()}
 
@@ -326,7 +349,7 @@ def trend_pane():
       </tbody>
     </table>
   </div>
-  <p class="note">A move inside ±{M.TREND_DEADBAND:g}% counts as flat. The trend score adds +1 or −1 per horizon, with 12 months counted double ({M.TREND_WEIGHTS[0]}/{M.TREND_WEIGHTS[1]}/{M.TREND_WEIGHTS[2]}); +2 or more is an uptrend, −2 or less a downtrend. Index total returns from the sponsors&#8217; and index providers&#8217; own tables; a fund can trail its index over short windows. Since the quarter end: {since}.</p>
+  <p class="note">A move inside ±{M.TREND_DEADBAND:g}% counts as flat. The trend score adds +1 or −1 per horizon, with 12 months counted double ({M.TREND_WEIGHTS[0]}/{M.TREND_WEIGHTS[1]}/{M.TREND_WEIGHTS[2]}); +2 or more is an uptrend, −2 or less a downtrend. Index total returns from the sponsors&#8217; and index providers&#8217; own tables; a fund can trail its index over short windows. MSCI EM stands in for IEMG&#8217;s own benchmark, the MSCI EM IMI, which adds small caps. Since the quarter end: {since}.</p>
 
   <h3>QQQ against IEMG</h3>
   <div class="card">
@@ -593,7 +616,7 @@ def houses():
 # The previous revision's figures, for the "this revision" rows. validate.py requires each
 # one to appear in that revision's entry in VERIFICATION.md, so the left side of a row is
 # tied to the record rather than typed twice.
-PRIOR = dict(rev=25, asof='2026-10-02', QQQ=9.47, IEMG=8.64, optimized=7.52, baseline=7.84)
+PRIOR = dict(rev=26, asof='2026-10-06', QQQ=9.34, IEMG=8.45, optimized=7.44, baseline=7.76)
 
 def the(region):
     return ('the ' if region == 'United States' else '') + REG_NAME[region]
@@ -644,13 +667,12 @@ def change_triggers():
 def verification_rows():
     """What this revision changed: prior figure on the left, current on the right."""
     return (('Market data', f"{day(PRIOR['asof'])} → <b>{day(MK['asof'])}</b>"),
-            ('Optimized book', 'typed → <b>derived by rule</b>'),
-            ('Market trend, 3/6/12 months', 'absent → <b>a tab</b>'),
-            ('VIX close, 2 Oct', '15.40 → <b>15.31</b>'),
+            ('QQQ trailing dividend', f"$3.03 → <b>${M.PRICES['QQQ']['ttm_div']:.2f}</b>"),
+            ('QQQ 2020 drawdown', f"≈−27% → <b>{dict(FACTS['qqq_hist'])['2020 COVID crash']}</b>"),
+            ('Vanguard EM forecast', f"4.3% → <b>{M.INSTITUTIONAL['Vanguard, Jun 2026']['em']:.1f}%</b>"),
             ('Optimized net CAGR', f"{PRIOR['optimized']:.2f}% → <b>{f(ST['optimized']['calm']['cagr'])}%</b>"),
             ('QQQ net CAGR', f"{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['net'])}%</b>"),
-            ('IEMG net CAGR', f"{PRIOR['IEMG']:.2f}% → <b>{f(M.A['IEMG']['net'])}%</b>"),
-            ('BMNR net CAGR', f"9.51% → <b>{f(M.A['BMNR']['net'])}%</b>"))
+            ('IEMG net CAGR', f"{PRIOR['IEMG']:.2f}% → <b>{f(M.A['IEMG']['net'])}%</b>"))
 
 def portfolios(n_mut, n_corr):
     b, o = ST['baseline'], ST['optimized']

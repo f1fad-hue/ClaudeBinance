@@ -109,7 +109,7 @@ MUT=[
  ("region europe",  "'Europe':[3.0,3.5,4.0,5.0]", "'Europe':[3.5,3.5,4.0,5.0]"),
  ("JPM us",         "dict(us=6.70, em=7.80",    "dict(us=6.20, em=7.80"),
  ("JPM em",         "us=6.70, em=7.80",         "us=6.70, em=8.30"),
- ("Vanguard em",    "dict(us=5.20, em=4.30",    "dict(us=5.20, em=6.30"),
+ ("Vanguard em",    "dict(us=5.20, em=3.00",    "dict(us=5.20, em=6.30"),
  ("REVISION",       f"REVISION = {_REV}",       f"REVISION = {_REV + 1}"),
  # added in Rev. 20: inputs the review found no mutation for
  ("IEMG basis px",  f"basis_px={_P['IEMG','basis_px']}",   f"basis_px={_bump(_P['IEMG','basis_px'], 2)}"),
@@ -118,9 +118,10 @@ MUT=[
  ("VIX low date",   "low_date='2026-08-14'",    "low_date='2026-08-21'"),
  ("FOMC date",      "FOMC_DATE  = '2026-09-16'", "FOMC_DATE  = '2026-09-17'"),
  ("BMNR held",      "held=6_016_414",           "held=6_116_414"),
- ("Brent level only", "brent=100.58,",          "brent=101.58,"),
- ("10y below its high", "ust10=5.27,   ust10_prev=5.31,  ust10_chg_bp=-4,",
-                      "ust10=5.26,   ust10_prev=5.31,  ust10_chg_bp=-5,"),
+ ("Brent level only", "brent=104.72,",          "brent=105.72,"),
+ ("QQQ trailing dividend a quarter stale", "ttm_div=3.09, px=751.27", "ttm_div=3.03, px=751.27"),
+ ("10y below its high", "ust10=5.24,   ust10_prev=5.22,  ust10_chg_bp=2,",
+                      "ust10=5.25,   ust10_prev=5.22,  ust10_chg_bp=3,"),
  ("VIX 2 Oct close",  "('2026-10-02', 15.31)", "('2026-10-02', 15.40)"),
  ("assumed input dropped", "           ('IEMG currency drag', f\"{OBS", "           ('IEMG FX (observed)', f\"{OBS"),
  ("driver inflation", "('Inflation trajectory',3.0,.15)", "('Inflation trajectory',3.5,.15)"),
@@ -128,8 +129,8 @@ MUT=[
  ("driver valuation", "('Valuation & positioning',4.0,.15)", "('Valuation & positioning',4.5,.15)"),
  ("driver geopol",  "('Geopolitical risk',2.0,.10)",    "('Geopolitical risk',2.5,.10)"),
  ("region US",      "'United States':[5.0,5.5,6.5,7.0]", "'United States':[5.0,5.5,6.0,7.0]"),
- ("Fidelity em",    "dict(us=4.40, em=8.10",    "dict(us=4.40, em=8.60"),
- ("BlackRock us",   "dict(us=5.00, em=7.10",    "dict(us=5.50, em=7.10"),
+ ("Fidelity em",    "dict(us=5.80, em=8.10",    "dict(us=5.80, em=8.60"),
+ ("BlackRock us",   "dict(us=5.20, em=7.10",    "dict(us=5.70, em=7.10"),
  ("JPM EM vol",     "em_vol=20.9",              "em_vol=24.9"),
 ]
 
@@ -169,7 +170,11 @@ GEN = [
  G("prior figure not in the record", f"QQQ={_PQ}, IEMG=", f"QQQ={float(_PQ) + 0.01:.2f}, IEMG="),
  G("disclaimer drops the holdings date", "release, as of {day(M.BMNR_HOLDINGS['asof'], False)}.", "release."),
  G("drawdown band typed, not from the model", "(median to mean {M.DD_BAND[0]:.2f}–{M.DD_BAND[1]:.2f}×)", "(median to mean 1.65–1.75×)"),
- G("high-yield spreads called tight again", "High-yield spreads widened to {FACTS['hy_oas'][0]}", "High-yield spreads stay tight at {FACTS['hy_oas'][0]}"),
+ G("high-yield spreads called tight again", "High-yield spreads {spread_verb()} to {FACTS['hy_oas'][0]}", "High-yield spreads stay tight at {FACTS['hy_oas'][0]}"),
+ G("QQQ 2020 drawdown understated again", "('2020 COVID crash', '≈−28.6%')", "('2020 COVID crash', '≈−27%')"),
+ G("spread verb typed again", "High-yield spreads {spread_verb()} to", "High-yield spreads narrowed to"),
+ G("headline back on the day's sign", "if MK['ust10'] >= MK['ust10_high'] and MK['ust10_chg_bp'] > 0:", "if MK['ust10_chg_bp'] > 0:"),
+ G("dollar claim typed again", "and the dollar index touched {FACTS['dollar'][0]} on {FACTS['dollar'][1]}.", "and the dollar sits at a 16-month high."),
  G("gauge note calls growth strong regardless", "return ('Strong growth is' if g5 >= 3.4 else", "return ('Strong growth is' if g5 >= 0 else"),
  G("trend verdict from the 12-month figure only", "sc = M.trend_score(d['r']); v = M.trend_verdict(sc)", "sc = M.trend_score(d['r']); v = M.trend_verdict(2 * M.trend_sign(d['r'][2]))"),
  G("trend cells lose their signs", "cells = ''.join(f'<td class=\"n{cls(x)}\">{sgn(x, 1)}%</td>' for x in d['r'])", "cells = ''.join(f'<td class=\"n{cls(x)}\">{f(abs(x), 1)}%</td>' for x in d['r'])"),
@@ -228,8 +233,10 @@ jobs = [('model',) + m for m in MUT] + [('gen',) + g for g in GEN]
 with ThreadPoolExecutor(max_workers=4) as ex:
     res = list(ex.map(lambda j: run(*j), jobs))
 bad = [r for r in res if r[0] != 'caught']
-print(f'{len(MUT)} model and {len(GEN)} generator mutations run, '
-      f'{sum(r[0] == "survived" for r in res)} survived')
+# A skipped mutant is one whose target no longer matches (the code moved under it); it
+# tests nothing, so it fails the run like a survivor. The line counts both.
+print(f'{len(MUT)} model and {len(GEN)} generator mutations, '
+      f'{sum(r[0] == "survived" for r in res)} survived, {sum(r[0] == "skip" for r in res)} skipped')
 for r in bad:
     print(f'  {r[0].upper():<9} {r[1]}  {r[2] if r[2] else ""}')
 if bad:

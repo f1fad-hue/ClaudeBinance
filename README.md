@@ -55,6 +55,12 @@ NODE_PATH=$(npm root -g) node phone.mjs 412 && NODE_PATH=$(npm root -g) node pho
 - A close that still conflicts across sources is held back rather than averaged. The model
   records the held date and the range reported (`VIX_HELD`), and every sentence that quotes the
   held series says which close it uses.
+- Before a value is held as "conflicting", check whether the other reading is the same item a
+  period earlier. Both of Rev. 26's dividend "conflicts" were last year's payouts, and one hold
+  left QQQ's trailing dividend a quarter stale.
+- Any fund price, dividend or house forecast is used only from a dated source, with the
+  latest close two sources agree on. A later close with one source, or two that disagree, is
+  held back and recorded with the sensitivity it would carry.
 - Figures the model cannot compute (a CPI print, a PMI reading) go in `build.py`'s `FACTS`,
   each dated in the sentence that uses it, with sources linked on the page.
 
