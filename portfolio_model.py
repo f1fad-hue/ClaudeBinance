@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 9 October 2026 close; each fund price carries its own
+Market data to the 14 October 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,10 +39,10 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# QQQ 9 Oct: $751.27 (+$3.69, +0.49% from $747.58 on 8 Oct; Yahoo's close, Twelve Data).
-# IEMG 7 Oct: $82.04, the iShares fund page's dated closing price and StockAnalysis's
-# history (NAV $82.37). 8 Oct is quoted as $80.50 and $80.35, and 9 Oct's $81.40 has a
-# single source, so the latest close two sources agree on is used.
+# Both funds on 13 Oct, the latest session with no dissenting close for either:
+# QQQ $743.57 (-$2.47, -0.33%; Yahoo, Macrotrends, StockAnalysis). IEMG $80.22 (Yahoo and
+# the iShares fund page). 14 Oct, the CPI day, is quoted as $728.95 for QQQ by four sources
+# but $730.12 in Investing.com's history table, and IEMG's $78.64 has only the iShares page.
 # Trailing dividends, four quarters for QQQ and two halves for IEMG (StockAnalysis's
 # dated history; Investing.com and Dividend.com agree to the cent):
 #   QQQ  Dec-25 0.79408 + Mar-26 0.73282 + Jun-26 0.81349 + Sep-26 0.75143 = $3.09.
@@ -52,9 +52,9 @@ OBS = {
 # so the trailing sum was a quarter stale from the 21 Sep ex-date. IEMG's "$0.71" was June
 # 2025's payout in the same way; its $1.80 was right.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.09, px=751.27, px_asof='2026-10-09',
+    'QQQ':  dict(ttm_div=3.09, px=743.57, px_asof='2026-10-13',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=82.04,  px_asof='2026-10-07',
+    'IEMG': dict(ttm_div=1.80, px=80.22,  px_asof='2026-10-13',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -91,7 +91,7 @@ assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1
 # dilution drag, but the company has also bought back shares this year and the share
 # count here (603.2M) predates both; the drag is held, and listed as an assumption.
 
-REVISION = 27                          # bump when publishing; validate.py enforces it
+REVISION = 28                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -115,7 +115,8 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-10-01', 16.39), ('2026-10-02', 15.31),
               ('2026-10-05', 15.52), ('2026-10-06', 15.01),
               ('2026-10-07', 15.08), ('2026-10-08', 15.41),
-              ('2026-10-09', 14.84))
+              ('2026-10-09', 14.84), ('2026-10-12', 15.21),
+              ('2026-10-13', 15.27), ('2026-10-14', 16.87))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
@@ -135,6 +136,9 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
 # Investing.com, StreetStats). 9 Oct 14.84 (-0.57, -3.70%: Investing.com, Yahoo, Cboe's
 # own page); one aggregator printed 14.88 "down 3.4%", which reconciles with nothing on
 # file and matches an intraday level, so it is not a second reading of the close.
+# 12 Oct 15.21 (+2.49%: FRED, Investing.com). 13 Oct 15.27 (FRED, Yahoo, Cboe). 14 Oct
+# 16.87 (+1.60, +10.48% on the hot CPI: Yahoo, Investing.com's table, Cboe); a 16.85
+# snapshot quote was not the close.
 VIX_HELD = None
 # The day-on-day changes the sources reported, % to the stated precision. Each close must
 # reproduce its reported change from the close before it, so a wrong snapshot of either
@@ -143,9 +147,10 @@ VIX_HELD = None
 VIX_REPORTED = {'2026-09-14': 11.24, '2026-09-22': -4.44, '2026-09-23': 6.83, '2026-09-24': 3.23,
                 '2026-09-25': -5.11, '2026-09-28': 8.07, '2026-09-29': -0.2, '2026-09-30': 1.87,
                 '2026-10-02': -6.59, '2026-10-05': 1.4, '2026-10-06': -3.29,
-                '2026-10-07': 0.47, '2026-10-09': -3.70}
+                '2026-10-07': 0.47, '2026-10-09': -3.70, '2026-10-12': 2.49, '2026-10-14': 10.48}
 VIX_SOURCES = {'2026-10-02': 3, '2026-10-05': 3, '2026-10-06': 3,
-               '2026-10-07': 2, '2026-10-08': 3, '2026-10-09': 3}
+               '2026-10-07': 2, '2026-10-08': 3, '2026-10-09': 3,
+               '2026-10-12': 2, '2026-10-13': 3, '2026-10-14': 3}
 assert all(n >= 2 for n in VIX_SOURCES.values()), 'a close needs two independent sources'
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 # The 2016-2023 mean of the yearly averages of daily closes (FRED VIXCLS, annual
@@ -172,25 +177,21 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-# 9 Oct: Brent settled $104.72 (+$0.44, +0.42%; Yahoo's settlement, Investing.com's prior
-# close) from $104.28 on 8 Oct, when it rose 4.1% as Iran stepped up tanker attacks and a
-# Gulf hurricane shut in output. 7 Oct is quoted as $101.90, $100.92 and $100.20, so the
-# chain is anchored on 8-9 Oct only. The 10-year is the par-curve / H.15 close: 5.28% on
-# 7 Oct (after its highest intraday level since April 2002), 5.22% on 8 Oct, 5.24% on
-# 9 Oct (FRED, Treasury via ETF Trends, Investing.com 5.244). The highest close is still
-# 5 Oct's 5.31%.
-# ust10_high is the highest close of the move, so "highest close since 2002" is claimed
-# only of a close that equals it.
-MARKET = dict(asof='2026-10-09',
-              brent=104.72, brent_prev=104.28, brent_chg_pct=0.42,
-              ust10=5.24,   ust10_prev=5.22,  ust10_chg_bp=2,
+# 14 Oct: Brent settled $106.06 (+0.35%; Investing.com, The Nation, InvestingLive) from
+# $105.69 on 13 Oct (-$0.96; CNBC, Bloomberg), on Houthi strikes on Saudi infrastructure.
+# The 10-year carries its own date: the bond market shut for Columbus Day on 12 Oct, 13 Oct
+# closed at 5.21% (-3bp from 9 Oct's 5.24%; FRED, Treasury's par curve), and 14 Oct is
+# quoted as 5.19% and 5.20%, so it is held. The highest close is still 5 Oct's 5.31%.
+MARKET = dict(asof='2026-10-14',
+              brent=106.06, brent_prev=105.69, brent_chg_pct=0.35,
+              ust10_asof='2026-10-13', ust10=5.21, ust10_prev=5.24, ust10_chg_bp=-3,
               ust10_high=5.31, ust10_high_date='2026-10-05')
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
 assert abs(MARKET['ust10_prev'] + MARKET['ust10_chg_bp'] / 100 - MARKET['ust10']) < 0.005, \
     '10-year level does not reconcile with its stated change'
-assert MARKET['ust10'] <= MARKET['ust10_high'] and MARKET['ust10_high_date'] <= MARKET['asof'], \
-    'the 10-year cannot close above the high on file'
+assert MARKET['ust10'] <= MARKET['ust10_high'] and MARKET['ust10_high_date'] <= MARKET['ust10_asof'] <= MARKET['asof'], \
+    'the 10-year cannot close above the high on file, or after the market date'
 
 # Ten-year expected maximum drawdown as a multiple of annual sigma. Rev. 24 and earlier
 # used 1.70 (band 1.65-1.75), never derived. A seeded simulation of the model's own books
@@ -327,8 +328,11 @@ def fill(v):
 # high-yield spreads widened 2.80% -> 3.24% in a week, the 10-year set a 2002 high and
 # the dollar a 16-month high (an 18-month high by 5 Oct). Re-read in Rev. 27 and held: see
 # VERIFICATION.md.
-DRIVERS = [('Growth momentum',6.0,.25), ('Inflation trajectory',3.0,.15),
-           ('Monetary policy',2.5,.20), ('Liquidity & credit',4.0,.15),
+# Rev. 28: Inflation 3.0 -> 2.5 on a September CPI of 3.7% (core 2.6%, both above forecast,
+# gasoline +9.1% m/m); Monetary policy 2.5 -> 2.0 as October-hike odds jumped from 22% to
+# about 50% on the print (CME FedWatch), the reverse of Rev. 25's move on the way down.
+DRIVERS = [('Growth momentum',6.0,.25), ('Inflation trajectory',2.5,.15),
+           ('Monetary policy',2.0,.20), ('Liquidity & credit',4.0,.15),
            ('Valuation & positioning',4.0,.15), ('Geopolitical risk',2.0,.10)]
 REGIONS = {'Asia / EM':[5.5,6.5,7.0,7.5], 'United States':[5.0,5.5,6.5,7.0],
            'Europe':[3.0,3.5,4.0,5.0]}
@@ -555,7 +559,7 @@ def cal_line(regime='normalized', mix=None, cash_vol=None):
 # Ten-to-fifteen-year, USD, total return, gross of fund fees. These are other
 # people's numbers, quoted to be disagreed with in the open -- not inputs.
 INSTITUTIONAL = {
-    'J.P. Morgan LTCMA 2026': dict(us=6.70, em=7.80, em_vol=20.9, note='US large cap; EM vol 20.9%'),
+    'J.P. Morgan LTCMA 2026': dict(us=6.70, em=7.80, note='US large cap'),
     # Rev. 27 re-traced each row. Fidelity's US figure (4.40, "midpoint 3.4-5.4") could not
     # be traced; the survey that carries its 8.1% EM figure gives 5.8% for US equities.
     # Vanguard's June 2026 run has EM at 2.0-4.0 (its Q1 run 3.6-5.6), not 3.3-5.3.
@@ -634,7 +638,7 @@ def frontier_svg(regime='normalized'):
     """The whole chart, emitted from the model. Axes auto-label over FR_X/FR_Y."""
     eff, _ = efficient(regime)
     assert all(FR_X[0] <= dd <= FR_X[1] and FR_Y[0] <= c <= FR_Y[1] for dd, c, _ in eff), \
-        f'frontier runs outside the plotted axes: widen FR_X/FR_Y'
+        'frontier runs outside the plotted axes: widen FR_X/FR_Y'
     on = [n for n in PORTFOLIOS if any(w == PORTFOLIOS[n] for _, _, w in eff)]
     who = ('both portfolios' if len(on) == len(PORTFOLIOS) else
            f'the {on[0]} book' if on else 'neither portfolio')

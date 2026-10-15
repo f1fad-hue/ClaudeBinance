@@ -88,7 +88,11 @@ def _alt_model(spot):
         exec(compile(alt, 'alt', 'exec'), ns)
     ck('the metamorphic copy runs at the new spot', abs(ns['VIX_SPOT'] - spot) < 1e-9, ns['VIX_SPOT'], spot)
     return ns
-_hi = round(M.VIX_SPOT * 1.2, 2)
+# The hypothetical close is 20% above the PRIOR close, not above spot: Rev. 27's version
+# took spot x 1.2, which after a real 10% jump (14 Oct) implied a 33% one-day move that
+# the model's own >25% guard refuses, so the test broke on genuine data.
+_hi = round(M.VIX_SERIES[-2][1] * 1.2, 2)
+if abs(_hi - M.VIX_SPOT) < 0.5: _hi = round(M.VIX_SERIES[-2][1] * 0.85, 2)
 _alt = _alt_model(_hi)
 _sc = _hi / M.VIX_SPOT
 ck('normalized volatility does not depend on the spot VIX',
@@ -212,15 +216,18 @@ FQ, FI = M.OBS['QQQ']['fwd_pe'], M.OBS['IEMG']['fwd_pe']
 bc, oc, bn, on = ST['baseline']['calm'], ST['optimized']['calm'], ST['baseline']['normalized'], ST['optimized']['normalized']
 
 # masthead
+_ust_tag = f' ({day(MK["ust10_asof"])})' if MK['ust10_asof'] != MK['asof'] else ''
 present('masthead', f'<span>As of {day(MK["asof"])} {MK["asof"][:4]}</span><span>10-yr horizon</span>'
         f'<span>Fed {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%</span><span>VIX {SPOT:.2f}{f" ({day(M.VIX_ASOF)})" if _held else ""}</span>'
-        f'<span>Brent ${MK["brent"]:.2f}</span><span>UST 10y {MK["ust10"]:.2f}%</span><span>Rev. {M.REVISION} · re-verified</span>')
+        f'<span>Brent ${MK["brent"]:.2f}</span><span>UST 10y {MK["ust10"]:.2f}%{_ust_tag}</span><span>Rev. {M.REVISION} · re-verified</span>')
 
 # macro
 P = pane('p-macro')
 chg = (SPOT / PREV - 1) * 100
-present('lead: 10-year close and change', f'The 10-year closed at <b>{MK["ust10"]:.2f}%</b> on {day(MK["asof"])} '
-        f'({"+" if MK["ust10_chg_bp"] >= 0 else MINUS}{abs(MK["ust10_chg_bp"])}bp)', P)
+_bp = f'({"+" if MK["ust10_chg_bp"] >= 0 else MINUS}{abs(MK["ust10_chg_bp"])}bp)'
+_lead_box = re.search(r'<div class="warnbox">(.*?)</div>', P, re.S).group(1)
+present('lead: 10-year close and change, on its own date', f'0-year closed at {MK["ust10"]:.2f}% on {day(MK["ust10_asof"])} {_bp}', _lead_box)
+ck('the 10-year date is not after the market date', MK['ust10_asof'] <= MK['asof'], MK['ust10_asof'], MK['asof'])
 _hy = build.FACTS['hy_oas']
 _hy_now, _hy_then = float(_hy[0].rstrip('%')), float(_hy[2].rstrip('%'))
 _hy_verb = 'widened' if _hy_now > _hy_then else 'narrowed' if _hy_now < _hy_then else 'held'
@@ -236,14 +243,19 @@ finally:
 # the lead's headline: "the sell-off extended" only of a rise to a close at the high
 _hl = ('The bond sell-off extended' if MK['ust10'] >= MK['ust10_high'] and MK['ust10_chg_bp'] > 0 else
        'Yields edged up' if MK['ust10_chg_bp'] > 0 else 'Yields eased' if MK['ust10_chg_bp'] < 0 else 'Yields held')
-present('lead headline follows the close against its high, not the day\'s sign alone', f'<div class="warnbox"><b>{_hl}.</b>', pane('p-macro'))
-present('liquidity driver 10-year', f'The 10-year closed at {MK["ust10"]:.2f}% on {day(MK["asof"])}', P)
+_lf = build.FACTS['lead']
+if _lf[0] == MK['asof']:
+    present('lead: the dated event of the market date, as headline', f'<div class="warnbox"><b>{_lf[1]}.</b> {_lf[2]}.', P)
+else:
+    present('lead headline follows the close against its high, not the day\'s sign alone', f'<div class="warnbox"><b>{_hl}.</b>', P)
+    ck('a dated lead is refused once the market date moves on', _lf[2] not in P, _lf[0], MK['asof'])
+present('liquidity driver 10-year', f'The 10-year closed at {MK["ust10"]:.2f}% on {day(MK["ust10_asof"])}', P)
 _HIGH = build.FACTS['ust10_high']   # the dated fact; which close it attaches to is derived here
 if MK['ust10'] == MK['ust10_high']:
     _note = f'its {_HIGH}'
 else:
     _note = f'{(MK["ust10_high"] - MK["ust10"]) * 100:.0f}bp below the {MK["ust10_high"]:.2f}% of {day(MK["ust10_high_date"])}, the {_HIGH}'
-present('10-year note claims the high only on the high', f'bp), {_note},', P)
+present('10-year note claims the high only on the high', f'bp), {_note}', P)
 ck('"highest since" is not printed of a close below the high',
    MK['ust10'] == MK['ust10_high'] or f'bp), its {_HIGH}' not in P, MK['ust10'], MK['ust10_high'])
 # The generator's direction-sensitive helpers, run on hypothetical inputs. Their output
@@ -260,6 +272,9 @@ try:
     ck('helper: a rise short of the high is not "the sell-off extended"', build.bond_headline() == 'Yields edged up', build.bond_headline())
     build.MK = dict(_MK0, ust10=_MK0['ust10_high'], ust10_chg_bp=3)
     ck('helper: a rise to the high is "the sell-off extended"', build.bond_headline() == 'The bond sell-off extended', build.bond_headline())
+    build.MK = dict(_MK0, asof='2099-01-02')
+    ck('helper: the dated lead is refused once the market date moves on',
+       build.FACTS['lead'][2] not in build.lead() and build.lead().startswith('<b>'), build.lead()[:60])
 finally:
     build.MK = _MK0
 _VS0 = build.VIX_STALE
@@ -272,11 +287,10 @@ try:
     ck('helper: the revisit trigger dates a held VIX', f' at the {build.SPOT_DATE} close;' in build.portfolios(0, 0))
 finally:
     build.VIX_STALE = _VS0
+for _rq, _ri, _w in ((0.250, 0.255, 'level with'), (0.250, 0.265, 'ahead of'), (0.265, 0.250, 'behind')):
+    ck(f'helper: risk-adjusted comparison {_rq} vs {_ri} reads "{_w}"', build.rel_word(_rq, _ri) == _w, build.rel_word(_rq, _ri), _w)
 ck('helper: VIX above its mean reads "above"', build.vix_rel(M.VIX_MEAN * 1.2, 0).endswith('above'), build.vix_rel(M.VIX_MEAN * 1.2, 0))
 ck('helper: VIX below its mean reads "below"', build.vix_rel(M.VIX_MEAN * 0.8, 0).endswith('below'), build.vix_rel(M.VIX_MEAN * 0.8, 0))
-_cause_date, _cause = build.FACTS['move_cause']
-ck('a stated cause of the day\'s move is dated to the market date, or absent',
-   (_cause_date == MK['asof'] and _cause in P) or (_cause_date != MK['asof'] and _cause not in P), _cause_date, MK['asof'])
 present('lead: Brent move', f'Brent settled {"up" if MK["brent_chg_pct"] > 0 else "down"} {hu(abs(MK["brent_chg_pct"]), 1)}% at <b>${MK["brent"]:.2f}</b>', P)
 if _held:
     present('lead: held VIX close stated with its range and the close used',
@@ -297,15 +311,15 @@ for (name, s10, wt), (_, s5, fl) in zip(M.DRIVERS, g['drivers']):
     ck(f'driver {name}: weight, score and bar',
        re.search(r'%s <span class="wt">w %d%%</span></div><div class="drv-s"[^>]*>%s</div>\s*<div class="drv-bar"><i style="width:%s%%;'
                  % (re.escape(name.replace('&', '&amp;')), round(wt * 100), s5, fl), P) is not None, name, (s5, fl))
-present('valuation driver multiples', f'Nasdaq-100 at {hu(FQ, 1)}× forward vs EM at {hu(FI, 1)}× — a {hu((1 - FI / FQ) * 100, 0)}% discount', P)
+present('valuation driver multiples', f'Nasdaq-100 at {hu(FQ, 1)}× forward vs EM at {hu(FI, 1)}×, a {hu((1 - FI / FQ) * 100, 0)}% discount', P)
 _d = (1 - SPOT / M.VIX_MEAN) * 100
-present('valuation driver VIX vs mean, either side', f'The VIX at {SPOT:.2f} ({day(M.VIX_ASOF)}) sits {hu(abs(_d), 0)}% {"below" if _d >= 0 else "above"} its {M.VIX_MEAN} long-run mean: '
+present('valuation driver VIX vs mean, either side', f'The VIX at {SPOT:.2f} ({day(M.VIX_ASOF)}) sits {hu(abs(_d), 0)}% {"below" if _d >= 0 else "above"} its {M.VIX_MEAN} mean: '
         f'protection is {"cheap" if SPOT < M.VIX_MEAN else "dear"}', P)
-present('policy driver range', f'the range is {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%', P)
+present('policy driver range', f'The Fed hiked 12–0 on {day(M.FOMC_DATE)} to {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%', P)
 for t in ('SGOV', 'QQQ', 'IEMG', 'BMNR'):
     present(f'transmission row for {t}', f'<div class="tick" style="background:var(--{t.lower()})">{t}</div>', P)
-present('SGOV transmission figures', f'The {M.SGOV_GROSS:g}% policy midpoint nets {M.A["SGOV"]["net"]:.2f}%', P)
-present('QQQ transmission figures', f'at {hu(FQ, 1)}× forward — {"above" if FQ > M.OBS["QQQ"]["pe_end"] else "below"} its {M.OBS["QQQ"]["pe_end"]}× average', P)
+present('SGOV transmission figures', f'the {M.SGOV_GROSS:g}% midpoint nets {M.A["SGOV"]["net"]:.2f}%', P)
+present('QQQ transmission figures', f'at {hu(FQ, 1)}× forward, {"above" if FQ > M.OBS["QQQ"]["pe_end"] else "below"} its {M.OBS["QQQ"]["pe_end"]}× average', P)
 present('IEMG transmission figures', f'The cheapest bloc at {hu(FI, 1)}×, {"below" if FI < M.OBS["IEMG"]["pe_end"] else "above"} its {M.OBS["IEMG"]["pe_end"]}× average', P)
 present('core tension: 10-year and oil', f'a {MK["ust10"]:.2f}% 10-year and ${MK["brent"]:.0f} oil', P)
 present('BMNR transmission correlation', f'a {M.REGIME["calm"]["rho"][("QQQ", "BMNR")]:.2f} correlation to QQQ', P)
@@ -325,7 +339,7 @@ for k, v in E['regions'].items():
 top, sec = by_mean[0], by_mean[1]
 present('ranking lead stated', f'{names[top]} leads by {M.r2h(E["regions"][top]["scores"][0] - E["regions"][sec]["scores"][0], 1):.1f} at 3 months and '
         f'{M.r2h(E["regions"][top]["scores"][3] - E["regions"][sec]["scores"][3], 1):.1f} at 10 years', P)
-present('EM multiple in the Asia note', f'Equities at {hu(FI, 1)}× forward', P)
+present('EM multiple in the Asia note', f'Equities trade at {hu(FI, 1)}× forward', P)
 present('US note: multiple and 10-year', f'the richest multiple ({hu(FQ, 1)}×) and a {MK["ust10"]:.2f}% 10-year', P)
 
 # trend
@@ -467,12 +481,22 @@ ck('a downtrend in IEMG\'s market moves a step to cash', _b['SGOV'] > M.PORTFOLI
 P = pane('p-port')
 for _i, (pillar, rd, mvtxt, after) in enumerate(M.TILT['steps']):
     present(f'rule step {_i + 1} stated with its move and resulting book', f'<b>{pillar} — {mvtxt}.</b>', P)
-    present(f'rule step {_i + 1} book', f"Book: QQQ {after['QQQ']} / IEMG {after['IEMG']} / SGOV {after['SGOV']} / BMNR {after['BMNR']}.", P)
+    _sd = re.search(r'<div><b>%s — [^<]*</b>(.*?)</div>' % re.escape(pillar), P, re.S)
+    if mvtxt == 'no move':
+        ck(f'rule step {_i + 1}: no book restated where nothing moved', _sd is not None and 'Book:' not in _sd.group(1), pillar)
+    else:
+        present(f'rule step {_i + 1} book', f"Book: QQQ {after['QQQ']} / IEMG {after['IEMG']} / SGOV {after['SGOV']} / BMNR {after['BMNR']}.", P)
 present('rule triggers stated with today\'s readings',
         f'the gauge reaching {M.RULE["gauge_cautious"]} (now {E["gauge"]["display"]}), the VIX reaching {M.VIX_MEAN} (now {SPOT:.2f}), '
         f'the QQQ–IEMG trend net reaching ±{M.RULE["trend_tilt"]} (now {sgn(_net, 0) if _net else 0})', P)
-present('funding sleeve named from the transmission map',
-        f'the transmission map rates {sorted([k for k in ("QQQ", "IEMG", "BMNR") if M.PORTFOLIOS["baseline"][k] - 5 >= 5 or k != "BMNR"], key=lambda k: (M.CORRELATED[k][0], -M.PORTFOLIOS["baseline"][k]))[0]}', P)
+# the funder is the one _rule picked independently above (weights AFTER the regional step);
+# Rev. 27's version sorted on baseline weights and agreed only by coincidence
+_fund = M.TILT['steps'][1][1][1]
+ck('the page\'s funder is the rule\'s', _fund == sorted([k for k in ('QQQ', 'IEMG', 'BMNR') if M.TILT['steps'][0][3][k] - 5 >= 5],
+   key=lambda k: (M.CORRELATED[k][0], -M.TILT['steps'][0][3][k]))[0], _fund)
+present('funding sleeve named from the transmission map', f'funded by {_fund}, the worst-rated equity sleeve above its {M.RULE["floor"]}% floor', P)
+_worse = [k for k in ('QQQ', 'IEMG', 'BMNR') if M.CORRELATED[k][0] < M.CORRELATED[_fund][0]]
+ck('any worse-rated sleeve was at its floor, so could not fund', all(M.TILT['steps'][0][3][k] - M.RULE['step'] < M.RULE['floor'] for k in _worse), _worse)
 for k, (sgn_, lab) in M.CORRELATED.items():
     present(f'transmission label {k} from the model', f'<span class="sig {({1: "up", 0: "nu", -1: "down"})[sgn_]}">{lab}</span>', pane('p-macro'))
 
@@ -485,8 +509,8 @@ ck('the two-sided 95% z is what the normal distribution says', abs(math.erf(Z95_
 ck('the term-structure header states the confidence the band uses', '<th>95% band</th>' in P)
 present('VIX hero', f'<div class="k">VIX, {day(M.VIX_ASOF)}</div><div class="v">{SPOT:.2f}</div>', P)
 present('2026 range hero', f'<div class="v">{M.VIX_2026["low"]:.2f} · {M.VIX_2026["high"]:.2f}</div>', P)
-present('VIX discount and dates', f'Spot is {hu(abs(_d), 1)}% {"below" if _d >= 0 else "above"} the 2016–2023 mean of {M.VIX_MEAN}. '
-        f'The 2026 low was {day(M.VIX_2026["low_date"], False)}; the high {day(M.VIX_2026["high_date"], False)}.', P)
+present('VIX discount and dates', f'Spot is {hu(abs(_d), 1)}% {"below" if _d >= 0 else "above"} the 2016–2023 mean of {M.VIX_MEAN}; '
+        f'the 2026 low was {day(M.VIX_2026["low_date"])}, the high {day(M.VIX_2026["high_date"])}.', P)
 for lab, h in (('1 day', 1 / 252), ('3 months', 0.25), ('6 months', 0.5), ('12 months', 1.0)):
     sig = M.r2h(SPOT * math.sqrt(h))                 # displayed sigma
     dp = 2 if h < 0.1 else 1
@@ -506,9 +530,9 @@ for k in ('QQQ', 'IEMG', 'SGOV', 'BMNR'):
 for a, b in (('QQQ', 'IEMG'), ('QQQ', 'BMNR'), ('IEMG', 'BMNR')):
     present(f'correlation row {a}·{b}', f'<td>ρ {a}·{b}</td><td class="n">{M.REGIME["calm"]["rho"][(a, b)]:.2f}</td>'
             f'<td class="n neg">{M.REGIME["normalized"]["rho"][(a, b)]:.2f}</td>', P)
-present('drawdown rule stated with its simulated band', f'Ten-year expected max drawdown ≈ {M.DD_MULT:.2f} × σ, from a daily-step simulation of each book '
+present('drawdown rule stated with its simulated band', f'Ten-year max drawdown ≈ {M.DD_MULT:.2f} × σ, from a daily-step simulation '
         f'(median to mean {M.DD_BAND[0]:.2f}–{M.DD_BAND[1]:.2f}×)', P)
-present('uplift and regime drawdowns', f'Volatility mean-reverted to {M.VIX_MEAN} (×{hu(M.UPLIFT)}) and crisis correlations turn the optimized book&#8217;s '
+present('uplift and regime drawdowns', f'A VIX back at its {M.VIX_MEAN} mean (×{hu(M.UPLIFT)}) and crisis correlations turn the optimized book&#8217;s '
         f'{neg(oc["dd"])}% drawdown into {neg(on["dd"])}%', P)
 rcard = P[P.index('Risk contribution'):P.index('Ten-year view')]
 for k in ('QQQ', 'IEMG', 'SGOV', 'BMNR'):
@@ -583,7 +607,6 @@ cmp = {
   'σ — vol normalized': [f'{bn["vol"]:.2f}%', f'{on["vol"]:.2f}%', dd(bn['vol'], on['vol'], 2)],
   'Max DD — calm': [f'{neg(bc["dd"])}%', f'{neg(oc["dd"])}%', dd(oc['dd'], bc['dd'], 1)],
   'Max DD — normalized': [f'{neg(bn["dd"])}%', f'{neg(on["dd"])}%', dd(on['dd'], bn['dd'], 1)],
-  'Correlated-stress DD': [f'{neg(bc["naive"])}%', f'{neg(oc["naive"])}%', dd(oc['naive'], bc['naive'], 1)],
   'Return / risk (calm)': [f'{bc["sharpe"]:.3f}', f'{oc["sharpe"]:.3f}', dd(bc['sharpe'], oc['sharpe'], 3)],
   '$10,000 → 10 yr': [f'${bc["terminal"]:,.0f}', f'${oc["terminal"]:,.0f}', usd(M.r2h(oc['terminal'], 0) - M.r2h(bc['terminal'], 0))],
   '10-yr fee drag': [f'{MINUS}${bc["fee_drag"]:,.0f}', f'{MINUS}${oc["fee_drag"]:,.0f}', usd(M.r2h(bc['fee_drag'], 0) - M.r2h(oc['fee_drag'], 0))],
@@ -592,9 +615,9 @@ for lab, want in cmp.items():
     ck(f'comparison row {lab}', row(lab) == want, row(lab), want)
 gap = M.r2h(M.r2h(bc['cagr_d']) - M.r2h(oc['cagr_d']))
 cut = M.r2h(M.r2h(bn['dd'], 1) - M.r2h(on['dd'], 1), 1)
-present('the trade, stated', f'gives up {gap:.2f} points of CAGR to cut the normalized drawdown by {cut:.1f} points, '
+present('the trade, stated', f'<b>The trade.</b> {gap:.2f} points of CAGR for {cut:.1f} points less normalized drawdown, '
         f'at {"almost the same" if abs(oc["sharpe"] - bc["sharpe"]) < 0.01 else "a higher" if oc["sharpe"] > bc["sharpe"] else "a lower"} '
-        f'return per unit of risk ({oc["sharpe"]:.3f} vs {bc["sharpe"]:.3f})', P)
+        f'return per unit of risk', P)
 fmt_cell = lambda x, s: '—' if abs(x) < 5e-3 else (sgn(x) if s else hu(x))
 for lab, fld, s in (('Dividend yield', 'div', True), ('Earnings growth', 'eps', True), ('Valuation change', 'val', True),
                     ('Currency drag', 'fx', True), ('Gross CAGR', 'gross', False), ('Net CAGR', 'net', False)):
@@ -623,21 +646,20 @@ try:
 finally:
     build.ON = _ON0
 ck('frontier call-out matches the efficiency test',
-   ('The recommended book is efficient; the baseline, by a hair, is not.' in P) == (ON['optimized'] and not ON['baseline'] and len(dom) == 1), ON)
-if len(dom) == 1:
-    dd_, dc_, dw = dom[0]
-    present('the book that beats the baseline, and by how much',
-            f'by +{hu(dc_ - bn["cagr"])} points of CAGR and {hu(bn["dd"] - dd_, 1)} of drawdown', P)
-    present('admissible count', f'Across all {N_ADM} allocations with BMNR at 5%', P)
+   bool(re.search(r'The recommended book is efficient; the baseline(, by a hair,)? is not\.', P)) == (ON['optimized'] and not ON['baseline'] and bool(dom)), ON)
+if dom:
+    _up = max(dc_ for _, dc_, _ in dom) - bn['cagr']; _cut = bn['dd'] - min(dd_ for dd_, _, _ in dom)
+    present('the books that beat the baseline: their count and widest margins',
+            f'{"one beats" if len(dom) == 1 else f"{len(dom)} beat"} the baseline, by up to +{hu(_up)} points of CAGR and {hu(_cut, 1)} of drawdown', P)
+    ck('"by a hair" only of a margin under 0.05 points and 0.5 of drawdown', (', by a hair,' in P) == (_up < 0.05 and _cut < 0.5), _up, _cut)
+    present('admissible count', f'Of {N_ADM} allocations with BMNR at 5%', P)
 present('efficient count', f'{len(EFF)} allocations are efficient', P)
 se = M.se_level('optimized'); lo95, hi95 = oc['cagr_d'] - 1.96 * se, oc['cagr_d'] + 1.96 * se
 top = SENS[0]
 for k, v in (('Standard error, 10-yr CAGR', f'±{se:.2f} pts'),
              ('95% band, optimized', f'{MINUS if lo95 < 0 else ""}{hu(abs(lo95), 1)} to {hu(hi95, 1)}%'),
              ('Chance the baseline out-returns', f'{hu(CALB["p"] * 100, 0)}%'),
-             ('Allocations separable in 10 yrs', f'{SEP} of {SEP_N}'),
-             (f'Most sensitive: {top["label"]}', f'1 pt → {sgn(top["d_cagr"])} CAGR'),
-             ('On J.P. Morgan&#8217;s return inputs', f'{JPM["rows"]["baseline"]["cagr"]:.2f}% vs {JPM["rows"]["optimized"]["cagr"]:.2f}%')):
+             (f'Most sensitive: {top["label"]}', f'1 pt → {sgn(top["d_cagr"])} CAGR')):
     present(f'confidence: {k}', f'<span class="k">{k}</span><span class="v">{v}</span>', P)
 Hh = M.INSTITUTIONAL
 for n_, d_ in Hh.items():
@@ -646,9 +668,6 @@ present('this page against the houses', f'<tr class="hl"><td>This page</td><td c
 _top = max(d_['us'] for d_ in Hh.values())
 present('US margin against the houses, either side', f'{hu(abs(q["gross"] - _top), 1)} points {"above" if q["gross"] > _top else "below"} the highest house', P)
 present('houses ranking EM first', f'{sum(d_["em"] > d_["us"] for d_ in Hh.values())} of {len(Hh)} houses rank EM above the US', P)
-_jv = Hh[M.ALT_SOURCE]['em_vol']; _lo, _hi = M.REGIME['calm']['vol']['IEMG'], M.REGIME['normalized']['vol']['IEMG']
-present('J.P. Morgan EM volatility against the regimes',
-        f'{_jv}% EM volatility sits {"between" if _lo <= _jv <= _hi else "above both of" if _jv > _hi else "below both of"} this page&#8217;s two regimes ({_lo:.1f}%, {_hi:.1f}%)', P)
 present('policy driver date and vote', f'The Fed hiked 12–0 on {day(M.FOMC_DATE)}', pane('p-macro'))
 ck('the most sensitive input is QQQ earnings growth', top['label'] == 'QQQ earnings growth', top['label'])
 present('still open: every assumed input, from the model', f'{len(M.ASSUMED)} inputs are assumptions rather than observations — '
@@ -664,14 +683,12 @@ def _divret(w, drop=()):
     rh = lambda a, c: 1.0 if a == c else 0.0 if 'SGOV' in (a, c) else R_.get((a, c), R_.get((c, a)))
     var = sum(w[a] / tot * w[c] / tot * V_[a] * V_[c] * rh(a, c) for a in ks for c in ks)
     return 0.5 * (sum(w[k] / tot * V_[k] ** 2 for k in ks) - var) / 100
-present('diversification return disclosed', f'about {hu(_divret(B, ("BMNR",)))}–{hu(_divret(O, ("BMNR",)))}%/yr from the three funds', P)
-present('diversification return with BMNR', f'inflate it to about {hu(_divret(O))}%', P)
+present('diversification return disclosed', f'leave out about {hu(_divret(B, ("BMNR",)))}–{hu(_divret(O, ("BMNR",)))}%/yr of rebalancing return from the three funds', P)
 ck('diversification return is near-identical for both books', abs(_divret(B, ('BMNR',)) - _divret(O, ('BMNR',))) < 0.1)
-present('rationale: horizon', f'SGOV turns $10,000 into ${E["sleeves"]["SGOV"]["terminal"]:,}, QQQ into ${E["sleeves"]["QQQ"]["terminal"]:,}', P)
 present('rationale: tilt', f'per unit of risk it is {rel} QQQ ({rv["IEMG"]:.3f} vs {rv["QQQ"]:.3f}) while earning '
         f'{"less" if i["net"] < q["net"] else "more"} ({i["net"]:.2f}% vs {q["net"]:.2f}%)', P)
-present('rationale: sizing', f'The weights are set against {neg(on["dd"])}% drawdown, not today&#8217;s {neg(oc["dd"])}%', P)
-present('rationale: CAL ratio', f'holds return-per-drawdown at {cal[0]:.4f} whatever the cash weight', P)
+present('rationale: sizing', f'It is set against the {neg(on["dd"])}% normalized drawdown, not today&#8217;s {neg(oc["dd"])}%', P)
+present('rationale: CAL ratio', f'holds return-per-drawdown at {cal[0]:.4f}, so no optimizer can choose it', P)
 present('rationale: BMNR', f'{on["rc"]["BMNR"]:.1f}% of risk from {O["BMNR"]}% of capital', P)
 present('rationale: overruled book', f'QQQ {BEST["QQQ"]} / IEMG {BEST["IEMG"]} / SGOV {BEST["SGOV"]} / BMNR {BEST["BMNR"]} '
         f'(Sharpe {M.stats(BEST, "calm")["sharpe"]:.3f} vs {oc["sharpe"]:.3f}), holds a {BEST["SGOV"]}% reserve', P)
@@ -679,21 +696,21 @@ present('recommendation', f'Hold QQQ {O["QQQ"]} / IEMG {O["IEMG"]} / SGOV {O["SG
         f'against the baseline&#8217;s {neg(bn["dd"])}%, for {gap:.2f} points of CAGR', P)
 if SPOT < M.VIX_MEAN:
     present('recommendation: VIX trigger distance, dated when the VIX is held',
-            f'Revisit if the VIX holds above {M.VIX_MEAN} ({hu(M.VIX_MEAN - SPOT)} points away{f" at the {day(M.VIX_ASOF)} close" if _held else ""};', P)
+            f'revisit if the VIX holds above {M.VIX_MEAN} ({hu(M.VIX_MEAN - SPOT)} points away{f" at the {day(M.VIX_ASOF)} close" if _held else ""};', P)
 else:
-    present('recommendation: VIX trigger already met', f'The VIX is above its {M.VIX_MEAN} mean, so revisit now', P)
+    present('recommendation: VIX trigger already met', f'the VIX is above its {M.VIX_MEAN} mean, so revisit now', P)
 mut = open('mutate.py').read()
 # counted separately and summed, NOT with build.py's pattern: sharing one regex let
 # both files agree on 62 while mutate.py ran 83
 n_mut = mut.count('\n ("') + mut.count('\n G(')
 ck('mutation tables are non-trivial', mut.count('\n ("') > 40 and mut.count('\n G(') > 15, n_mut)
-present('mutation count matches mutate.py', f'{n_mut} deliberate corruptions of the model and the generator were all caught', P)
+present('mutation count matches mutate.py', f'{n_mut} planted errors were all caught', P)
 n_corr = int(re.search(r'CORRECTIONS: (\d+)', open('VERIFICATION.md').read()).group(1))
 present('correction count matches VERIFICATION.md', f'{n_corr} corrections recorded', P)
 ck('VERIFICATION.md lists the current revision', f'## Rev. {M.REVISION} ' in open('VERIFICATION.md').read(), M.REVISION)
-present('disclaimer: sensitivity', f'moves the recommended book&#8217;s CAGR by {hu(abs(top["d_cagr"]))} and the gap between the books by {hu(abs(top["d_gap"]), 3)}', P)
-present('disclaimer: data dates', f'Market data to the {day(MK["asof"], False)} close; fund prices as dated on each slide; '
-        f'BMNR holdings from its {day(H["released"], False)} release, as of {day(H["asof"], False)}', P)
+present('disclaimer: sensitivity', f'moves the recommended book&#8217;s CAGR by {hu(abs(top["d_cagr"]))}.', P)
+present('disclaimer: data dates', f'Market data to the {day(MK["asof"], False)} close, the 10-year to {day(MK["ust10_asof"], False)}; '
+        f'fund prices as dated on each slide; BMNR holdings from its {day(H["released"], False)} release', P)
 for dom_ in ('www.federalreserve.gov', 'www.bls.gov', 'www.ecb.europa.eu', 'www.imf.org', 'fred.stlouisfed.org',
              'www.sec.gov', 'www.ishares.com', 'www.invesco.com', 'www.cboe.com'):
     present(f'source cited: {dom_}', f'href="https://{dom_}/', P)
@@ -713,13 +730,18 @@ _now = {'Market data': day(MK['asof']), 'QQQ net CAGR': f'{hu(M.A["QQQ"]["net"],
         'Optimized drawdown, normalized': f'{MINUS}{hu(ST["optimized"]["normalized"]["dd"], 1)}%',
         'BMNR net CAGR': f'{hu(M.A["BMNR"]["net"], 2)}%'}
 # fact rows: the corrected figure must be what the page now says where the fact is used
+def _page_words():
+    body = html[html.index('<section class="pane'):html.index('<nav class="tabs"')]
+    return len(re.sub(r'<svg.*?</svg>|<[^>]+>', ' ', body, flags=re.S).split())
 _used = {'10-year high': lambda v: f'the highest close {v}' in pane('p-macro'),
          'Optimized book': lambda v: v == 'derived by rule' and _RULE_BOOK == M.PORTFOLIOS['optimized'] and 'How the optimized book is built' in P,
          'Market trend, 3/6/12 months': lambda v: v == 'a tab' and 'id="p-trend"' in html,
          'VIX close, 2 Oct': lambda v: abs(dict(M.VIX_SERIES)['2026-10-02'] - float(v)) < 1e-9,
          'QQQ trailing dividend': lambda v: v == f'${M.PRICES["QQQ"]["ttm_div"]:.2f}',
          'QQQ 2020 drawdown': lambda v: f'<span class="k">2020 COVID crash</span><span class="v" style="color:var(--neg)">{v}</span>' in pane('p-vol'),
-         'Vanguard EM forecast': lambda v: f'<tr><td>Vanguard, Jun 2026</td><td class="n">5.2%</td><td class="n">{v}</td></tr>' in P}
+         'Vanguard EM forecast': lambda v: f'<tr><td>Vanguard, Jun 2026</td><td class="n">5.2%</td><td class="n">{v}</td></tr>' in P,
+         # counted here, not by build.pane_words: visible words of the six panes, charts stripped
+         'Page text': lambda v: v == f'{_page_words():,} words'}
 for _k, (_a, _b) in _rows_page.items():
     ck(f'revision row {_k}: current side checked', _k in _now or _k in _used, _k)
     if _k in _now:
@@ -735,6 +757,9 @@ for _k, (_a, _b) in _rows_page.items():
 vis = re.sub(r'<style>.*?</style>|<svg.*?</svg>|<script>.*?</script>|<[^>]+>', ' ', html, flags=re.S)
 ascii_minus = re.findall(r'(?<![\w/–-])-\d[\d.]*%', vis)
 ck('no ASCII hyphen on a signed figure', not ascii_minus, ascii_minus[:5], 'none')
+# Rev. 27's dated facts carried HTML entities that the generator then escaped again, so
+# "Aramco&#8217;s" showed as literal code on the page
+ck('no double-escaped entity on the page', '&amp;#' not in html and not re.search(r'&amp;[a-z]+;', html), re.findall(r'&amp;#?\w+;', html)[:3], 'none')
 # Layout defects a string check can see. Rev. 26 found three that had shipped: a signal
 # pill sharing the donut card's class (so BMNR's tag rendered as a padded box), table
 # headers uppercasing σ into Σ, and a trend verdict in a fifth column that ran off a phone.

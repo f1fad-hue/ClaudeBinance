@@ -61,6 +61,8 @@ NODE_PATH=$(npm root -g) node phone.mjs 412 && NODE_PATH=$(npm root -g) node pho
 - Any fund price, dividend or house forecast is used only from a dated source, with the
   latest close two sources agree on. A later close with one source, or two that disagree, is
   held back and recorded with the sensitivity it would carry.
+- A level whose close lags the market date keeps its own date (`MARKET['ust10_asof']`), and
+  every sentence and the masthead that quote it say so.
 - Figures the model cannot compute (a CPI print, a PMI reading) go in `build.py`'s `FACTS`,
   each dated in the sentence that uses it, with sources linked on the page.
 

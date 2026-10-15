@@ -1,11 +1,155 @@
 # Verification history
 
-CORRECTIONS: 254
+CORRECTIONS: 261
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 28 — 15 October 2026 (data to the 14 October close)
+
+Seven corrections. Two were on the published page; five were latent defects in the
+generator, validator or model that this revision's data or trims exposed. No published
+figure from Rev. 27 was found to be wrong.
+Every market close was cross-checked across at least two independent sources; the page
+fetcher still could not resolve hosts, so every read came through web search.
+
+- **The sentiment step mis-described its funder.** Since Rev. 26 the page said QQQ funds the
+  reserve as "the equity sleeve the macro hurts most". BMNR is rated worse (Headwind), but it
+  sits at its 5% floor and cannot fund the step. The step now says "the worst-rated equity
+  sleeve above its 5% floor", and the validator checks that every worse-rated sleeve was at
+  its floor.
+- **Two apostrophes showed as code.** The dated facts carried HTML entities ("Aramco&#8217;s")
+  that the generator then escaped again, so the page printed the entity literally. The facts
+  now use the character itself, and the validator refuses any double-escaped entity.
+- **The metamorphic VIX test broke on real data.** It raised the last close by 20%. After
+  14 Oct's genuine +10.5% jump, that implied a 33% one-day move, which the model's own
+  >25% transcription guard refuses, so the validator crashed. The hypothetical close is now
+  20% above the **prior** close.
+- **The frontier call-out handled exactly one book beating the baseline.** Three now do
+  (EM-heavy books with SGOV at 20%), and the call-out fell through to a bare "baseline: no"
+  line. Any number now gets the count and the widest margins (+0.08 points of CAGR, 0.5 of
+  normalized drawdown); "by a hair" is reserved for margins under 0.05 and 0.5.
+- **The validator's funding-sleeve check sorted on the wrong weights.** It used baseline
+  weights; the rule picks from the weights after the regional step. The two agreed by
+  coincidence. It now reads the funder from the rule's step log, which `_rule` verifies
+  independently, and checks the pick against the post-step weights.
+- **The 30-year note was an undated literal.** "The 30-year closed at 5.60%" would have
+  stayed on the page as the market date moved. It has been removed, since the 30-year
+  carries no input.
+- **The 10-year could not carry its own date.** `MARKET` had one date for Brent and the
+  10-year. On 14 Oct Brent's settlement is confirmed but the 10-year's close is quoted as
+  5.19% and 5.20%. The 10-year now has `ust10_asof` (13 Oct), and the masthead, lead,
+  liquidity note and disclaimer all date it.
+
+**Concise tabs.** The six tabs went from **3,108 to 2,564 words** (−18%); the revision log
+quotes the count, and the validator recounts it.
+
+- Removed:
+  - the "Correlated-stress DD" row, a sum of judgements already shown per sleeve;
+  - two confidence rows ("separable in 10 years", "On J.P. Morgan's inputs"); the validator
+    still runs both as model checks;
+  - J.P. Morgan's EM-volatility sentence;
+  - the "Horizon first" argument, which duplicated the slides;
+  - the BMNR-inflated diversification figure.
+- Merged and shortened:
+  - the sizing and drawdown-budget arguments are now one;
+  - the rule steps restate the book only where a step moved it;
+  - every pane's notes and lede are shortened.
+- All 17 brief requirements still pass or conflict as before.
+- House cleanup: dead generator names (`SEP`, `JPM`, unused locals) and J.P. Morgan's
+  `em_vol` are gone. `em_vol`'s mutant would have survived once nothing read it, so it went
+  too. pyflakes is clean.
+
+**Market data to 14 October.**
+
+- VIX:
+  - 15.21 on 12 Oct (+2.49%; FRED, Investing.com);
+  - 15.27 on 13 Oct (FRED, Yahoo, Cboe);
+  - **16.87** on 14 Oct (+1.60, +10.48%; Yahoo, Investing.com's table, Cboe). A 16.85
+    snapshot quote was not the close.
+- Brent settled **$106.06** on 14 Oct (+0.35%; Investing.com, The Nation, InvestingLive)
+  from $105.69 on 13 Oct (CNBC, Bloomberg). Houthi strikes hit Saudi airports and Aramco's
+  Dhahran headquarters.
+- 10-year **5.21%** on 13 Oct (−3bp from 9 Oct; FRED, Treasury); the bond market was shut
+  for Columbus Day on 12 Oct.
+- QQQ **$743.57** and IEMG **$80.22** on 13 Oct (QQQ: Yahoo, Macrotrends, StockAnalysis;
+  IEMG: Yahoo, iShares).
+- HY OAS **3.16%** (13 Oct, FRED).
+- **September CPI 3.7%** y/y (+0.6% m/m, gasoline +9.1%), core 2.6%, both above forecast
+  (BLS via CNBC, Morningstar, TheStreet). Stocks had their worst day since July.
+- After the CPI, CME FedWatch put October hike odds at about 50%, from 22%; later readings
+  were 32–47%.
+- **IMF October WEO** (13 Oct): world 3.1% in 2026 (3.4% in 2027), China 4.5%, India 7.0%;
+  it assumes $96 oil (Fortune, SDG News, The Week, CNBC).
+- China's September exports rose 36.3%.
+
+**Gauge re-scored.**
+
+- Inflation 3.0 → **2.5**: CPI 3.7%, core accelerating from 2.4% to 2.6%, gasoline +9.1%
+  m/m.
+- Monetary policy 2.5 → **2.0**: October hike odds went from 22% to about 50%, the reverse
+  of Rev. 25's 2.0 → 2.5 move when they fell.
+- The gauge moves **2.3 → 2.2**, still below the rule's 2.6, so the sentiment step is
+  unchanged.
+- Growth, liquidity, valuation and geopolitics are held. Low claims and the IMF upgrade sit
+  against Michigan's slide; spreads at 3.16% and a 10-year below its high; Houthi strikes
+  against no US strike before the midterms.
+- Regions are held. The IMF trimmed China 0.1 point and raised India 0.6; EM's export boom
+  sits against the chip sell-off.
+
+**Forecasts.**
+
+| Figure | Rev. 27 | Rev. 28 | Why |
+|---|---|---|---|
+| QQQ net CAGR | 9.45% | **9.57%** | Re-prices to 23.30× forward at $743.57 |
+| IEMG net CAGR | 8.68% | **8.96%** | Re-prices to 11.26× at $80.22; yield 2.24% |
+| Baseline | 7.87% | **7.99%** | |
+| Optimized | 7.55% | **7.68%** | |
+
+- The gap is 0.31 points for 2.9 points less normalized drawdown (−38.9% vs −41.8%).
+- Calm drawdowns deepen to −34.8% and −32.2% with the VIX at 16.87.
+- The forward-P/E basis is still 11 Sep. Siblis's September Nasdaq-100 reading (23.26×)
+  agrees with the model's scaled quarter-end figure (23.18×) within 0.3%, and RBC's 12.2×
+  ten-year EM average matches the model's anchor. No October reading was found for either
+  index.
+- The rule returns **QQQ 35 / IEMG 30 / SGOV 30 / BMNR 5**. 107 of 153 allocations are
+  efficient.
+- The best-Sharpe book is now QQQ 35 / IEMG 55 / SGOV 5 / BMNR 5, still rejected for its
+  5% reserve.
+- **Allocations unchanged.**
+
+**Held back, not averaged.**
+
+1. QQQ's 14 Oct close: $728.95 (four sources) against $730.12 (Investing.com's history
+   table). At $728.95 its net forecast would be about 9.77%.
+2. IEMG's 14 Oct $78.64 has one source (iShares).
+3. The 10-year's 14 Oct close (5.19% and 5.20%).
+4. BMNR stays on its 5 Oct pairing. The 12 Oct release (6,028,946 ETH at $2,544, 214 BTC,
+   $612 million cash, $16.2 billion in total) has no confirmed same-day close: 12 Oct is
+   quoted as $23.83 and $23.71, and 13 Oct as $23.49 and $23.55. 14 Oct's $22.25 is
+   confirmed, but pairing it with 11 Oct holdings would mix dates. On those holdings the
+   mNAV would be about 0.94×, so the "discount closing" term would rise from +0.20% to
+   about +0.6%/yr.
+5. The VIX long-run mean (18.9): open from Rev. 27.
+
+**Mutation harness: 146 (88 model, 58 generator), all caught.**
+
+- The first run left nine skips (targets that were Rev. 27's values or trimmed text) and
+  one survivor. The survivor was the risk-adjusted "level with" threshold: QQQ's and IEMG's
+  figures are now 0.011 apart, so 0.01 and 0.0001 gave the same word. The rule is now a
+  function, and the validator tests it on near-tie inputs.
+- The second run left two survivors on behaviour live data could not show:
+  - a dated lead shown after its date (now tested on a hypothetical later date);
+  - the book restated on a no-move step (now checked per step).
+- New mutants cover:
+  - the 10-year dated to the market date;
+  - the masthead dropping the 10-year's own date;
+  - the frontier call-out back to one dominator;
+  - the dated lead and the no-move book;
+  - a double-escaped fact and the funder called the worst outright.
+- J.P. Morgan's EM-volatility mutant was retired with the figure.
 
 ## Rev. 27 — 10 October 2026 (data to the 9 October close)
 
