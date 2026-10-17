@@ -58,6 +58,9 @@ NODE_PATH=$(npm root -g) node phone.mjs 412 && NODE_PATH=$(npm root -g) node pho
 - Before a value is held as "conflicting", check whether the other reading is the same item a
   period earlier. Both of Rev. 26's dividend "conflicts" were last year's payouts, and one hold
   left QQQ's trailing dividend a quarter stale.
+- Trailing dividends are the sum of the dated payouts at the precision paid, not rounded to
+  the cent; `validate.py` re-sums its own transcription of them. Rev. 28's cent-rounded $1.80
+  for IEMG moved its yield by 0.01 point.
 - Any fund price, dividend or house forecast is used only from a dated source, with the
   latest close two sources agree on. A later close with one source, or two that disagree, is
   held back and recorded with the sensitivity it would carry.
@@ -82,8 +85,9 @@ NODE_PATH=$(npm root -g) node phone.mjs 412 && NODE_PATH=$(npm root -g) node pho
 - **Allocation**: every 5%-step book holding all four sleeves at 5% or more is searched. The
   optimized book starts from the strategic baseline and each pillar may move one 5-point step:
   regional rankings (the leader must lead at 3 months *and* 10 years), broad and correlated
-  sentiment (a gauge below 2.6 grows the reserve, funded by the sleeve the transmission map
-  rates worst), volatility (a VIX at or above its mean spends the reserve), market trend (a
+  sentiment (a gauge below 2.6 grows the reserve, funded by the worst-rated equity sleeve on
+  the transmission map that is above its 5% floor), volatility (a five-session average VIX at
+  or above its mean spends the reserve; one close does not), market trend (a
   downtrend cuts a sleeve; a QQQ–IEMG trend net of ±2 moves a step), then drawdown control
   (if a book one step away beats the result on both net CAGR and normalized drawdown, move to
   the one with the least drawdown; a dominating book further away is reported, not taken). The page lists each step and what would change it. The result must sit on the

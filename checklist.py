@@ -176,12 +176,14 @@ _steps_on_page = all(f'<div><b>{p} — ' in html for p in _need)
 rule_ok = (M.PORTFOLIOS['optimized'] == M.TILT['book'] and tuple(_pillars) == _need and _steps_on_page and
            'How the optimized book is built' in html and 'id="p-trend"' in html and 'Correlated transmission' in html)
 tilt_ok = (_sleeve is not None and _Ow[_sleeve] > _Bw[_sleeve] and
-           (M.VIX_SPOT >= M.VIX_MEAN or _Ow['SGOV'] >= _Bw['SGOV']) and
+           (M.VIX_AVG >= M.VIX_MEAN or _Ow['SGOV'] >= _Bw['SGOV']) and
            E['portfolios']['optimized']['normalized']['dd'] < E['portfolios']['baseline']['normalized']['dd'])
 req(14, 'Optimized portfolio from broad + correlated sentiment, volatility, market trend and regional rankings, 3/6/12mo, 10-yr',
     'Macro-tilted' in html and rule_ok and tilt_ok,
     f'derived by rule in {len(_pillars)} steps, each on the page; {_sleeve} {_Bw[_sleeve]}→{_Ow[_sleeve]}% for the top-ranked bloc; '
-    f'SGOV {_Bw["SGOV"]}→{_Ow["SGOV"]}% with the gauge at {E["gauge"]["display"]} and VIX {M.VIX_SPOT} below its {M.VIX_MEAN} mean')
+    # Rev. 28 and earlier typed "below" and quoted the last close; the rule reads the average
+    f'SGOV {_Bw["SGOV"]}→{_Ow["SGOV"]}% with the gauge at {E["gauge"]["display"]} and the VIX\'s {M.VIX_WINDOW}-session average '
+    f'{M.VIX_AVG:.2f} {"below" if M.VIX_AVG < M.VIX_MEAN else "at or above"} its {M.VIX_MEAN} mean (last close {M.VIX_SPOT:.2f})')
 
 # 14b ── market trend at 3, 6 and 12 months (added to the brief in Rev. 26)
 _tr = html[html.index('id="p-trend"'):html.index('id="p-vol"')]

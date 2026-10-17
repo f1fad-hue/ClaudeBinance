@@ -79,9 +79,13 @@ def _alt_model(spot):
     pat = re.compile(r"\('%s', [\d.]+\)" % re.escape(M.VIX_ASOF))
     ck('the last VIX close appears once in the model source', len(pat.findall(src)) == 1, len(pat.findall(src)), 1)
     alt = pat.sub(f"('{M.VIX_ASOF}', {spot})", src)
-    # its reported change must move with it, or the model's own reconciliation refuses it
+    # its reported change must move with it, or the model's own reconciliation refuses it.
+    # Only inside VIX_REPORTED: Rev. 28's pattern also rewrote the date's VIX_SOURCES count,
+    # which passed only while the substituted change happened to be 2 or more.
     prior = M.VIX_SERIES[-2][1]
-    alt = re.sub(r"'%s': -?[\d.]+" % re.escape(M.VIX_ASOF), f"'{M.VIX_ASOF}': {round((spot / prior - 1) * 100, 2)}", alt)
+    i0 = alt.index('VIX_REPORTED = {'); i1 = alt.index('}', i0)
+    blk = re.sub(r"'%s': -?[\d.]+" % re.escape(M.VIX_ASOF), f"'{M.VIX_ASOF}': {round((spot / prior - 1) * 100, 2)}", alt[i0:i1])
+    alt = alt[:i0] + blk + alt[i1:]
     ck('the metamorphic copy really changed the spot VIX', alt != src)
     ns = {'__name__': 'alt'}
     with contextlib.redirect_stdout(io.StringIO()):
@@ -101,8 +105,10 @@ ck('calm equity volatility moves in proportion to the spot VIX',
    all(abs(_alt['REGIME']['calm']['vol'][k] / M.REGIME['calm']['vol'][k] - _sc) < 1e-9 for k in ('QQQ', 'IEMG')))
 ck('BMNR and SGOV volatility do not follow the VIX',
    all(_alt['REGIME']['calm']['vol'][k] == M.REGIME['calm']['vol'][k] for k in ('BMNR', 'SGOV')))
-ck('a higher VIX raises today\'s portfolio risk',
-   all(_alt['stats'](w, 'calm')['vol'] > ST[n]['calm']['vol'] for n, w in M.PORTFOLIOS.items()))
+# the fallback close sits below spot, so the direction is read from the case, not assumed
+ck('today\'s portfolio risk moves with the VIX',
+   all((_alt['stats'](w, 'calm')['vol'] > ST[n]['calm']['vol']) == (_hi > M.VIX_SPOT) for n, w in M.PORTFOLIOS.items()), _hi, M.VIX_SPOT)
+ck('the metamorphic copy leaves the source counts alone', _alt['VIX_SOURCES'] == M.VIX_SOURCES)
 ck('normalized drawdown of both books ignores the spot VIX',
    all(abs(_alt['stats'](w, 'normalized')['dd'] - ST[n]['normalized']['dd']) < 1e-9 for n, w in M.PORTFOLIOS.items()))
 ck('the regimes differ by the uplift for equities',
@@ -129,7 +135,11 @@ ck('optimized drawdown beats baseline in both regimes',
    all(ST['optimized'][r]['dd'] < ST['baseline'][r]['dd'] for r in M.REGIME), '', 'optimized lower')
 
 # ══ 2 · model inputs: derived where they can be, reconciled where they cannot ══
+# the trailing payouts per share, transcribed here from the dated histories independently of
+# the model, which carried cent-rounded sums through Rev. 28
+_PAYOUTS = {'QQQ': (0.79408, 0.73282, 0.81349, 0.75143), 'IEMG': (1.1389, 0.6584)}
 for k, pr in M.PRICES.items():
+    ck(f'{k} trailing dividend is the sum of its payouts, unrounded', abs(sum(_PAYOUTS[k]) - pr['ttm_div']) < 1e-9, pr['ttm_div'], sum(_PAYOUTS[k]))
     ck(f'{k} dividend yield derives from its price',
        abs(M.OBS[k]['div'] - M.r2h(pr['ttm_div'] / pr['px'] * 100)) < 1e-9, M.OBS[k]['div'], pr['ttm_div'] / pr['px'] * 100)
     ck(f'{k} forward P/E derives from the same price',
@@ -284,9 +294,37 @@ try:
     ck('helper: a held VIX close is stated with its range, not narrated as a move',
        'is held back' in _vl and '10.00 to 11.00' in _vl and not re.search(r'VIX (rose|fell)', _vl), _vl)
     ck('helper: the masthead dates a held VIX', f'VIX {build.SPOT:.2f} ({build.SPOT_DATE})</span>' in build.masthead())
-    ck('helper: the revisit trigger dates a held VIX', f' at the {build.SPOT_DATE} close;' in build.portfolios(0, 0))
+    _AV0 = build.AVG; build.AVG = M.VIX_MEAN - 1
+    ck('helper: the revisit trigger dates a held VIX', f'-session average to the {build.SPOT_DATE} close is ' in build.portfolios(0, 0))
 finally:
-    build.VIX_STALE = _VS0
+    build.VIX_STALE = _VS0; build.AVG = _AV0
+# the revisit trigger and the regime warning on each side of the mean, on hypothetical readings
+_SP0, _AV0 = build.SPOT, build.AVG
+try:
+    build.SPOT, build.AVG = M.VIX_MEAN - 2, M.VIX_MEAN - 1
+    _rv = build.revisit_txt()
+    ck('helper: VIX and its average below the mean: revisit, no close quoted', _rv.startswith('revisit if the VIX holds above') and 'though' not in _rv, _rv)
+    build.SPOT = M.VIX_MEAN + 2
+    _rv = build.revisit_txt()
+    ck('helper: one close above the mean is quoted beside the average', f'though the {build.SPOT_DATE} close was {build.SPOT:.2f}' in _rv, _rv)
+    build.AVG = M.VIX_MEAN + 1
+    _rv = build.revisit_txt()
+    ck('helper: an average above the mean says the reserve was spent', _rv.startswith('the VIX has held above its') and _rv.endswith('; revisit'), _rv)
+finally:
+    build.SPOT, build.AVG = _SP0, _AV0
+for _a, _b in ((50.7, 53.6), (53.6, 50.7)):
+    ck(f'helper: a drawdown between {_a} and {_b} sits between, whichever is calm', build.place(52.0, _a, _b) == 'sits between', build.place(52.0, _a, _b))
+# judged at the decimal shown: 22.88x prints as 22.9x, so against a 22.9x average it is "at"
+for _x, _w in ((22.88, 'at'), (22.94, 'at'), (22.96, 'above'), (22.84, 'below')):
+    ck(f'helper: a {_x}x multiple against a 22.9x average reads "{_w}"', build.vs_avg(_x, 22.9) == _w, build.vs_avg(_x, 22.9), _w)
+_O0 = build.O
+try:
+    build.O = dict(_O0, SGOV=40); _AV1 = build.AVG; build.AVG = M.VIX_MEAN - 1
+    ck('helper: the revisit trigger spends one step from the reserve held', 'spend the reserve toward 35%' in build.revisit_txt(), build.revisit_txt())
+finally:
+    build.O = _O0; build.AVG = _AV1
+ck('helper: the regime warning sizes to the deeper normalized column', build.regime_warn({'dd': 30.0}, {'dd': 35.0}).startswith('<b>Weights are sized to the second column.</b>'))
+ck('helper: the regime warning says when today is the deeper column', build.regime_warn({'dd': 35.0}, {'dd': 30.0}).startswith('<b>Today is the deeper column.</b>'))
 for _rq, _ri, _w in ((0.250, 0.255, 'level with'), (0.250, 0.265, 'ahead of'), (0.265, 0.250, 'behind')):
     ck(f'helper: risk-adjusted comparison {_rq} vs {_ri} reads "{_w}"', build.rel_word(_rq, _ri) == _w, build.rel_word(_rq, _ri), _w)
 ck('helper: VIX above its mean reads "above"', build.vix_rel(M.VIX_MEAN * 1.2, 0).endswith('above'), build.vix_rel(M.VIX_MEAN * 1.2, 0))
@@ -439,7 +477,13 @@ def _rule(regions, g5, vix, trend, corr):
     if best: w = best
     log.append(best is not None)
     return w, log
-_RULE_BOOK, _rlog = _rule(M.REGIONS, E['gauge']['score5'], M.VIX_SPOT, M.TREND, M.CORRELATED)
+# the volatility pillar reads the mean of the last five closes, recomputed here from the series
+_VIX_AVG = round(sum(vals[-5:]) / 5, 2)
+ck('the rule\'s VIX reading is the five-session average of the closes on file',
+   M.VIX_WINDOW == 5 and M.VIX_AVG == _VIX_AVG and M.TILT['steps'][2][1][0] == _VIX_AVG, M.VIX_AVG, _VIX_AVG)
+_RULE_BOOK, _rlog = _rule(M.REGIONS, E['gauge']['score5'], _VIX_AVG, M.TREND, M.CORRELATED)
+ck('the one-close book the page quotes is what the rule gives on the last close',
+   M.TILT_SPOT == _rule(M.REGIONS, E['gauge']['score5'], M.VIX_SPOT, M.TREND, M.CORRELATED)[0], M.TILT_SPOT)
 ck('the optimized book is what the rule produces', _RULE_BOOK == M.PORTFOLIOS['optimized'], M.PORTFOLIOS['optimized'], _RULE_BOOK)
 ck('the rule log matches the model step by step',
    [s_[2] != 'no move' for s_ in M.TILT['steps']] == _rlog, [s_[2] for s_ in M.TILT['steps']], _rlog)
@@ -451,15 +495,17 @@ def _scenario(label, **chg):
     try:
         for k, v in chg.items(): setattr(M, k, v)
         g5 = M.gauge()[1]
-        mine, _ = _rule(M.REGIONS, g5, M.VIX_SPOT, M.TREND, M.CORRELATED)
+        mine, _ = _rule(M.REGIONS, g5, M.VIX_AVG, M.TREND, M.CORRELATED)
         tb = M.tilt_book(); theirs = tb['book']
         ck(f'rule counterfactual ({label}): model and validator agree', mine == theirs, theirs, mine)
-        _scenario.steps = tb['steps']
+        _scenario.steps, _scenario.book = tb['steps'], theirs
         return mine
     finally:
         for k, v in saved.items(): setattr(M, k, v)
-_b = _scenario('VIX above its mean', VIX_SPOT=M.VIX_MEAN + 1)
-ck('a stressed VIX spends the reserve', _b['SGOV'] == M.PORTFOLIOS['optimized']['SGOV'] - M.RULE['step'], _b)
+_b = _scenario('VIX average above its mean', VIX_AVG=M.VIX_MEAN + 1)
+ck('a VIX that holds above its mean spends the reserve', _b['SGOV'] == M.PORTFOLIOS['optimized']['SGOV'] - M.RULE['step'], _b)
+_b = _scenario('one close above the mean, average below', VIX_SPOT=M.VIX_MEAN + 5, VIX_AVG=M.VIX_MEAN - 1)
+ck('one close above the mean does not move the book', _scenario.book == M.PORTFOLIOS['optimized'], _scenario.book)
 _t = _cp.deepcopy(M.TREND); _t['Nasdaq-100'] = dict(_t['Nasdaq-100'], r=tuple(x + 10 for x in _t['MSCI EM']['r']))
 _b = _scenario('QQQ trend clearly ahead', TREND=_t)
 ck('a clear QQQ trend lead earns QQQ a step', _b['QQQ'] == M.PORTFOLIOS['optimized']['QQQ'] + M.RULE['step'], _b)
@@ -486,8 +532,18 @@ for _i, (pillar, rd, mvtxt, after) in enumerate(M.TILT['steps']):
         ck(f'rule step {_i + 1}: no book restated where nothing moved', _sd is not None and 'Book:' not in _sd.group(1), pillar)
     else:
         present(f'rule step {_i + 1} book', f"Book: QQQ {after['QQQ']} / IEMG {after['IEMG']} / SGOV {after['SGOV']} / BMNR {after['BMNR']}.", P)
+_dv = (1 - _VIX_AVG / M.VIX_MEAN) * 100
+present('rule step 3: the average it read, against the mean',
+        f'The VIX&#8217;s 5-session average, {_VIX_AVG:.2f}, sits {hu(abs(_dv), 0)}% {"below" if _dv >= 0 else "above"} its {M.VIX_MEAN} mean, so '
+        f'the reserve is {"held" if _VIX_AVG < M.VIX_MEAN else "spent"}', P)
+if (SPOT >= M.VIX_MEAN) != (_VIX_AVG >= M.VIX_MEAN):
+    _ts = M.TILT_SPOT
+    present('rule step 3: a last close across the mean is quoted with its book',
+            f'the {day(M.VIX_ASOF)} close, {SPOT:.2f}, is {"above" if SPOT >= M.VIX_MEAN else "below"} it, and a rule on that one close would hold '
+            f'QQQ {_ts["QQQ"]} / IEMG {_ts["IEMG"]} / SGOV {_ts["SGOV"]} / BMNR {_ts["BMNR"]}', P)
 present('rule triggers stated with today\'s readings',
-        f'the gauge reaching {M.RULE["gauge_cautious"]} (now {E["gauge"]["display"]}), the VIX reaching {M.VIX_MEAN} (now {SPOT:.2f}), '
+        f'the gauge reaching {M.RULE["gauge_cautious"]} (now {E["gauge"]["display"]}), the VIX&#8217;s 5-session average '
+        f'{"reaching" if _VIX_AVG < M.VIX_MEAN else "falling below"} {M.VIX_MEAN} (now {_VIX_AVG:.2f}; last close {SPOT:.2f}), '
         f'the QQQ–IEMG trend net reaching ±{M.RULE["trend_tilt"]} (now {sgn(_net, 0) if _net else 0})', P)
 # the funder is the one _rule picked independently above (weights AFTER the regional step);
 # Rev. 27's version sorted on baseline weights and agreed only by coincidence
@@ -509,8 +565,10 @@ ck('the two-sided 95% z is what the normal distribution says', abs(math.erf(Z95_
 ck('the term-structure header states the confidence the band uses', '<th>95% band</th>' in P)
 present('VIX hero', f'<div class="k">VIX, {day(M.VIX_ASOF)}</div><div class="v">{SPOT:.2f}</div>', P)
 present('2026 range hero', f'<div class="v">{M.VIX_2026["low"]:.2f} · {M.VIX_2026["high"]:.2f}</div>', P)
-present('VIX discount and dates', f'Spot is {hu(abs(_d), 1)}% {"below" if _d >= 0 else "above"} the 2016–2023 mean of {M.VIX_MEAN}; '
-        f'the 2026 low was {day(M.VIX_2026["low_date"])}, the high {day(M.VIX_2026["high_date"])}.', P)
+_da = (1 - _VIX_AVG / M.VIX_MEAN) * 100
+present('VIX discount, average and dates', f'Spot is {hu(abs(_d), 1)}% {"below" if _d >= 0 else "above"} the 2016–2023 mean of {M.VIX_MEAN}; '
+        f'the 5-session average the rule reads, {_VIX_AVG:.2f}, is {hu(abs(_da), 1)}% {"below" if _da >= 0 else "above"} it. '
+        f'The 2026 low was {day(M.VIX_2026["low_date"])}, the high {day(M.VIX_2026["high_date"])}.', P)
 for lab, h in (('1 day', 1 / 252), ('3 months', 0.25), ('6 months', 0.5), ('12 months', 1.0)):
     sig = M.r2h(SPOT * math.sqrt(h))                 # displayed sigma
     dp = 2 if h < 0.1 else 1
@@ -532,8 +590,11 @@ for a, b in (('QQQ', 'IEMG'), ('QQQ', 'BMNR'), ('IEMG', 'BMNR')):
             f'<td class="n neg">{M.REGIME["normalized"]["rho"][(a, b)]:.2f}</td>', P)
 present('drawdown rule stated with its simulated band', f'Ten-year max drawdown ≈ {M.DD_MULT:.2f} × σ, from a daily-step simulation '
         f'(median to mean {M.DD_BAND[0]:.2f}–{M.DD_BAND[1]:.2f}×)', P)
-present('uplift and regime drawdowns', f'A VIX back at its {M.VIX_MEAN} mean (×{hu(M.UPLIFT)}) and crisis correlations turn the optimized book&#8217;s '
-        f'{neg(oc["dd"])}% drawdown into {neg(on["dd"])}%', P)
+if on['dd'] >= oc['dd']:
+    present('uplift and regime drawdowns', f'A VIX at its {M.VIX_MEAN} mean (volatility ×{hu(M.UPLIFT)}) and crisis correlations take the optimized book&#8217;s '
+            f'{neg(oc["dd"])}% drawdown to {neg(on["dd"])}%', P)
+else:
+    present('today\'s regime is the deeper', f'the optimized book&#8217;s {neg(oc["dd"])}% calm drawdown exceeds the {neg(on["dd"])}% normalized one', P)
 rcard = P[P.index('Risk contribution'):P.index('Ten-year view')]
 for k in ('QQQ', 'IEMG', 'SGOV', 'BMNR'):
     x = on['rc'][k]
@@ -542,7 +603,10 @@ for k in ('QQQ', 'IEMG', 'SGOV', 'BMNR'):
 present('BMNR risk-to-weight', f'BMNR is {O["BMNR"]}% of capital but {on["rc"]["BMNR"]:.1f}% of risk ({hu(on["rc"]["BMNR"] / O["BMNR"], 1)}×)', P)
 for k in ('QQQ', 'IEMG'):
     lo_, hi_ = M.REGIME['calm']['vol'][k] * M.DD_MULT, M.REGIME['normalized']['vol'][k] * M.DD_MULT
-    word = 'sits between' if lo_ <= M.DD[k] <= hi_ else 'sits beyond both' if M.DD[k] > hi_ else 'sits below both'
+    # judged against the deeper and shallower reading, whichever regime each is: Rev. 28 and
+    # earlier took calm as the shallower, which a VIX above its mean reverses
+    word = ('sits between' if min(lo_, hi_) <= M.DD[k] <= max(lo_, hi_) else
+            'sits beyond both' if M.DD[k] > max(lo_, hi_) else 'sits below both')
     present(f'{k} sleeve drawdown against the sigma model', f'{k} {neg(M.DD[k], 0)}% {word}', P)
     present(f'{k} sigma-model readings', f'({neg(lo_)}%, {neg(hi_)}%)', P)
 
@@ -694,11 +758,15 @@ present('rationale: overruled book', f'QQQ {BEST["QQQ"]} / IEMG {BEST["IEMG"]} /
         f'(Sharpe {M.stats(BEST, "calm")["sharpe"]:.3f} vs {oc["sharpe"]:.3f}), holds a {BEST["SGOV"]}% reserve', P)
 present('recommendation', f'Hold QQQ {O["QQQ"]} / IEMG {O["IEMG"]} / SGOV {O["SGOV"]} / BMNR {O["BMNR"]}: {neg(on["dd"])}% normalized drawdown '
         f'against the baseline&#8217;s {neg(bn["dd"])}%, for {gap:.2f} points of CAGR', P)
-if SPOT < M.VIX_MEAN:
-    present('recommendation: VIX trigger distance, dated when the VIX is held',
-            f'revisit if the VIX holds above {M.VIX_MEAN} ({hu(M.VIX_MEAN - SPOT)} points away{f" at the {day(M.VIX_ASOF)} close" if _held else ""};', P)
+if _VIX_AVG < M.VIX_MEAN:
+    present('recommendation: VIX trigger read from the average, dated when the VIX is held',
+            f'revisit if the VIX holds above {M.VIX_MEAN} (its 5-session average{f" to the {day(M.VIX_ASOF)} close" if _held else ""} is {_VIX_AVG:.2f}, '
+            f'{hu(M.VIX_MEAN - _VIX_AVG)} points away{f", though the {day(M.VIX_ASOF)} close was {SPOT:.2f}" if SPOT >= M.VIX_MEAN else ""}; '
+            f'spend the reserve toward {O["SGOV"] - M.RULE["step"]}%) or if the EM discount', P)
 else:
-    present('recommendation: VIX trigger already met', f'the VIX is above its {M.VIX_MEAN} mean, so revisit now', P)
+    _vm = M.TILT['steps'][2][2] != 'no move'
+    present('recommendation: VIX trigger already met', f'the VIX has held above its {M.VIX_MEAN} mean, so the rule has '
+            f'{"spent a step of the reserve" if _vm else "left the reserve at its floor"}; revisit if', P)
 mut = open('mutate.py').read()
 # counted separately and summed, NOT with build.py's pattern: sharing one regex let
 # both files agree on 62 while mutate.py ran 83
@@ -741,7 +809,8 @@ _used = {'10-year high': lambda v: f'the highest close {v}' in pane('p-macro'),
          'QQQ 2020 drawdown': lambda v: f'<span class="k">2020 COVID crash</span><span class="v" style="color:var(--neg)">{v}</span>' in pane('p-vol'),
          'Vanguard EM forecast': lambda v: f'<tr><td>Vanguard, Jun 2026</td><td class="n">5.2%</td><td class="n">{v}</td></tr>' in P,
          # counted here, not by build.pane_words: visible words of the six panes, charts stripped
-         'Page text': lambda v: v == f'{_page_words():,} words'}
+         'Page text': lambda v: v == f'{_page_words():,} words',
+         'Volatility rule': lambda v: v == '5-session average' and M.TILT['steps'][2][1][0] == _VIX_AVG}
 for _k, (_a, _b) in _rows_page.items():
     ck(f'revision row {_k}: current side checked', _k in _now or _k in _used, _k)
     if _k in _now:

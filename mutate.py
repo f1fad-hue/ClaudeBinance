@@ -34,11 +34,22 @@ def _num(pat):
     if not m: raise SystemExit(f'mutate.py: cannot locate {pat!r} in the model; update the table')
     return m.group(1)
 _B = {f: _num(rf'BMNR = dict\([^)]*{f}=([\d.]+)') for f in ('stake_share','stake_yield','mnav')}
-_P = {(t, f): _num(rf"'{t}':\s+dict\([^)]*{f}=([\d.]+)") for t in ('QQQ','IEMG')
+# non-greedy and word-bounded: through Rev. 28 the greedy "[^)]*px=" matched basis_px, so the
+# "price" mutants mutated the basis price and duplicated the basis mutants
+_P = {(t, f): _num(rf"'{t}':\s+dict\([^)]*?\b{f}=([\d.]+)") for t in ('QQQ','IEMG')
       for f in ('ttm_div','px','basis_px','basis_fwd')}
+assert _P['QQQ', 'px'] != _P['QQQ', 'basis_px'], 'price lookup matched the basis price'
 # the prior revision's QQQ figure, read from build.py so the mutant survives each roll
 _PQ = re.search(r"PRIOR = dict\([^)]*QQQ=([\d.]+)", gen).group(1)
 _bump = lambda v, d: f'{float(v) + d:.{len(v.split(".")[1]) if "." in v else 0}f}'
+# the rolled inputs, read from the model as written so these mutants survive each roll
+def _drv(name, d):
+    m = re.search(r"\('%s',([\d.]+),(\.\d+)\)" % re.escape(name), orig)
+    if not m: raise SystemExit(f'mutate.py: cannot locate driver {name!r} in the model')
+    return m.group(0), f"('{name}',{float(m.group(1)) + d:.1f},{m.group(2)})"
+_U = re.search(r"ust10_asof='([\d-]+)', ust10=([\d.]+), ust10_prev=([\d.]+), ust10_chg_bp=(-?\d+),", orig)
+_MKT_ASOF = re.search(r"MARKET = dict\(asof='([\d-]+)'", orig).group(1)
+_BRENT = _num(r"brent=([\d.]+),")
 MUT=[
  ("QQQ ttm div",    f"ttm_div={_P['QQQ','ttm_div']}",   f"ttm_div={_bump(_P['QQQ','ttm_div'], 0.40)}"),
  ("IEMG ttm div",   f"ttm_div={_P['IEMG','ttm_div']}",  f"ttm_div={_bump(_P['IEMG','ttm_div'], 0.10)}"),
@@ -65,6 +76,9 @@ MUT=[
  ("VIX 28 Sep snapshot", "('2026-09-28', 16.07)", "('2026-09-28', 16.37)"),
  ("VIX reported change", "'2026-09-29': -0.2,", "'2026-09-29': -2.0,"),
  ("VIX_MEAN",       f"VIX_SERIES[-1][1], {_MEAN}", f"VIX_SERIES[-1][1], {_MEAN + 0.5}"),
+ ("VIX rule reads one close", "vix = VIX_AVG if vix is None else vix", "vix = VIX_SPOT if vix is None else vix"),
+ ("VIX average window", "VIX_WINDOW = 5", "VIX_WINDOW = 4"),
+ ("one-close book read from the average", "TILT_SPOT = tilt_book(vix=VIX_SPOT)['book']", "TILT_SPOT = tilt_book()['book']"),
  ("DD_MULT",        "DD_MULT = 2.00",           "DD_MULT = 2.05"),
  ("DD band",        "DD_BAND = (1.90, 2.05)",   "DD_BAND = (1.65, 2.05)"),
  ("DD QQQ",         "'QQQ': 40.0",              "'QQQ': 42.0"),
@@ -103,8 +117,8 @@ MUT=[
  ("quarter-end close", "QE_CLOSE = {'QQQ': 739.77,", "QE_CLOSE = {'QQQ': 729.77,"),
  ("drawdown control leaps", "near = [v for v in far if sum(abs(v[k] - w[k]) for k in w) == 2 * st]", "near = far"),
  ("drawdown tie-break by return", "key=lambda v: (stats(v, 'normalized')['dd'], -stats(v, 'normalized')['cagr'])", "key=lambda v: -stats(v, 'normalized')['cagr']"),
- ("driver growth",  "('Growth momentum',6.0,.25)","('Growth momentum',6.5,.25)"),
- ("driver policy",  "('Monetary policy',2.0,.20)","('Monetary policy',2.5,.20)"),
+ ("driver growth",  *_drv('Growth momentum', 0.5)),
+ ("driver policy",  *_drv('Monetary policy', -0.5)),
  ("region asia",    "'Asia / EM':[5.5,6.5,7.0,7.5]","'Asia / EM':[5.0,6.5,7.0,7.5]"),
  ("region europe",  "'Europe':[3.0,3.5,4.0,5.0]", "'Europe':[3.5,3.5,4.0,5.0]"),
  ("JPM us",         "dict(us=6.70, em=7.80",    "dict(us=6.20, em=7.80"),
@@ -118,17 +132,20 @@ MUT=[
  ("VIX low date",   "low_date='2026-08-14'",    "low_date='2026-08-21'"),
  ("FOMC date",      "FOMC_DATE  = '2026-09-16'", "FOMC_DATE  = '2026-09-17'"),
  ("BMNR held",      "held=6_016_414",           "held=6_116_414"),
- ("Brent level only", "brent=106.06,",          "brent=107.06,"),
- ("QQQ trailing dividend a quarter stale", "ttm_div=3.09, px=743.57", "ttm_div=3.03, px=743.57"),
- ("10y below its high", "ust10=5.21, ust10_prev=5.24, ust10_chg_bp=-3,",
-                      "ust10=5.20, ust10_prev=5.24, ust10_chg_bp=-4,"),
- ("10y dated to the market date", "ust10_asof='2026-10-13'", "ust10_asof='2026-10-14'"),
+ ("Brent level only", f"brent={_BRENT},",        f"brent={_bump(_BRENT, 1)},"),
+ # September 2025's payout ($0.69395) in place of September 2026's ($0.75143): the Rev. 25-26 error
+ ("QQQ trailing dividend a quarter stale", f"ttm_div={_P['QQQ','ttm_div']}, px={_P['QQQ','px']}",
+                      f"ttm_div={float(_P['QQQ','ttm_div']) - 0.75143 + 0.69395:.5f}, px={_P['QQQ','px']}"),
+ ("IEMG dividend rounded to the cent", f"ttm_div={_P['IEMG','ttm_div']}", f"ttm_div={float(_P['IEMG','ttm_div']):.2f}"),
+ ("10y below its high", f"ust10={_U.group(2)}, ust10_prev={_U.group(3)}, ust10_chg_bp={_U.group(4)},",
+                      f"ust10={_bump(_U.group(2), -0.01)}, ust10_prev={_U.group(3)}, ust10_chg_bp={int(_U.group(4)) - 1},"),
+ ("10y dated to the market date", f"ust10_asof='{_U.group(1)}'", f"ust10_asof='{_MKT_ASOF}'"),
  ("VIX 2 Oct close",  "('2026-10-02', 15.31)", "('2026-10-02', 15.40)"),
  ("assumed input dropped", "           ('IEMG currency drag', f\"{OBS", "           ('IEMG FX (observed)', f\"{OBS"),
- ("driver inflation", "('Inflation trajectory',2.5,.15)", "('Inflation trajectory',3.0,.15)"),
- ("driver liquidity", "('Liquidity & credit',4.0,.15)",   "('Liquidity & credit',4.5,.15)"),
- ("driver valuation", "('Valuation & positioning',4.0,.15)", "('Valuation & positioning',4.5,.15)"),
- ("driver geopol",  "('Geopolitical risk',2.0,.10)",    "('Geopolitical risk',2.5,.10)"),
+ ("driver inflation", *_drv('Inflation trajectory', 0.5)),
+ ("driver liquidity", *_drv('Liquidity & credit', 0.5)),
+ ("driver valuation", *_drv('Valuation & positioning', 0.5)),
+ ("driver geopol",  *_drv('Geopolitical risk', 0.5)),
  ("region US",      "'United States':[5.0,5.5,6.5,7.0]", "'United States':[5.0,5.5,6.0,7.0]"),
  ("Fidelity em",    "dict(us=5.80, em=8.10",    "dict(us=5.80, em=8.60"),
  ("BlackRock us",   "dict(us=5.20, em=7.10",    "dict(us=5.70, em=7.10"),
@@ -155,7 +172,7 @@ GEN = [
  G("VIX distance words reversed", "{'below' if d >= 0 else 'above'}", "{'above' if d >= 0 else 'below'}"),
  G("held VIX narrated as a move", "    if VIX_STALE:\n        return (f\"The VIX", "    if False:\n        return (f\"The VIX"),
  G("masthead VIX undated while held", "{f' ({SPOT_DATE})' if VIX_STALE else ''}</span>", "</span>"),
- G("trigger distance undated while held", "points away{f' at the {SPOT_DATE} close' if VIX_STALE else ''};", "points away;"),
+ G("trigger distance undated while held", "to = f\" to the {SPOT_DATE} close\" if VIX_STALE else ''", "to = ''"),
  G("gauge needle axes swapped", "x2=\"{g['needle'][0]}\" y2=\"{g['needle'][1]}\"", "x2=\"{g['needle'][1]}\" y2=\"{g['needle'][0]}\""),
  G("disclaimer dated to BMNR's holdings", "Market data to the {day(MK['asof'], False)} close", "Market data to the {day(M.BMNR_HOLDINGS['asof'], False)} close"),
  G("efficient count off by one", "they are two points on the same curve, the baseline for return and the optimized book for drawdown. {len(EFF)}", "they are two points on the same curve, the baseline for return and the optimized book for drawdown. {len(EFF) + 1}"),
@@ -188,7 +205,15 @@ GEN = [
  G("rule steps shown without their books", "Book: {book_txt(after)}.", "Book: {book_txt(O)}."),
  G("trend leader from the wrong horizon", "return [max(reg, key=lambda k: reg[k][h]) for h in range(3)]", "return [max(reg, key=lambda k: reg[k][2]) for h in range(3)]"),
  G("since-quarter move from the wrong close", "(M.PRICES[k]['px'] / M.QE_CLOSE[k] - 1) * 100", "(M.PRICES[k]['basis_px'] / M.QE_CLOSE[k] - 1) * 100"),
- G("triggers quote the wrong VIX", "the VIX reaching {M.VIX_MEAN} (now {SPOT:.2f})", "the VIX reaching {M.VIX_MEAN} (now {PREV:.2f})"),
+ G("triggers quote the close as the average", "(now {AVG:.2f}; last close {SPOT:.2f})", "(now {SPOT:.2f}; last close {SPOT:.2f})"),
+ G("triggers quote the wrong close", "(now {AVG:.2f}; last close {SPOT:.2f})", "(now {AVG:.2f}; last close {PREV:.2f})"),
+ G("QQQ multiple side typed", "if vs_avg(FQ, M.OBS['QQQ']['pe_end']) == 'above' else", "if True else"),
+ G("multiple side judged unrounded", "x1 = M.r2h(x, 1)", "x1 = x"),
+ G("regime warning branch inverted", "if on['dd'] >= oc['dd']:", "if on['dd'] < oc['dd']:"),
+ G("one-close book not stated", "if (SPOT >= mean) != (vx >= mean):", "if False:"),
+ G("drawdown placement unordered", "lo_, hi_ = sorted((a, b))", "lo_, hi_ = a, b"),
+ G("revisit trigger reads the last close", "    if AVG < M.VIX_MEAN:\n        to = ", "    if SPOT < M.VIX_MEAN:\n        to = "),
+ G("reserve step typed", "spend the reserve toward {O['SGOV'] - M.RULE['step']}%", "spend the reserve toward 25%"),
  G("transmission labels typed", "('QQQ', 'qqq', SIG[M.CORRELATED['QQQ'][0]], M.CORRELATED['QQQ'][1],", "('QQQ', 'qqq', 'up', 'Tailwind',"),
  G("signal pill shares the donut card's class", "SIG = {1: 'up', 0: 'nu', -1: 'down'}", "SIG = {1: 'up', 0: 'nu', -1: 'dn'}"),
  G("sigma header left to uppercase", '<th class="sym">σ</th><th>VaR</th><th class="sym">σ</th>', '<th>σ</th><th>VaR</th><th>σ</th>'),

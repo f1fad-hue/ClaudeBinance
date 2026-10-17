@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 14 October 2026 close; each fund price carries its own
+Market data to the 16 October 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,22 +39,26 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# Both funds on 13 Oct, the latest session with no dissenting close for either:
-# QQQ $743.57 (-$2.47, -0.33%; Yahoo, Macrotrends, StockAnalysis). IEMG $80.22 (Yahoo and
-# the iShares fund page). 14 Oct, the CPI day, is quoted as $728.95 for QQQ by four sources
-# but $730.12 in Investing.com's history table, and IEMG's $78.64 has only the iShares page.
+# Both funds on 15 Oct, the latest session two sources confirm for both: QQQ $728.00
+# (-$0.95, -0.13%; Yahoo, Google Finance, Investing.com) and IEMG $78.09 (Yahoo and the
+# iShares fund page). Rev. 28's held 14 Oct QQQ close settled at $728.95 (StockAnalysis's
+# prior close, StockInvest). 16 Oct: QQQ $709.80 (Yahoo, Marketscreener) but IEMG's $76.79
+# has one source, so both stay on 15 Oct to price the two blocs on the same day.
 # Trailing dividends, four quarters for QQQ and two halves for IEMG (StockAnalysis's
 # dated history; Investing.com and Dividend.com agree to the cent):
-#   QQQ  Dec-25 0.79408 + Mar-26 0.73282 + Jun-26 0.81349 + Sep-26 0.75143 = $3.09.
-#   IEMG Dec-25 1.1389 + Jun-26 0.6584 = $1.80.
+#   QQQ  Dec-25 0.79408 + Mar-26 0.73282 + Jun-26 0.81349 + Sep-26 0.75143 = $3.09182.
+#   IEMG Dec-25 1.1389 + Jun-26 0.6584 = $1.7973.
+# Carried at the precision paid. Through Rev. 28 the sums were rounded to the cent ($3.09,
+# $1.80); at $78.09 IEMG's $1.80 gave a 2.31% yield where the payouts give 2.30%, and the
+# same rounding put Rev. 24's and Rev. 25's IEMG yields 0.01 point high.
 # Rev. 25 and 26 held QQQ at $3.03 because the September payout was "quoted as $0.7514 and
 # $0.69". The $0.69 was September 2025's payout ($0.69395), not a second reading of 2026's,
 # so the trailing sum was a quarter stale from the 21 Sep ex-date. IEMG's "$0.71" was June
 # 2025's payout in the same way; its $1.80 was right.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.09, px=743.57, px_asof='2026-10-13',
+    'QQQ':  dict(ttm_div=3.09182, px=728.00, px_asof='2026-10-15',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.80, px=80.22,  px_asof='2026-10-13',
+    'IEMG': dict(ttm_div=1.7973, px=78.09,  px_asof='2026-10-15',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -91,7 +95,7 @@ assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1
 # dilution drag, but the company has also bought back shares this year and the share
 # count here (603.2M) predates both; the drag is held, and listed as an assumption.
 
-REVISION = 28                          # bump when publishing; validate.py enforces it
+REVISION = 29                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -116,7 +120,8 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-10-05', 15.52), ('2026-10-06', 15.01),
               ('2026-10-07', 15.08), ('2026-10-08', 15.41),
               ('2026-10-09', 14.84), ('2026-10-12', 15.21),
-              ('2026-10-13', 15.27), ('2026-10-14', 16.87))
+              ('2026-10-13', 15.27), ('2026-10-14', 16.87),
+              ('2026-10-15', 16.46), ('2026-10-16', 19.99))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
@@ -138,7 +143,10 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
 # file and matches an intraday level, so it is not a second reading of the close.
 # 12 Oct 15.21 (+2.49%: FRED, Investing.com). 13 Oct 15.27 (FRED, Yahoo, Cboe). 14 Oct
 # 16.87 (+1.60, +10.48% on the hot CPI: Yahoo, Investing.com's table, Cboe); a 16.85
-# snapshot quote was not the close.
+# snapshot quote was not the close. 15 Oct 16.46 (-0.41, -2.4%: Yahoo, two market recaps).
+# 16 Oct 19.99 (+3.53, +21.45% as chip stocks fell an eighth day: Investing.com, Yahoo, a
+# weekly recap); a 16.45 "16 Oct" figure is the 15 Oct close misdated, and 22.31 was the
+# intraday high.
 VIX_HELD = None
 # The day-on-day changes the sources reported, % to the stated precision. Each close must
 # reproduce its reported change from the close before it, so a wrong snapshot of either
@@ -147,10 +155,11 @@ VIX_HELD = None
 VIX_REPORTED = {'2026-09-14': 11.24, '2026-09-22': -4.44, '2026-09-23': 6.83, '2026-09-24': 3.23,
                 '2026-09-25': -5.11, '2026-09-28': 8.07, '2026-09-29': -0.2, '2026-09-30': 1.87,
                 '2026-10-02': -6.59, '2026-10-05': 1.4, '2026-10-06': -3.29,
-                '2026-10-07': 0.47, '2026-10-09': -3.70, '2026-10-12': 2.49, '2026-10-14': 10.48}
+                '2026-10-07': 0.47, '2026-10-09': -3.70, '2026-10-12': 2.49, '2026-10-14': 10.48,
+                '2026-10-15': -2.4, '2026-10-16': 21.45}
 VIX_SOURCES = {'2026-10-02': 3, '2026-10-05': 3, '2026-10-06': 3,
                '2026-10-07': 2, '2026-10-08': 3, '2026-10-09': 3,
-               '2026-10-12': 2, '2026-10-13': 3, '2026-10-14': 3}
+               '2026-10-12': 2, '2026-10-13': 3, '2026-10-14': 3, '2026-10-15': 3, '2026-10-16': 3}
 assert all(n >= 2 for n in VIX_SOURCES.values()), 'a close needs two independent sources'
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 # The 2016-2023 mean of the yearly averages of daily closes (FRED VIXCLS, annual
@@ -160,6 +169,13 @@ VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03
 # mean of "annual closes", i.e. year-end closes, which average about 17.3: not this figure.
 VIX_SPOT, VIX_MEAN = VIX_SERIES[-1][1], 18.9
 VIX_ASOF = VIX_SERIES[-1][0]
+# The allocation rule reads the average of the last five closes, not the last close. Through
+# Rev. 28 the rule fired on one close while the page said "revisit if the VIX holds above"
+# its mean; 16 Oct's 19.99 (+21%) was the first close above 18.9 since the series began, and
+# on that one session the rule would have spent the reserve that the recommendation said
+# to spend only if the VIX held there. A ten-year book does not move on one session.
+VIX_WINDOW = 5
+VIX_AVG = round(sum(v for _, v in VIX_SERIES[-VIX_WINDOW:]) / VIX_WINDOW, 2)
 assert VIX_HELD is None or (VIX_HELD['asof'] > VIX_ASOF and VIX_HELD['lo'] <= VIX_HELD['hi']
                             and all(abs(v / VIX_SPOT - 1) < 0.25 for v in (VIX_HELD['lo'], VIX_HELD['hi']))), \
     'a held VIX close must post-date the last verified one and be a plausible range'
@@ -177,14 +193,14 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-# 14 Oct: Brent settled $106.06 (+0.35%; Investing.com, The Nation, InvestingLive) from
-# $105.69 on 13 Oct (-$0.96; CNBC, Bloomberg), on Houthi strikes on Saudi infrastructure.
-# The 10-year carries its own date: the bond market shut for Columbus Day on 12 Oct, 13 Oct
-# closed at 5.21% (-3bp from 9 Oct's 5.24%; FRED, Treasury's par curve), and 14 Oct is
-# quoted as 5.19% and 5.20%, so it is held. The highest close is still 5 Oct's 5.31%.
-MARKET = dict(asof='2026-10-14',
-              brent=106.06, brent_prev=105.69, brent_chg_pct=0.35,
-              ust10_asof='2026-10-13', ust10=5.21, ust10_prev=5.24, ust10_chg_bp=-3,
+# 16 Oct: Brent settled $109.86 (+$3.94, +3.7%, its highest since May; Reuters via The
+# Hill, EnergyNow and FinanceFeeds) from $105.92 on 15 Oct, after missile attacks on Saudi
+# Arabia and Ukrainian strikes on Russian refineries. The 10-year carries its own date:
+# 14 Oct settled at 5.19% (Rev. 28 held it between 5.19 and 5.20) and 15 Oct closed at 5.10%
+# (FRED, the Fed's H.15). 16 Oct is not on FRED yet; market data give 5.08% to 5.10%.
+MARKET = dict(asof='2026-10-16',
+              brent=109.86, brent_prev=105.92, brent_chg_pct=3.72,
+              ust10_asof='2026-10-15', ust10=5.10, ust10_prev=5.19, ust10_chg_bp=-9,
               ust10_high=5.31, ust10_high_date='2026-10-05')
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
@@ -214,7 +230,7 @@ ASSUMED = (('QQQ earnings growth', f"{OBS['QQQ']['eps']:.1f}%/yr"),
            ('drawdown rule', f"{DD_MULT:.2f} × σ"),
            ('sleeve drawdowns', 'history-anchored judgements'),
            ('sleeve volatilities and stress correlations', f'struck at VIX {VOL_STRUCK_AT:.2f}'),
-           ('allocation-rule settings', '5-point steps, gauge below 2.6, trend band ±2% weighted 1/1/2, transmission map'))
+           ('allocation-rule settings', f'5-point steps, gauge below 2.6, VIX {VIX_WINDOW}-session average, trend band ±2% weighted 1/1/2, transmission map'))
 OBSERVED = ('prices and trailing dividends', 'forward and 10-year average multiples',
             'fund fees', 'policy range', 'BMNR holdings and staking yield',
             'VIX closes and its 2016-2023 mean', 'calm correlations')
@@ -331,9 +347,14 @@ def fill(v):
 # Rev. 28: Inflation 3.0 -> 2.5 on a September CPI of 3.7% (core 2.6%, both above forecast,
 # gasoline +9.1% m/m); Monetary policy 2.5 -> 2.0 as October-hike odds jumped from 22% to
 # about 50% on the print (CME FedWatch), the reverse of Rev. 25's move on the way down.
-DRIVERS = [('Growth momentum',6.0,.25), ('Inflation trajectory',2.5,.15),
-           ('Monetary policy',2.0,.20), ('Liquidity & credit',4.0,.15),
-           ('Valuation & positioning',4.0,.15), ('Geopolitical risk',2.0,.10)]
+# Rev. 29: Monetary policy 2.0 -> 2.5 as those odds fell from 54% after the CPI to about 15%
+# once Chair Warsh declined to prejudge meetings (16 Oct), December still priced; Inflation
+# 2.5 -> 2.0 on a September PPI of +1.3% m/m and 6.3% y/y (BLS), the largest monthly rise
+# since March 2022, core 5.0%; Geopolitical 2.0 -> 1.5 as missile attacks on Saudi Arabia and
+# Ukrainian strikes on Russian refineries took Brent to $109.86, its highest since May.
+DRIVERS = [('Growth momentum',6.0,.25), ('Inflation trajectory',2.0,.15),
+           ('Monetary policy',2.5,.20), ('Liquidity & credit',4.0,.15),
+           ('Valuation & positioning',4.0,.15), ('Geopolitical risk',1.5,.10)]
 REGIONS = {'Asia / EM':[5.5,6.5,7.0,7.5], 'United States':[5.0,5.5,6.5,7.0],
            'Europe':[3.0,3.5,4.0,5.0]}
 
@@ -428,10 +449,13 @@ def drawdown_step(w):
     best = min(near, key=lambda v: (stats(v, 'normalized')['dd'], -stats(v, 'normalized')['cagr'])) if near else None
     return best, len(near), len(far)
 
-def tilt_book():
+def tilt_book(vix=None):
     """Derive the optimized book from the strategic one. Each pillar may move one 5-point
     step; a step that would breach a floor or the BMNR cap is not taken. Returns the book
-    and, per pillar, (pillar, reading, move, book after)."""
+    and, per pillar, (pillar, reading, move, book after). vix is the level the volatility
+    pillar reads, the five-session average by default; the page passes the last close to
+    state what a one-session rule would have done."""
+    vix = VIX_AVG if vix is None else vix
     w = dict(PORTFOLIOS['baseline']); steps = []; st = RULE['step']
     def move(src, dst):
         if src is None or dst is None or src == dst: return None
@@ -457,9 +481,9 @@ def tilt_book():
     elif g5 >= RULE['gauge_constructive']: mv = move('SGOV', leader)
     else: mv = None
     log('Broad and correlated macro sentiment', (g5, funder), mv)
-    # 3 volatility: a VIX above its long-run mean is when the reserve is spent
-    mv = move('SGOV', leader) if VIX_SPOT >= VIX_MEAN else None
-    log('Volatility', (VIX_SPOT, VIX_MEAN), mv)
+    # 3 volatility: a VIX that holds above its long-run mean is when the reserve is spent
+    mv = move('SGOV', leader) if vix >= VIX_MEAN else None
+    log('Volatility', (vix, VIX_MEAN), mv)
     # 4 market trend: a sleeve in a downtrend gives a step to cash; a clear relative
     # lead between the two equity sleeves earns a step
     mv = None
@@ -633,6 +657,9 @@ def efficient(regime='normalized', bmnr=5):
 # the optimized book, derived (every helper the rule needs is defined above this line)
 TILT = tilt_book()
 PORTFOLIOS['optimized'] = TILT['book']
+# What the rule would hold if the volatility pillar read only the last close, stated on the
+# page so a reader who prefers the one-session trigger can see its book.
+TILT_SPOT = tilt_book(vix=VIX_SPOT)['book']
 
 def frontier_svg(regime='normalized'):
     """The whole chart, emitted from the model. Axes auto-label over FR_X/FR_Y."""

@@ -23,20 +23,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FACTS = dict(
     payrolls='+29,000 in September against 84,000 expected, unemployment 4.2%',
     ism='ISM manufacturing 54.5 and services 54.9',
-    claims='claims 197,000, the lowest since July',
+    claims='claims 199,000, a fifth week under 200,000; September retail sales +0.8%, +0.2% excluding gasoline',
     umich=('46.3', 'Michigan, preliminary October', 'near its May record low'),
     imf_world='IMF (October): 3.1% world growth in 2026',
-    cpi='September CPI 3.7% y/y (+0.6% m/m, gasoline +9.1%) and core 2.6%, both above forecast',
+    cpi='September CPI 3.7% y/y and core 2.6%, both above forecast; producer prices +1.3% m/m (6.3% y/y), the most since March 2022',
     ism_prices='ISM prices paid 77.9 (manufacturing) and 74.0 (services)',
     infl_exp='one-year inflation expectations 4.7% (Michigan)',
     fed_vote='12–0',
-    fed_odds='the minutes show most officials expect another hike by year end, and after the CPI futures priced an October hike as roughly a coin flip, up from 22% (CME FedWatch)',
-    hy_oas=('3.16%', '13 Oct', '2.80%', '24 Sep'),
+    fed_odds='futures put an October hike at 54% after the CPI but about 15% once Chair Warsh declined to prejudge meetings on 16 Oct (CME FedWatch); a December hike is still priced as likely',
+    hy_oas=('3.23%', '15 Oct', '2.80%', '24 Sep'),
     dollar=('an 18-month high', '5 Oct'),
     ust10_high='highest close since 2002',
     # the day's lead, dated so validate.py can refuse it once MARKET moves on
-    lead=('2026-10-14', 'Inflation ran hot', 'September CPI rose 3.7% from a year earlier and core 2.6%, both above forecast, and stocks had their worst day since July'),
-    geo='Houthi strikes on Saudi airports and Aramco’s Dhahran headquarters (12–14 Oct) and Iranian attacks on Hormuz shipping keep supply at risk; President Trump has ruled out striking Iran before the 3 Nov midterms',
+    lead=('2026-10-16', 'Chip stocks fell an eighth day', 'The Philadelphia semiconductor index posted its longest losing run since October 2008 on AI-spending and debt worries, and the Nasdaq-100 lost 5.5% on the week'),
+    geo='Missile attacks on Saudi Arabia after Houthi strikes on Aramco’s Dhahran headquarters, Ukrainian strikes on Russian refineries and Iranian attacks on Hormuz shipping keep supply at risk; President Trump has ruled out striking Iran before the 3 Nov midterms',
     imf_asia='IMF (October): China 4.5% and India 7.0% in 2026. China’s September exports rose 36.3% and its manufacturing PMI returned to 50.1',
     eu='Composite PMI 53.1 in September, the highest since April 2023, but flash inflation jumped to 3.8% and the ECB hiked to 2.50% into 0.9% growth',
     bmnr_stop='The chairman said on 7 Oct that buying stops at 5% of supply, which ends most of the issuance behind that drag',
@@ -99,8 +99,15 @@ E   = M.export()
 B, O = M.PORTFOLIOS['baseline'], M.PORTFOLIOS['optimized']
 ST  = {n: {r: M.stats(w, r) for r in M.REGIME} for n, w in M.PORTFOLIOS.items()}
 SPOT, PREV = M.VIX_SPOT, M.VIX_SERIES[-2][1]
+AVG = M.VIX_AVG                     # what the rule's volatility pillar reads
 MK  = M.MARKET
 FQ, FI = M.OBS['QQQ']['fwd_pe'], M.OBS['IEMG']['fwd_pe']
+assert FI < FQ, 'the page calls EM the cheaper bloc'
+def vs_avg(x, avg):
+    """A multiple against its 10-year average, judged at the one decimal the page shows.
+    Rev. 28 and earlier typed "above" for QQQ; at $728 its 22.8x is below the 22.9x average."""
+    x1 = M.r2h(x, 1)
+    return 'above' if x1 > avg else 'below' if x1 < avg else 'at'
 EFF, N_ADM = M.efficient()
 ON  = {n: any(w == M.PORTFOLIOS[n] for _, _, w in EFF) for n in M.PORTFOLIOS}
 CAL = M.calibration(B, O)
@@ -219,6 +226,28 @@ def lead():
         return f"<b>{ld[1]}.</b> {ld[2]}. {vix_lead()} {brent}; {ten}."
     return f"<b>{bond_headline()}.</b> {ten[0].upper() + ten[1:]}. {brent}. {vix_lead()}"
 
+def revisit_txt():
+    """The recommendation's VIX trigger, read from the average the rule uses; it runs into
+    "... if the EM discount closes toward 25%". Through Rev. 28 it read the last close."""
+    if AVG < M.VIX_MEAN:
+        to = f" to the {SPOT_DATE} close" if VIX_STALE else ''
+        hot = f", though the {SPOT_DATE} close was {SPOT:.2f}" if SPOT >= M.VIX_MEAN else ''
+        return (f"revisit if the VIX holds above {M.VIX_MEAN} (its {M.VIX_WINDOW}-session average{to} is {AVG:.2f}, "
+                f"{f(M.VIX_MEAN - AVG)} points away{hot}; spend the reserve toward {O['SGOV'] - M.RULE['step']}%) or")
+    moved = next(mv for p, _, mv, _ in M.TILT['steps'] if p == 'Volatility') != 'no move'
+    return (f"the VIX has held above its {M.VIX_MEAN} mean, so the rule has "
+            f"{'spent a step of the reserve' if moved else 'left the reserve at its floor'}; revisit")
+
+def regime_warn(oc, on):
+    """The two-regime warning, true either side of the mean. Below it the normalized column
+    is the deeper; well above it today's can be. Rev. 28 and earlier assumed below."""
+    if on['dd'] >= oc['dd']:
+        return (f"<b>Weights are sized to the second column.</b> A VIX at its {M.VIX_MEAN} mean (volatility ×{f(M.UPLIFT, 2)}) "
+                f"and crisis correlations take the optimized book&#8217;s {neg(oc['dd'])}% drawdown to {neg(on['dd'])}%; "
+                f"the {O['SGOV']}% reserve is sized for that.")
+    return (f"<b>Today is the deeper column.</b> With the VIX {vix_rel(SPOT, 0)} its {M.VIX_MEAN} mean, the optimized "
+            f"book&#8217;s {neg(oc['dd'])}% calm drawdown exceeds the {neg(on['dd'])}% normalized one the weights are sized to.")
+
 def vix_lead():
     if VIX_STALE:
         return (f"The VIX&#8217;s {day(VIX_STALE['asof'])} close is held back — sources report {VIX_STALE['lo']:.2f} to "
@@ -250,8 +279,11 @@ def macro():
     sg = M.A['SGOV']
     trans = (
       ('SGOV', 'sgov', SIG[M.CORRELATED['SGOV'][0]], M.CORRELATED['SGOV'][1], f"Bills reprice with the Fed: the {M.SGOV_GROSS:g}% midpoint nets {f(sg['net'])}% at near-zero duration."),
-      ('QQQ', 'qqq', SIG[M.CORRELATED['QQQ'][0]], M.CORRELATED['QQQ'][1], f"Real earnings momentum, but at {f(FQ, 1)}× forward, above its {M.OBS['QQQ']['pe_end']}× average, it is the sleeve most exposed to a {MK['ust10']:.2f}% 10-year."),
-      ('IEMG', 'iemg', SIG[M.CORRELATED['IEMG'][0]], M.CORRELATED['IEMG'][1], f"The cheapest bloc at {f(FI, 1)}×, below its {M.OBS['IEMG']['pe_end']}× average; the dollar and ${MK['brent']:.0f} oil are near-term headwinds."),
+      ('QQQ', 'qqq', SIG[M.CORRELATED['QQQ'][0]], M.CORRELATED['QQQ'][1],
+       f"Real earnings momentum, but at {f(FQ, 1)}× forward, above its {M.OBS['QQQ']['pe_end']}× average, it is the sleeve most exposed to a {MK['ust10']:.2f}% 10-year."
+       if vs_avg(FQ, M.OBS['QQQ']['pe_end']) == 'above' else
+       f"Real earnings momentum at {f(FQ, 1)}× forward, {vs_avg(FQ, M.OBS['QQQ']['pe_end'])} its {M.OBS['QQQ']['pe_end']}× average, but still the sleeve most exposed to a {MK['ust10']:.2f}% 10-year."),
+      ('IEMG', 'iemg', SIG[M.CORRELATED['IEMG'][0]], M.CORRELATED['IEMG'][1], f"The cheapest bloc at {f(FI, 1)}×, {vs_avg(FI, M.OBS['IEMG']['pe_end'])} its {M.OBS['IEMG']['pe_end']}× average; the dollar and ${MK['brent']:.0f} oil are near-term headwinds."),
       ('BMNR', 'bmnr', SIG[M.CORRELATED['BMNR'][0]], M.CORRELATED['BMNR'][1], f"High-beta ETH with a {M.REGIME['calm']['rho'][('QQQ','BMNR')]:.2f} correlation to QQQ: it fails when equities fail."),
     )
     tr = '\n'.join(f'''    <div class="corr-row">
@@ -379,6 +411,12 @@ def trend_pane():
   <div class="call" style="margin-top:16px"><b>What the trend says.</b> {('No equity sleeve is in a downtrend, so none is cut' if not down else 'In a downtrend: ' + ', '.join(down))}; ether is {M.trend_verdict(M.trend_score(M.TREND['Ether']['r'])).lower()} (a 3-month rebound against a 12-month loss), so BMNR stays at its 5% cap.</div>
 </section>'''
 
+def place(dd, a, b):
+    """A judged drawdown against the two regimes' readings. Ordered, not assumed: Rev. 28 and
+    earlier took calm as the shallower, which a VIX above its mean reverses."""
+    lo_, hi_ = sorted((a, b))
+    return 'sits between' if lo_ <= dd <= hi_ else 'sits beyond both' if dd > hi_ else 'sits below both'
+
 def volatility():
     term = E['vix']['term']
     trows = '\n'.join(f'        <tr><td>{lab}</td><td class="n">{math.sqrt(h):.3f}</td><td class="n">{term[h]:.2f}%</td><td class="n">±{f(1.96 * term[h], 2 if h < 0.1 else 1)}%</td></tr>'
@@ -401,9 +439,7 @@ def volatility():
     </div>''' for k in ('QQQ', 'IEMG', 'SGOV', 'BMNR'))
     hist = '\n'.join(f'    <div class="kv"><span class="k">{a}</span><span class="v" style="color:var(--neg)">{b}</span></div>' for a, b in FACTS['qqq_hist'])
     sig = lambda k, r: M.REGIME[r]['vol'][k] * M.DD_MULT
-    def where(k):
-        lo_, hi_ = sig(k, 'calm'), sig(k, 'normalized')
-        return 'sits between' if lo_ <= M.DD[k] <= hi_ else 'sits beyond both' if M.DD[k] > hi_ else 'sits below both'
+    where = lambda k: place(M.DD[k], sig(k, 'calm'), sig(k, 'normalized'))
     lo = M.VIX_2026
     return f'''<section class="pane" id="p-vol" role="tabpanel" aria-labelledby="t-vol">
   <h2>Volatility analysis</h2>
@@ -414,7 +450,7 @@ def volatility():
       <div><div class="k">VIX, {day(M.VIX_ASOF)}</div><div class="v">{SPOT:.2f}</div></div>
       <div><div class="k">2026 low · high</div><div class="v">{lo['low']:.2f} · {lo['high']:.2f}</div></div>
     </div>
-    <p class="gauge-note" style="text-align:left;max-width:none;margin:10px 0 0">Spot is {vix_rel(SPOT, 1)} the 2016–2023 mean of {M.VIX_MEAN}; the 2026 low was {day(lo['low_date'])}, the high {day(lo['high_date'])}.</p>
+    <p class="gauge-note" style="text-align:left;max-width:none;margin:10px 0 0">Spot is {vix_rel(SPOT, 1)} the 2016–2023 mean of {M.VIX_MEAN}; the {M.VIX_WINDOW}-session average the rule reads, {AVG:.2f}, is {vix_rel(AVG, 1)} it. The 2026 low was {day(lo['low_date'])}, the high {day(lo['high_date'])}.</p>
   </div>
 
   <h3>Term structure</h3>
@@ -453,7 +489,7 @@ def volatility():
       </tbody>
     </table>
   </div>
-  <div class="warnbox" style="margin-top:12px"><b>Weights are sized to the second column.</b> A VIX back at its {M.VIX_MEAN} mean (×{f(M.UPLIFT, 2)}) and crisis correlations turn the optimized book&#8217;s {neg(oc["dd"])}% drawdown into {neg(on["dd"])}%; the {O["SGOV"]}% reserve is sized for that.</div>
+  <div class="warnbox" style="margin-top:12px">{regime_warn(oc, on)}</div>
 
   <h3>Risk contribution, normalized</h3>
   <div class="card">
@@ -504,12 +540,12 @@ def sleeves():
             (('Gross forecast', f"{f(q['gross'])}%"), ('Expense ratio', f"{q['er']:.2f}%"),
              (f"Price ({day(P['QQQ']['px_asof'])})", f"${P['QQQ']['px']:.2f}"), ('Forward P/E', f"{f(FQ, 1)}×"),
              ('Dividend yield', f"{q['div']:.2f}%"), ('Annualised σ', f"{V['QQQ']:.0f}%"), ('$10,000 → 10 yr', term('QQQ'))),
-            f"<b>Primary growth engine.</b> {q['eps']:.1f}%/yr earnings growth carries the forecast; {'above' if FQ > M.OBS['QQQ']['pe_end'] else 'below'} its own {M.OBS['QQQ']['pe_end']}× average, the multiple {'costs' if q['val'] < 0 else 'adds'} {f(abs(q['val']))}%/yr."),
+            f"<b>Primary growth engine.</b> {q['eps']:.1f}%/yr earnings growth carries the forecast; {vs_avg(FQ, M.OBS['QQQ']['pe_end'])} its own {M.OBS['QQQ']['pe_end']}× average, the multiple {'costs' if q['val'] < 0 else 'adds'} {f(abs(q['val']))}%/yr."),
       slide('IEMG', 'ETF · EM Equity', 'iShares Core MSCI Emerging Markets ETF',
             (('Gross forecast', f"{f(i['gross'])}%"), ('Expense ratio', f"{i['er']:.2f}%"),
              (f"Price ({day(P['IEMG']['px_asof'])})", f"${P['IEMG']['px']:.2f}"), ('Forward P/E', f"{f(FI, 1)}×"),
              ('Dividend yield', f"{i['div']:.2f}%"), ('Annualised σ', f"{V['IEMG']:.0f}%"), ('$10,000 → 10 yr', term('IEMG'))),
-            f"<b>The overweight.</b> {'Below' if FI < M.OBS['IEMG']['pe_end'] else 'Above'} its {M.OBS['IEMG']['pe_end']}× average, the multiple {'adds' if i['val'] > 0 else 'costs'} {f(abs(i['val']))}%/yr; currency costs {f(abs(i['fx']))}%/yr. {REL_CAP} QQQ on return per unit of risk."),
+            f"<b>The overweight.</b> {vs_avg(FI, M.OBS['IEMG']['pe_end']).capitalize()} its {M.OBS['IEMG']['pe_end']}× average, the multiple {'adds' if i['val'] > 0 else 'costs'} {f(abs(i['val']))}%/yr; currency costs {f(abs(i['fx']))}%/yr. {REL_CAP} QQQ on return per unit of risk."),
       slide('BMNR', 'Stock · Crypto', 'BitMine Immersion Technologies',
             ((f"Price ({day(H['px_asof'])})", f"${H['px']:.2f}"), ('Market cap', f"${M.BMNR_MCAP_B:.2f}B"),
              ('ETH treasury', f"{H['held']:,}"), ('ETH staked', f"{H['staked'] / H['held'] * 100:.1f}%"),
@@ -627,7 +663,7 @@ def houses():
 # The previous revision's figures, for the "this revision" rows. validate.py requires each
 # one to appear in that revision's entry in VERIFICATION.md, so the left side of a row is
 # tied to the record rather than typed twice.
-PRIOR = dict(rev=27, asof='2026-10-09', QQQ=9.45, IEMG=8.68, optimized=7.55, baseline=7.87, gauge=2.3)
+PRIOR = dict(rev=28, asof='2026-10-14', QQQ=9.57, IEMG=8.96, optimized=7.68, baseline=7.99, gauge=2.2)
 
 def the(region):
     return ('the ' if region == 'United States' else '') + REG_NAME[region]
@@ -652,8 +688,12 @@ def build_steps():
                    f"sleeve above its {M.RULE['floor']}% floor (&#8216;{M.CORRELATED[funder][1].lower()}&#8217; on the transmission map)")
         elif pillar == 'Volatility':
             vx, mean = rd
-            why = (f"The VIX at {vx:.2f} sits {vix_rel(vx, 0)} its {mean} mean, so " +
+            why = (f"The VIX&#8217;s {M.VIX_WINDOW}-session average, {vx:.2f}, sits {vix_rel(vx, 0)} its {mean} mean, so " +
                    ('the reserve is held' if vx < mean else 'the reserve is spent'))
+            # a last close on the other side of the mean is stated, with the book it would give
+            if (SPOT >= mean) != (vx >= mean):
+                why += (f"; the {SPOT_DATE} close, {SPOT:.2f}, is {'above' if SPOT >= mean else 'below'} it, and a rule on "
+                        f"that one close would hold {book_txt(M.TILT_SPOT)}")
         elif pillar == 'Market trend':
             signs, net = rd
             down = [k for k in ('QQQ', 'IEMG', 'BMNR') if M.trend_verdict(M.trend_score(M.TREND[M.SLEEVE_MARKET[k]]['r'])) == 'Downtrend']
@@ -673,7 +713,8 @@ def build_steps():
 
 def change_triggers():
     _, net = M.relative_trend(M.SLEEVE_MARKET['QQQ'], M.SLEEVE_MARKET['IEMG'])
-    return (f"the gauge reaching {M.RULE['gauge_cautious']} (now {E['gauge']['display']}), the VIX reaching {M.VIX_MEAN} (now {SPOT:.2f}), "
+    return (f"the gauge reaching {M.RULE['gauge_cautious']} (now {E['gauge']['display']}), the VIX&#8217;s {M.VIX_WINDOW}-session average "
+            f"{'reaching' if AVG < M.VIX_MEAN else 'falling below'} {M.VIX_MEAN} (now {AVG:.2f}; last close {SPOT:.2f}), "
             f"the QQQ–IEMG trend net reaching ±{M.RULE['trend_tilt']} (now {sgn(net, 0) if net else 0}), "
             f"or {REG_NAME[RANKED[0]]} losing its lead at 3 months or 10 years")
 
@@ -681,7 +722,7 @@ def verification_rows():
     """What this revision changed: prior figure on the left, current on the right."""
     return (('Market data', f"{day(PRIOR['asof'])} → <b>{day(MK['asof'])}</b>"),
             ('Macro gauge', f"{PRIOR['gauge']} → <b>{E['gauge']['display']}</b>"),
-            ('Page text', f"3,108 → <b>{PAGE_WORDS:,} words</b>"),
+            ('Volatility rule', f"last close → <b>{M.VIX_WINDOW}-session average</b>"),
             ('Optimized net CAGR', f"{PRIOR['optimized']:.2f}% → <b>{f(ST['optimized']['calm']['cagr'])}%</b>"),
             ('QQQ net CAGR', f"{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['net'])}%</b>"),
             ('IEMG net CAGR', f"{PRIOR['IEMG']:.2f}% → <b>{f(M.A['IEMG']['net'])}%</b>"))
@@ -763,7 +804,7 @@ def portfolios(n_mut, n_corr):
   <div class="num">
 {rat}
   </div>
-  <div class="call" style="margin-top:16px"><b>Recommendation.</b> Hold QQQ {O['QQQ']} / IEMG {O['IEMG']} / SGOV {O['SGOV']} / BMNR {O['BMNR']}: {neg(o['normalized']['dd'])}% normalized drawdown against the baseline&#8217;s {neg(b['normalized']['dd'])}%, for {GAP:.2f} points of CAGR. Rebalance semi-annually or on a 5-point drift; {f"revisit if the VIX holds above {M.VIX_MEAN} ({f(M.VIX_MEAN - SPOT)} points away{f' at the {SPOT_DATE} close' if VIX_STALE else ''}; spend the reserve toward 25%) or" if SPOT < M.VIX_MEAN else f"the VIX is above its {M.VIX_MEAN} mean, so revisit now (spend the reserve toward 25%), and again"} if the EM discount to developed markets closes toward 25%.</div>
+  <div class="call" style="margin-top:16px"><b>Recommendation.</b> Hold QQQ {O['QQQ']} / IEMG {O['IEMG']} / SGOV {O['SGOV']} / BMNR {O['BMNR']}: {neg(o['normalized']['dd'])}% normalized drawdown against the baseline&#8217;s {neg(b['normalized']['dd'])}%, for {GAP:.2f} points of CAGR. Rebalance semi-annually or on a 5-point drift; {revisit_txt()} if the EM discount to developed markets closes toward 25%.</div>
 
   <h3>Verification log</h3>
   <p class="note">Generated from the model; an independent validator re-derives every figure, and {n_mut} planted errors were all caught. {n_corr} corrections recorded; this revision:</p>
@@ -838,26 +879,12 @@ def counts():
     n_corr = int(re.search(r'CORRECTIONS: (\d+)', open(os.path.join(HERE, 'VERIFICATION.md')).read()).group(1))
     return n_mut, n_corr
 
-PAGE_WORDS = 0
-
-def pane_words(html):
-    """Words of visible text across the six panes (charts and markup stripped): the measure
-    the revision log quotes for the page's length. Rev. 27 measured 3,108."""
-    body = html[html.index('<section class="pane'):html.index('<nav class="tabs"')]
-    return len(re.sub(r'<svg.*?</svg>|<[^>]+>', ' ', body, flags=re.S).split())
-
 def render():
-    global PAGE_WORDS
     css = open(os.path.join(HERE, 'page.css')).read()
     n_mut, n_corr = counts()
-    page = lambda: '\n'.join((HEAD, '<style>', css.rstrip('\n'), '</style>', '', '<div class="app">', '  ' + masthead(), '',
+    return '\n'.join((HEAD, '<style>', css.rstrip('\n'), '</style>', '', '<div class="app">', '  ' + masthead(), '',
                       macro(), '', regions(), '', trend_pane(), '', volatility(), '', sleeves(), '', portfolios(n_mut, n_corr),
                       '', NAV, '</div>', '', SCRIPT, ''))
-    # two passes: the count is printed on the page, and stays one word whatever its value
-    PAGE_WORDS = pane_words(page())
-    out = page()
-    assert pane_words(out) == PAGE_WORDS, 'page word count did not settle'
-    return out
 
 if __name__ == '__main__':
     out = render()

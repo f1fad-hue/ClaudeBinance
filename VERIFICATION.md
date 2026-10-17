@@ -1,11 +1,190 @@
 # Verification history
 
-CORRECTIONS: 261
+CORRECTIONS: 271
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 29 — 17 October 2026 (data to the 16 October close)
+
+Ten corrections. One was a design inconsistency that the 16 Oct close exposed, and one is a
+0.01-point figure on the page. The other eight were latent defects in the generator, validator,
+checklist, mutation harness or README; most assumed the VIX sits below its mean. No
+book-level figure published at Rev. 28 was wrong.
+Every market close was cross-checked across at least two independent sources; the page
+fetcher still could not resolve hosts, so every read came through web search.
+
+- **The volatility rule fired on one close; the page said "holds above".** Through Rev. 28 the
+  rule spent the reserve whenever the last close was at or above the 18.9 mean, while the
+  recommendation told the reader to revisit "if the VIX holds above 18.9". On 16 Oct the VIX
+  jumped 21% to 19.99, its first close above the mean on file, and the rule would have moved
+  the book to QQQ 35 / IEMG 35 / SGOV 25 / BMNR 5 on that one session. The pillar now reads
+  the **five-session average** of closes (16.76, 11% below the mean), as the recommendation
+  always said, so the book holds. The step, the triggers and the recommendation quote the last
+  close beside the average and state the one-close book, so a reader who prefers the
+  one-session trigger can see it. The validator re-derives the average from the series, runs
+  the rule both ways, and checks that one close above the mean with the average below does not
+  move the book.
+- **QQQ's multiple was typed "above its average".** At $728.00 QQQ trades at 22.8× forward,
+  below its 22.9× ten-year average, but the transmission row hard-coded "above". The validator
+  caught it before publication. The row and both sleeve-card comparisons now read the side from
+  the multiple at the one decimal the page shows. A guard also confirms that EM is the cheaper
+  bloc, which the page states three times.
+- **IEMG's trailing dividend was rounded to the cent.** The model carried $1.80, but the two
+  payouts sum to $1.7973 (QQQ: $3.09, not $3.09182). At $78.09 the rounding showed a
+  **2.31%** yield where the payouts give **2.30%**, and IEMG's net was 9.30% instead of
+  **9.29%**. The same rounding put Rev. 24's and Rev. 25's IEMG yields 0.01 point high
+  (2.21% for 2.20%, 2.19% for 2.18%); both are superseded. Dividends are now carried at the
+  precision paid, and the validator re-sums its own transcription of the payouts. The audit
+  script, which types the payouts from source, found this one.
+- **The volatility narratives assumed a VIX below its mean.**
+  - The regime warning said a VIX "back at" its mean would "turn" today's drawdown into the
+    normalized one, which reads wrongly once the uplift falls below 1 (×0.95 now). It now reads
+    "a VIX at its mean (volatility ×0.95) and crisis correlations take −36.7% to −38.9%". It
+    also has a branch for the case where today's drawdown is the deeper of the two.
+  - The recommendation's other branch said "revisit now (spend the reserve toward 25%)",
+    although the rule would already have spent it, and "25%" was typed rather than derived.
+  - Helper tests now drive each branch of both on hypothetical readings.
+- **The drawdown placement assumed calm is the shallower regime.** "QQQ −40% sits between /
+  beyond both / below both" its two σ readings took calm as the lower bound. With the VIX
+  above its mean the calm reading is the deeper (−53.6% vs −50.7%), so a drawdown between them
+  would have been called "beyond both". The validator mirrored the same assumption and would
+  have agreed. Both now order the two readings.
+- **Checklist item 14 typed "below its mean".** Its detail line read "VIX 19.99 below its 18.9
+  mean". It now quotes the average the rule reads, says which side it is on, and gives the last
+  close.
+- **The metamorphic VIX test rewrote a source count.** To keep the model's change
+  reconciliation valid, it rewrote the last date's reported change everywhere that date appeared
+  as a key, so it overwrote `VIX_SOURCES` too. That passed only while the substituted change
+  happened to be 2 or more. Today's fallback (a −15% close) set the count to −15 and the model
+  refused to load. The rewrite is now confined to `VIX_REPORTED`, and the validator checks that
+  the source counts survive.
+- **The metamorphic fallback contradicted its own check.** When 20% above the prior close lands
+  within 0.5 of spot, the test uses 15% below the prior close instead, but the next check
+  asserted that the alternative VIX raises risk. Today is the first time the fallback ran. The
+  check now reads the direction from the case.
+- **Two price mutants mutated the wrong field.** mutate.py looked up each fund's price with a
+  greedy `dict([^)]*px=`, which ran on to `basis_px=`. Since that lookup was introduced, the
+  "QQQ price" and "IEMG price" mutants changed the 11 Sep basis price, duplicating the basis
+  mutants, and no mutant moved a fund's own close. Both were still caught, so nothing reported
+  it; today's stale-dividend target, which pairs the dividend with the price, could not be
+  found. The lookup is now non-greedy and word-bounded, and asserts that price and basis
+  differ.
+- **The README described two rule pillars in superseded terms.** It said the sentiment step is
+  funded by "the sleeve the transmission map rates worst", wording Rev. 28 corrected on the
+  page (the worst-rated equity sleeve above its 5% floor). It also described the volatility
+  pillar as reading one close. Both are updated.
+
+**House cleanup.** Rev. 28's "Page text" revision row has done its job, so it is gone, along
+with the two-pass render that existed only to print it. The six tabs now run to 2,655 words
+(2,564 at Rev. 28). The additions are the one-close disclosure, the PPI and retail-sales facts,
+and the average in the volatility note. pyflakes is clean.
+
+**Market data to 16 October.**
+
+- VIX:
+  - 16.46 on 15 Oct (−0.41, −2.4%; Yahoo and two market recaps);
+  - **19.99** on 16 Oct (+3.53, +21.45%; Investing.com, Yahoo, a weekly recap) as chip stocks
+    fell an eighth day. A "16 Oct" figure of 16.45 is the 15 Oct close misdated, and 22.31 was
+    the intraday high.
+  - Five-session average (12–16 Oct): 15.21, 15.27, 16.87, 16.46, 19.99 = **16.76**.
+- Brent settled **$109.86** on 16 Oct (+$3.94, +3.7%, its highest since May; Reuters via The
+  Hill, EnergyNow, FinanceFeeds) from $105.92, after missile attacks on Saudi Arabia and
+  Ukrainian strikes on Russian refineries.
+- 10-year:
+  - 14 Oct settled at 5.19%, which resolves Rev. 28's hold;
+  - **5.10%** on 15 Oct (−9bp; FRED, the Fed's H.15), 21bp below 5 Oct's 5.31% high.
+- QQQ **$728.00** and IEMG **$78.09** on 15 Oct (QQQ: Yahoo, Google Finance, Investing.com;
+  IEMG: Yahoo, iShares). Rev. 28's held 14 Oct QQQ close settled at $728.95 (StockAnalysis,
+  StockInvest).
+- HY OAS 3.25% (14 Oct) and **3.23%** (15 Oct, FRED).
+- **September PPI +1.3% m/m and 6.3% y/y** (BLS, 15 Oct; First Trust), the largest monthly rise
+  since March 2022. Core 5.0%; gasoline +20.3% at the producer level.
+- September retail sales +0.8% (0.3% expected), +0.2% excluding gasoline stations. Claims
+  199,000, a fifth week under 200,000.
+- Fed: CME FedWatch put an October hike at 54% after the CPI (from 21%). It fell to about 15%,
+  from 27% a day earlier, once Chair Warsh said on 16 Oct that he does not prejudge meetings
+  (Yahoo Finance, Benzinga). Polymarket put a December hike at 79%. The next meeting is
+  27–28 Oct.
+- Equities, 16 Oct: S&P 500 −1.1% to 7,659.44; Nasdaq −2.1% to 26,140.03. Week: Nasdaq −4.5%,
+  Nasdaq-100 −5.5%, which QQQ's $751.27 → $709.80 confirms (−5.52%). The Philadelphia
+  semiconductor index fell an eighth straight day, its longest run since October 2008, on
+  AI-capex and debt worries.
+
+**Gauge re-scored.**
+
+- Monetary policy 2.0 → **2.5**: October hike odds fell from 54% to about 15%, the reverse of
+  Rev. 28's move, with December still priced.
+- Inflation 2.5 → **2.0**: PPI +1.3% m/m (6.3% y/y, core 5.0%) on top of a 3.7% CPI.
+- Geopolitical 2.0 → **1.5**: supply attacks now come from two theatres (Saudi Arabia and Russian
+  refineries) besides Hormuz shipping, and Brent is at its highest since May.
+- The gauge stays at **2.2** on the page (2.189 to 2.178 unrounded), still below 2.6, so the
+  sentiment step is unchanged.
+- Growth, liquidity and valuation are held. Strong retail sales and low claims sit against
+  Michigan's slide; spreads widened only 3.16% → 3.23%; QQQ's multiple fell to its average.
+- Regions and trend are held. The chip sell-off hits Korea and Taiwan as hard as the Nasdaq,
+  so EM's lead is unchanged. The trend windows end on 30 Sep.
+
+**Forecasts.**
+
+| Figure | Rev. 28 | Rev. 29 | Why |
+|---|---|---|---|
+| QQQ net CAGR | 9.57% | **9.78%** | Re-prices to 22.81× forward at $728.00; the multiple now adds 0.04%/yr |
+| IEMG net CAGR | 8.96% | **9.29%** | Re-prices to 10.96× at $78.09; yield 2.30% |
+| Baseline | 7.99% | **8.17%** | |
+| Optimized | 7.68% | **7.85%** | |
+
+- The gap is 0.32 points for 2.9 points less normalized drawdown (−38.9% vs −41.8%).
+- Calm drawdowns deepen to −39.8% and −36.7% with the VIX at 19.99. Calm equity volatility now
+  exceeds the normalized (QQQ 26.8% vs 25.3%), but crisis correlations keep the normalized
+  drawdown the deeper.
+- The forward-P/E basis is still 11 Sep; no October reading was found for either index.
+- The rule returns **QQQ 35 / IEMG 30 / SGOV 30 / BMNR 5** on the five-session average; on the
+  last close alone it would return QQQ 35 / IEMG 35 / SGOV 25 / BMNR 5 (7.85% → 8.12% net
+  CAGR, −38.9% → −40.9% normalized drawdown). 107 of 153 allocations are efficient.
+- The best-Sharpe book is now QQQ 30 / IEMG 60 / SGOV 5 / BMNR 5, still rejected for its 5%
+  reserve.
+- **Allocations unchanged.**
+
+**Held back, not averaged.**
+
+1. Both funds' 16 Oct closes. QQQ's $709.80 has two sources (Yahoo, Marketscreener), but
+   IEMG's $76.79 has one (StockInvest), so both stay on 15 Oct to price the two blocs on one
+   day. At those closes the net forecasts would be about 10.05% (QQQ, 22.24×) and 9.50% (IEMG,
+   10.78×).
+2. The 10-year's 16 Oct close (5.08% to 5.10% in market data; not yet on FRED).
+3. BMNR stays on its 5 Oct pairing. 15 Oct $23.36 (StockAnalysis, CNN) and 16 Oct $21.66
+   against $21.64 (StockAnalysis and Finviz against MarketBeat) are not paired with a holdings
+   release. The 12 Oct release still has no confirmed same-day close. The next release is due
+   19 Oct.
+4. The VIX long-run mean (18.9): open from Rev. 27. At 18.8 the rule's reading would be
+   unchanged, since 16.76 is below either.
+
+**Mutation harness: 158 (92 model, 66 generator), all caught, none skipped.**
+
+- The first run left nine skips: targets that were Rev. 28's values (Brent, the 10-year, three
+  drivers, QQQ's dividend) or replaced trigger text. The driver, 10-year and Brent mutants now
+  read their targets from the model as written, so they follow each roll.
+- The second run left two survivors on behaviour live data could not show. Both are now tested
+  on hypothetical inputs:
+  - a multiple judged unrounded (22.81× and 22.9× fall on the same side either way);
+  - a typed "25%" reserve step (30 − 5 happens to be 25).
+- New mutants cover:
+  - the rule reading one close, a four-session window, and the one-close book read from the
+    average;
+  - IEMG's dividend rounded to the cent;
+  - QQQ's multiple side typed;
+  - the regime warning's branch inverted and the drawdown placement unordered;
+  - the revisit trigger reading the last close;
+  - the triggers quoting the close as the average, or the wrong close.
+
+**Checks.** The validator passes 484 checks, the checklist 16 of 17 (the authoritative-sources
+item is still a conflict only you can settle), and the audit script, which types every raw
+input from source, matches every sleeve, portfolio, gauge and VIX-average figure. The phone
+test passes all six tabs at 412px and 360px, with the bar pinned, nothing off-screen and text
+at least 9px.
 
 ## Rev. 28 — 15 October 2026 (data to the 14 October close)
 
