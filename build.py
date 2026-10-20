@@ -35,9 +35,9 @@ FACTS = dict(
     dollar=('an 18-month high', '5 Oct'),
     ust10_high='highest close since 2002',
     # the day's lead, dated so validate.py can refuse it once MARKET moves on
-    lead=('2026-10-16', 'Chip stocks fell an eighth day', 'The Philadelphia semiconductor index posted its longest losing run since October 2008 on AI-spending and debt worries, and the Nasdaq-100 lost 5.5% on the week'),
-    geo='Missile attacks on Saudi Arabia after Houthi strikes on Aramco’s Dhahran headquarters, Ukrainian strikes on Russian refineries and Iranian attacks on Hormuz shipping keep supply at risk; President Trump has ruled out striking Iran before the 3 Nov midterms',
-    imf_asia='IMF (October): China 4.5% and India 7.0% in 2026. China’s September exports rose 36.3% and its manufacturing PMI returned to 50.1',
+    lead=('2026-10-19', 'Tech rebounded', 'Chipmakers led a rebound from the S&P 500’s worst week since June, the Nasdaq rising 1.1% and the S&P 0.4%, and China’s third-quarter growth beat forecasts at 4.5%'),
+    geo='Missile attacks on Saudi Arabia, Ukrainian strikes on Russian refineries and Iranian attacks on Hormuz shipping keep supply at risk, and on 19 Oct the IRGC threatened the strait’s undersea cables. President Trump has ruled out resuming strikes on Iran before the 3 Nov midterms, but the US blockade stays in force and a third carrier could arrive by month end',
+    imf_asia='IMF (October): China 4.5% and India 7.0% in 2026. China’s third quarter grew 4.5%, above the 4.4% expected, on exports up 36.3% in September, though property investment fell 20.6% in nine months',
     eu='Composite PMI 53.1 in September, the highest since April 2023, but flash inflation jumped to 3.8% and the ECB hiked to 2.50% into 0.9% growth',
     bmnr_stop='The chairman said on 7 Oct that buying stops at 5% of supply, which ends most of the issuance behind that drag',
     em_dm_discount='40% discount to developed markets (11 Sep)',
@@ -76,7 +76,7 @@ SOURCES = (
                            ('Vanguard VCMM', 'https://corporate.vanguard.com/content/corporatesite/us/en/corp/vemo/vemo-return-forecasts'),
                            ('Morningstar survey, 2026 (Fidelity, BlackRock)', 'https://www.morningstar.com/markets/experts-forecast-stock-bond-returns-2026-edition'),
                            ('BlackRock CMAs', 'https://www.blackrock.com/institutions/en-global/institutional-insights/thought-leadership/capital-market-assumptions'))),
-    ('BMNR', (('Holdings release, 5 Oct 2026', 'https://www.prnewswire.com/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-6-02-million-tokens-and-total-crypto-and-total-cash--marketable-securities-holdings-of-17-4-billion-302897949.html'),
+    ('BMNR', (('Holdings release, 19 Oct 2026', 'https://www.prnewswire.com/apac/news-releases/bitmine-immersion-technologies-bmnr-announces-eth-holdings-reach-6-04-million-tokens-and-total-crypto-and-total-cash--marketable-securities-holdings-of-15-1-billion-302912189.html'),
               ('SEC filings', 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001829311'))),
 )
 
@@ -198,6 +198,12 @@ def bond_headline():
     return ('Yields edged up' if MK['ust10_chg_bp'] > 0 else
             'Yields eased' if MK['ust10_chg_bp'] < 0 else 'Yields held')
 
+def vix_price(x):
+    """What protection costs against the long-run mean. Within 5% either side it is near its
+    long-run price: Rev. 29 and earlier called 18.44, 2% under an 18.9 mean, "cheap"."""
+    d = (1 - x / M.VIX_MEAN) * 100
+    return 'cheap' if d >= 5 else 'dear' if d <= -5 else 'close to its long-run price'
+
 def vix_rel(x, dp):
     """The VIX's distance from its long-run mean, in words that stay true either side."""
     d = (1 - x / M.VIX_MEAN) * 100
@@ -262,7 +268,7 @@ def driver_notes():
       'Inflation trajectory': f"{FACTS['cpi']}; {FACTS['ism_prices']}; {FACTS['infl_exp']}.",
       'Monetary policy': f"The Fed hiked {FACTS['fed_vote']} on {day(M.FOMC_DATE)} to {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%; {FACTS['fed_odds']}.",
       'Liquidity & credit': f"The 10-year closed at {MK['ust10']:.2f}% on {UST_DATE} ({bp(MK['ust10_chg_bp'])}), {ust10_note()}. High-yield spreads {spread_verb()} to {FACTS['hy_oas'][0]} ({FACTS['hy_oas'][1]}) from {FACTS['hy_oas'][2]} ({FACTS['hy_oas'][3]}); the dollar index touched {FACTS['dollar'][0]} on {FACTS['dollar'][1]}.",
-      'Valuation & positioning': f"Nasdaq-100 at {f(FQ, 1)}× forward vs EM at {f(FI, 1)}×, a {f(disc, 0)}% discount. The VIX at {SPOT:.2f} ({SPOT_DATE}) sits {vix_rel(SPOT, 0)} its {M.VIX_MEAN} mean: protection is {'cheap' if SPOT < M.VIX_MEAN else 'dear'}.",
+      'Valuation & positioning': f"Nasdaq-100 at {f(FQ, 1)}× forward vs EM at {f(FI, 1)}×, a {f(disc, 0)}% discount. The VIX at {SPOT:.2f} ({SPOT_DATE}) sits {vix_rel(SPOT, 0)} its {M.VIX_MEAN} mean: protection is {vix_price(SPOT)}.",
       'Geopolitical risk': f"{FACTS['geo']}. Brent settled at ${MK['brent']:.2f} on {day(MK['asof'])}.",
     }
 
@@ -371,6 +377,20 @@ def region_trend_leaders():
     reg = {d['region']: d['r'] for d in M.TREND.values() if d['region']}
     return [max(reg, key=lambda k: reg[k][h]) for h in range(3)]
 
+def ether_txt():
+    """The trend's call on BMNR, read from ether's own signs and BMNR's weight. Through Rev. 29
+    "(a 3-month rebound against a 12-month loss), so BMNR stays at its 5% cap" was typed."""
+    r = M.TREND['Ether']['r']; v = M.trend_verdict(M.trend_score(r))
+    word = {1: 'gain', 0: 'flat reading', -1: 'loss'}
+    s3, s12 = M.trend_sign(r[0]), M.trend_sign(r[2])
+    why = f"a 3-month {word[s3]} {'against' if s3 != s12 else 'and'} a 12-month {word[s12]}"
+    if v == 'Downtrend':
+        then = (f"but BMNR is already at its {M.RULE['floor']}% floor" if O['BMNR'] - M.RULE['step'] < M.RULE['floor']
+                else 'so BMNR gives a step to cash')
+    else:
+        then = f"so BMNR stays at {O['BMNR']}%" + (', its cap' if O['BMNR'] == M.RULE['bmnr_cap'] else '')
+    return f"ether is {v.lower()} ({why}), {then}"
+
 def trend_pane():
     signs, net = M.relative_trend(M.SLEEVE_MARKET['QQQ'], M.SLEEVE_MARKET['IEMG'])
     q, e = M.TREND[M.SLEEVE_MARKET['QQQ']]['r'], M.TREND[M.SLEEVE_MARKET['IEMG']]['r']
@@ -408,7 +428,7 @@ def trend_pane():
     <p class="gauge-note" style="text-align:left;max-width:none;margin:0">{agree_txt} Europe is in euros.</p>
   </div>
 
-  <div class="call" style="margin-top:16px"><b>What the trend says.</b> {('No equity sleeve is in a downtrend, so none is cut' if not down else 'In a downtrend: ' + ', '.join(down))}; ether is {M.trend_verdict(M.trend_score(M.TREND['Ether']['r'])).lower()} (a 3-month rebound against a 12-month loss), so BMNR stays at its 5% cap.</div>
+  <div class="call" style="margin-top:16px"><b>What the trend says.</b> {('No equity sleeve is in a downtrend, so none is cut' if not down else 'In a downtrend: ' + ', '.join(down))}; {ether_txt()}.</div>
 </section>'''
 
 def place(dd, a, b):
@@ -663,7 +683,8 @@ def houses():
 # The previous revision's figures, for the "this revision" rows. validate.py requires each
 # one to appear in that revision's entry in VERIFICATION.md, so the left side of a row is
 # tied to the record rather than typed twice.
-PRIOR = dict(rev=28, asof='2026-10-14', QQQ=9.57, IEMG=8.96, optimized=7.68, baseline=7.99, gauge=2.2)
+PRIOR = dict(rev=29, asof='2026-10-16', QQQ=9.78, IEMG=9.29, BMNR=10.01, optimized=7.85, baseline=8.17, gauge=2.2,
+             bmnr_release='2026-10-05')
 
 def the(region):
     return ('the ' if region == 'United States' else '') + REG_NAME[region]
@@ -722,10 +743,11 @@ def verification_rows():
     """What this revision changed: prior figure on the left, current on the right."""
     return (('Market data', f"{day(PRIOR['asof'])} → <b>{day(MK['asof'])}</b>"),
             ('Macro gauge', f"{PRIOR['gauge']} → <b>{E['gauge']['display']}</b>"),
-            ('Volatility rule', f"last close → <b>{M.VIX_WINDOW}-session average</b>"),
+            ('BMNR holdings', f"{day(PRIOR['bmnr_release'])} → <b>{day(M.BMNR_HOLDINGS['released'])} release</b>"),
             ('Optimized net CAGR', f"{PRIOR['optimized']:.2f}% → <b>{f(ST['optimized']['calm']['cagr'])}%</b>"),
             ('QQQ net CAGR', f"{PRIOR['QQQ']:.2f}% → <b>{f(M.A['QQQ']['net'])}%</b>"),
-            ('IEMG net CAGR', f"{PRIOR['IEMG']:.2f}% → <b>{f(M.A['IEMG']['net'])}%</b>"))
+            ('IEMG net CAGR', f"{PRIOR['IEMG']:.2f}% → <b>{f(M.A['IEMG']['net'])}%</b>"),
+            ('BMNR net CAGR', f"{PRIOR['BMNR']:.2f}% → <b>{f(M.A['BMNR']['net'])}%</b>"))
 
 def portfolios(n_mut, n_corr):
     b, o = ST['baseline'], ST['optimized']

@@ -66,6 +66,8 @@ NODE_PATH=$(npm root -g) node phone.mjs 412 && NODE_PATH=$(npm root -g) node pho
   held back and recorded with the sensitivity it would carry.
 - A level whose close lags the market date keeps its own date (`MARKET['ust10_asof']`), and
   every sentence and the masthead that quote it say so.
+- BMNR's price is the close of the first session after the holdings date of the release it
+  is paired with, never a later close against older holdings; `validate.py` enforces it.
 - Figures the model cannot compute (a CPI print, a PMI reading) go in `build.py`'s `FACTS`,
   each dated in the sentence that uses it, with sources linked on the page.
 
@@ -73,7 +75,8 @@ NODE_PATH=$(npm root -g) node phone.mjs 412 && NODE_PATH=$(npm root -g) node pho
 
 - **Forecasts** are building blocks: dividend yield + earnings growth + valuation change (the
   forward multiple annualised back to the index's own 10-year average) + currency − fee.
-  BMNR is ETH return + staking − premium normalisation − dilution drag. SGOV is the policy
+  BMNR is ETH return + staking ± the move of its mNAV to 1.0× (a cost above 1.0×, a gain
+  below it) − dilution drag. SGOV is the policy
   midpoint held flat.
 - **Risk** uses two regimes: today's volatility, which scales with the spot VIX, and the
   volatility at the VIX's 2016–2023 mean, which does not depend on spot, with crisis

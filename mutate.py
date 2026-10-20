@@ -50,6 +50,12 @@ def _drv(name, d):
 _U = re.search(r"ust10_asof='([\d-]+)', ust10=([\d.]+), ust10_prev=([\d.]+), ust10_chg_bp=(-?\d+),", orig)
 _MKT_ASOF = re.search(r"MARKET = dict\(asof='([\d-]+)'", orig).group(1)
 _BRENT = _num(r"brent=([\d.]+),")
+_BH = {f: _num(rf"BMNR_HOLDINGS = dict\([^)]*?\b{f}=([\d_.]+)") for f in ('held', 'crypto_b')}
+_BPX = re.search(r"px=([\d.]+), px_asof='([\d-]+)', shares_m", orig)
+import datetime as _dt
+_d = _dt.date.fromisoformat(_BPX.group(2)) + _dt.timedelta(days=1)
+while _d.weekday() >= 5: _d += _dt.timedelta(days=1)
+_BPX_NEXT = _d.isoformat()
 MUT=[
  ("QQQ ttm div",    f"ttm_div={_P['QQQ','ttm_div']}",   f"ttm_div={_bump(_P['QQQ','ttm_div'], 0.40)}"),
  ("IEMG ttm div",   f"ttm_div={_P['IEMG','ttm_div']}",  f"ttm_div={_bump(_P['IEMG','ttm_div'], 0.10)}"),
@@ -131,7 +137,9 @@ MUT=[
  ("VIX 2026 low",   "low=14.13,",               "low=13.63,"),
  ("VIX low date",   "low_date='2026-08-14'",    "low_date='2026-08-21'"),
  ("FOMC date",      "FOMC_DATE  = '2026-09-16'", "FOMC_DATE  = '2026-09-17'"),
- ("BMNR held",      "held=6_016_414",           "held=6_116_414"),
+ ("BMNR held",      f"held={_BH['held']}",       f"held={int(_BH['held'].replace('_', '')) + 100_000:_}"),
+ ("BMNR priced a session after its holdings", f"px_asof='{_BPX.group(2)}', shares_m", f"px_asof='{_BPX_NEXT}', shares_m"),
+ ("BMNR crypto typed below its own ETH", f"crypto_b={_BH['crypto_b']},", f"crypto_b={_bump(_BH['crypto_b'], -0.05)},"),
  ("Brent level only", f"brent={_BRENT},",        f"brent={_bump(_BRENT, 1)},"),
  # September 2025's payout ($0.69395) in place of September 2026's ($0.75143): the Rev. 25-26 error
  ("QQQ trailing dividend a quarter stale", f"ttm_div={_P['QQQ','ttm_div']}, px={_P['QQQ','px']}",
@@ -195,7 +203,7 @@ GEN = [
  G("dollar claim typed again", "; the dollar index touched {FACTS['dollar'][0]} on {FACTS['dollar'][1]}.", "; the dollar sits at a 16-month high."),
  G("dated lead shown on any date", "return FACTS['lead'] if FACTS['lead'][0] == MK['asof'] else None", "return FACTS['lead']"),
  G("frontier call-out back to one dominator only", "if ON['optimized'] and not ON['baseline'] and dom:", "if ON['optimized'] and not ON['baseline'] and len(dom) == 1:"),
- G("a fact's apostrophe double-escaped", "Aramco’s Dhahran", "Aramco&#8217;s Dhahran"),
+ G("a fact's apostrophe double-escaped", "the strait’s undersea cables", "the strait&#8217;s undersea cables"),
  G("funder called the worst outright", "the worst-rated equity \"\n                   f\"sleeve above its", "the worst \"\n                   f\"sleeve of all, above its"),
  G("book restated on a no-move step", "('' if mv == 'no move' else f\" Book: {book_txt(after)}.\")", "f\" Book: {book_txt(after)}.\""),
  G("gauge note calls growth strong regardless", "return ('Strong growth is' if g5 >= 3.4 else", "return ('Strong growth is' if g5 >= 0 else"),
@@ -213,6 +221,9 @@ GEN = [
  G("one-close book not stated", "if (SPOT >= mean) != (vx >= mean):", "if False:"),
  G("drawdown placement unordered", "lo_, hi_ = sorted((a, b))", "lo_, hi_ = a, b"),
  G("revisit trigger reads the last close", "    if AVG < M.VIX_MEAN:\n        to = ", "    if SPOT < M.VIX_MEAN:\n        to = "),
+ G("protection band dropped", "return 'cheap' if d >= 5 else 'dear' if d <= -5 else 'close to its long-run price'", "return 'cheap' if d >= 0 else 'dear'"),
+ G("ether's horizons swapped", "s3, s12 = M.trend_sign(r[0]), M.trend_sign(r[2])", "s3, s12 = M.trend_sign(r[2]), M.trend_sign(r[0])"),
+ G("BMNR cap claimed without checking", "+ (', its cap' if O['BMNR'] == M.RULE['bmnr_cap'] else '')", "+ ', its cap'"),
  G("reserve step typed", "spend the reserve toward {O['SGOV'] - M.RULE['step']}%", "spend the reserve toward 25%"),
  G("transmission labels typed", "('QQQ', 'qqq', SIG[M.CORRELATED['QQQ'][0]], M.CORRELATED['QQQ'][1],", "('QQQ', 'qqq', 'up', 'Tailwind',"),
  G("signal pill shares the donut card's class", "SIG = {1: 'up', 0: 'nu', -1: 'down'}", "SIG = {1: 'up', 0: 'nu', -1: 'dn'}"),

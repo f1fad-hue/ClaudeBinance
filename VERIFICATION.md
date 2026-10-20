@@ -1,11 +1,168 @@
 # Verification history
 
-CORRECTIONS: 271
+CORRECTIONS: 277
 
 Every correction recorded against this repo, newest first. The dashboard's own
 verification log (Portfolios tab) carries the same record as a table; this file keeps
 the reasoning — what was wrong, how it was caught, and what now stops it recurring.
 The current state of the model is in [README.md](README.md).
+
+## Rev. 30 — 20 October 2026 (data to the 19 October close)
+
+Six corrections. One was on the published page since Rev. 27: the Iran backdrop left out the US
+blockade. The other five were latent defects in the generator, validator and README that the
+new data or a closer read exposed. No book-level figure published at Rev. 29 was wrong.
+Every market close was cross-checked across at least two independent sources; the page
+fetcher still could not resolve hosts, so every read came through web search.
+
+- **The Iran backdrop left out the blockade.** Since Rev. 27 the geopolitical note said
+  "President Trump has ruled out striking Iran before the 3 Nov midterms". His 8 Oct statement
+  (The Hill, US News, Al Jazeera, Washington Times) ruled out *resuming* strikes, and said the
+  US naval blockade of Iran "will remain in full force". US officials have said a third carrier
+  could arrive by the end of October. The note now says both, and adds the IRGC's 19 Oct
+  threat to the Strait of Hormuz's undersea cables (Benzinga, RFE/RL, Saudi Gazette). The
+  geopolitical score was already 1.5 and is held.
+- **"Protection is cheap" at 2% under the mean.** The valuation note called protection cheap
+  whenever the VIX sat anywhere below its 18.9 mean. At 18.44, five sessions after the VIX was
+  6% above the mean, "cheap" overstates it. Within 5% either side the note now says protection
+  is "close to its long-run price", and helper tests cover all three bands.
+- **The trend tab's BMNR call was typed.** "Ether is mixed (a 3-month rebound against a 12-month
+  loss), so BMNR stays at its 5% cap" was true only while ether's 3-month return stays up, its
+  12-month return down, and BMNR at its cap. The next quarter-end could break any of the three.
+  The sentence is now read from ether's own signs and BMNR's weight, including the downtrend and
+  floor cases. The validator re-derives it, and a helper test raises the cap to check that "its
+  cap" is not claimed when it isn't.
+- **BMNR's pairing rule was not enforced.** The model's comments say BMNR is priced at the close
+  of the first session after its holdings date (Rev. 28 and 29 held a pairing for exactly this
+  reason), but no check required it. The validator now does, and requires the price to be no
+  later than the market date.
+- **The ETH-value reconciliation was loose.** It allowed crypto holdings $0.1B either side of
+  the release's ETH value, so crypto typed below its own ETH would pass. Crypto must now be the
+  ETH plus a BTC holding between zero and $0.05B.
+- **The README's BMNR formula had the wrong sign.** It read "ETH return + staking − premium
+  normalisation − dilution drag". Since Rev. 27 the stock has traded below its ETH, so the mNAV
+  term is a gain (+0.95%/yr now). It now reads "± the move of its mNAV to 1.0×". The pairing
+  rule is added to the data rules.
+
+**BMNR re-paired to the 19 Oct release.**
+
+- Holdings as of 18 Oct (PR Newswire; 8-K exhibit):
+  - **6,041,481 ETH** at $2,365 (Coinbase, 3 p.m. ET); 6,028,946 + 12,535 bought reconciles
+    exactly;
+  - 5,067,309 staked, the same count for the sixth release, so the staked share falls to
+    **83.9%**;
+  - 7-day yield **2.58%**: the release's $309M staking figure (5,067,309 × $2,365 × 2.58%) and
+    its $369M full-scale figure (6,041,481 × $2,365 × 2.58%) both reproduce at that rate;
+  - 215 BTC, $180M in Beast Industries, $74M in Eightco, $582M of cash and securities;
+  - $15.1B in all, of which crypto is $14.31B.
+- Close **$21.57** on 19 Oct, the first session after the holdings date (Investing.com, closed at
+  15:59:59; Yahoo's 20 Oct quote of +$1.04 to $22.61 implies the same prior close).
+- Market cap $13.01B on the 603.2M shares on file, so mNAV is **0.91×** (0.86× on total holdings),
+  from 0.98× on 5 Oct, as the stock fell 19.5% against ETH's 13.2%. The rate at which the
+  discount closes rises from +0.20% to **+0.95%/yr**, and staking falls from +2.21% to +2.16%.
+  BTC's price on 18 Oct was not found; mNAV is 0.91× for any BTC price from $50k to $120k.
+
+**Market data to 19 October.**
+
+- VIX **18.44** on 19 Oct (−1.55, −7.75%): Investing.com's table, Yahoo's and Cboe's prior close,
+  and CNN's 20 Oct reading of −6.13% to 17.31, which implies 18.44. An "18.07" timed 4:47 p.m.
+  is a different print, and 18.11 an intraday quote. The five-session average is (15.27 + 16.87 +
+  16.46 + 19.99 + 18.44) / 5 = **17.41**.
+- Brent settled **$109.55** on 19 Oct (−$0.31, −0.28%): Fox News's market report, Pomegra, and
+  Reuters' 20 Oct settlement of −$0.76 to $108.79, which implies it. Its session low was more
+  than $3 down, on reports of US-Iran mediation.
+- 10-year **5.09%** on 16 Oct (−1bp; the Fed's H.15 release of 19 Oct, FRED), which resolves Rev.
+  29's hold. H.15 also re-confirms 5.21%, 5.19% and 5.10% for 13–15 Oct.
+- QQQ **$718.36** and IEMG **$77.34** on 19 Oct:
+  - QQQ: Investing.com's table, StockAnalysis, MarketChameleon (+1.21% from $709.80);
+  - IEMG: the iShares fund page, StockAnalysis, StockScan;
+  - Rev. 29's held 16 Oct IEMG close ($76.79) now has Yahoo and StockInvest as well.
+- Equities, 19 Oct: S&P 500 +0.41% to 7,690.73; Nasdaq +1.11% to 26,430.89 (CNBC); both
+  reconcile with 16 Oct's closes. Chipmakers led the rebound from the S&P 500's worst week
+  since late June.
+- **China Q3 GDP +4.5% y/y** (4.4% expected, Q2 4.3%; +1.2% q/q). September industrial output
+  +5.5%, retail sales +1.1% (0.6% expected); property investment −20.6% over nine months
+  (Reuters via Investing.com, CNBC, Xinhua, US News).
+- Euro-area September inflation was confirmed at 3.8% (core 2.5%); the page still quotes the
+  flash.
+- Fees re-checked:
+  - QQQ **0.18%**: shareholders approved the conversion to an open-end ETF on 19 Dec 2025, which
+    cut the fee from 0.20% from 22 Dec (ETF.com, Advisor Perspectives, Invesco);
+  - IEMG **0.09%** (iShares);
+  - SGOV **0.09%** (StockAnalysis, etfdb, Fool).
+
+**Gauge and regions held.**
+
+- **No driver is re-scored**; the gauge stays at **2.2** (2.178 unrounded).
+  - Monetary policy: Forbes put the 19 Oct FedWatch odds of an October hold near 80%, close to
+    the 15% hike odds after Warsh. It is one source, so the page keeps the two-source 16 Oct
+    reading.
+  - Liquidity: the 10-year eased 1bp and spreads are unchanged on file.
+  - Valuation: QQQ's multiple is 22.5×, still below its average.
+  - Geopolitics: the cable threat and the blockade confirm the 1.5 rather than lower it.
+- **Regions held.** China's beat came on exports, against weak retail and property; the 3-month
+  lead (3.0 vs 2.8) stands.
+
+**Forecasts.**
+
+| Figure | Rev. 29 | Rev. 30 | Why |
+|---|---|---|---|
+| QQQ net CAGR | 9.78% | **9.92%** | Re-prices to 22.51× forward at $718.36; the multiple adds 0.17%/yr |
+| IEMG net CAGR | 9.29% | **9.40%** | Re-prices to 10.86× at $77.34; yield 2.32% |
+| BMNR net CAGR | 10.01% | **10.71%** | mNAV 0.98× → 0.91×; staking 2.63% → 2.58% |
+| Baseline | 8.17% | **8.30%** | |
+| Optimized | 7.85% | **7.96%** | |
+
+- The gap is 0.34 points for 2.9 points less normalized drawdown (−38.9% vs −41.8%).
+- Calm drawdowns ease to −37.3% and −34.5% with the VIX at 18.44; the normalized ones do not
+  depend on spot.
+- The rule returns **QQQ 35 / IEMG 30 / SGOV 30 / BMNR 5**. The last close (18.44) and the
+  five-session average (17.41) are both below 18.9, so the one-close book agrees and is not
+  stated. 107 of 153 allocations are efficient; the best-Sharpe book, QQQ 30 / IEMG 60 / SGOV 5
+  / BMNR 5, is still rejected for its 5% reserve.
+- **Allocations unchanged.**
+
+**Held back, not averaged.**
+
+1. 20 Oct, which has closed but is not confirmed for every series:
+   - QQQ is quoted at $717.59 and $719.21;
+   - the VIX's 17.31 appears only on live quote pages (Cboe, CNN);
+   - Brent's $108.79 is confirmed.
+   The market date stays 19 Oct so every close is from one session. A 20 Oct VIX of 17.31 would
+   put the five-session average at 17.81, still below the mean.
+2. The 10-year's 19 Oct close, quoted from 5.07% to 5.15% and not yet on H.15.
+3. SGOV's SEC yield stays at the iShares 3.71% (7 Oct). Third-party snapshots of 3.73% (14 Oct)
+   and 3.74% (16 Oct) have one source each.
+4. High-yield spreads stay at 3.23% (15 Oct); no later FRED reading was found.
+5. BMNR's share count (603.2M) predates this year's buybacks; the dilution drag is held.
+6. The VIX long-run mean (18.9): open from Rev. 27.
+
+**Mutation harness: 163 (94 model, 69 generator), all caught, none skipped.**
+
+- The first run left one skip: the double-escape mutant targeted the "Aramco’s" fact, which the
+  geopolitical note no longer quotes. It now targets the strait's cables.
+- It also left two survivors that live data could not show. With the last close and the average
+  on the same side of the mean, the one-close book is neither different nor stated. Both are now
+  tested on a close across the mean:
+  - the metamorphic copy (a 23.99 close with an 18.52 average) must give a one-close book that
+    differs from the rule's and matches the validator's rule run on that close;
+  - a helper test checks that the rule step states it.
+- New mutants cover:
+  - BMNR priced a session after its holdings;
+  - crypto typed below its own ETH;
+  - the BMNR held count, now read from the model;
+  - the protection band dropped;
+  - ether's horizons swapped;
+  - "its cap" claimed without checking.
+
+**Checks.**
+
+- The validator passes 499 checks, and the checklist 16 of 17 (the authoritative-sources item
+  is still a conflict only you can settle).
+- The audit script types every raw input, including the new BMNR pairing, from source, and
+  matches every sleeve, portfolio, gauge and VIX-average figure.
+- The phone test passes all six tabs at 412px and 360px.
+- The page runs to 2,663 words (2,655 at Rev. 29). pyflakes is clean.
 
 ## Rev. 29 — 17 October 2026 (data to the 16 October close)
 

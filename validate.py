@@ -149,8 +149,18 @@ ck('BMNR staked share matches its token counts', abs(M.BMNR['stake_share'] - H['
    M.BMNR['stake_share'], round(H['staked'] / H['held'], 4))
 ck('BMNR mNAV is market cap over crypto', abs(M.BMNR['mnav'] - round(M.BMNR_MCAP_B / H['crypto_b'], 2)) < 1e-9,
    M.BMNR['mnav'], M.BMNR_MCAP_B / H['crypto_b'])
-ck('BMNR ETH value reconciles with the release', abs(H['held'] * H['eth_px'] / 1e9 - H['crypto_b']) < 0.1,
-   H['held'] * H['eth_px'] / 1e9, H['crypto_b'])
+# crypto is the ETH at the release's price plus the BTC, which cannot be negative and is small:
+# through Rev. 29 the check allowed $0.1B either side, so crypto typed below its own ETH passed
+_btc_b = H['crypto_b'] - H['held'] * H['eth_px'] / 1e9
+ck('BMNR crypto is its ETH at the release price plus a small BTC holding', -0.005 <= _btc_b <= 0.05,
+   round(_btc_b, 4), '0 to 0.05')
+# the price is the close of the first session after the holdings date, never a later one:
+# pairing a later close with earlier holdings mixes two dates (Rev. 28 held a pairing for this)
+import datetime as _dt
+_d0 = _dt.date.fromisoformat(H['asof']); _d1 = _d0 + _dt.timedelta(days=1)
+while _d1.weekday() >= 5: _d1 += _dt.timedelta(days=1)
+ck('BMNR price is the first session after its holdings date', H['px_asof'] == _d1.isoformat(), H['px_asof'], _d1.isoformat())
+ck('BMNR price is not after the market date', H['px_asof'] <= M.MARKET['asof'], H['px_asof'], M.MARKET['asof'])
 ck('SGOV assumption is the policy midpoint', abs(M.SGOV_GROSS - sum(M.FED_RANGE) / 2) < 1e-9, M.SGOV_GROSS, sum(M.FED_RANGE) / 2)
 ck('SGOV is the lowest-return sleeve', M.A['SGOV']['net'] == min(a['net'] for a in M.A.values()), M.A['SGOV']['net'], 'lowest')
 ser = dict(M.VIX_SERIES); vals = [v for _, v in M.VIX_SERIES]
@@ -323,6 +333,20 @@ try:
     ck('helper: the revisit trigger spends one step from the reserve held', 'spend the reserve toward 35%' in build.revisit_txt(), build.revisit_txt())
 finally:
     build.O = _O0; build.AVG = _AV1
+_SP0 = build.SPOT
+try:
+    build.SPOT = M.VIX_MEAN + 2
+    _vs = [x for x in build.build_steps() if x.startswith('<b>Volatility')][0]
+    ck('helper: a last close across the mean is stated with its book in the rule step',
+       ('a rule on that one close would hold' in _vs) == (M.VIX_AVG < M.VIX_MEAN), _vs[:120])
+finally:
+    build.SPOT = _SP0
+_cap0 = M.RULE['bmnr_cap']
+try:
+    M.RULE['bmnr_cap'] = 10
+    ck('helper: BMNR is called "at its cap" only when it is', 'its cap' not in build.ether_txt(), build.ether_txt())
+finally:
+    M.RULE['bmnr_cap'] = _cap0
 ck('helper: the regime warning sizes to the deeper normalized column', build.regime_warn({'dd': 30.0}, {'dd': 35.0}).startswith('<b>Weights are sized to the second column.</b>'))
 ck('helper: the regime warning says when today is the deeper column', build.regime_warn({'dd': 35.0}, {'dd': 30.0}).startswith('<b>Today is the deeper column.</b>'))
 for _rq, _ri, _w in ((0.250, 0.255, 'level with'), (0.250, 0.265, 'ahead of'), (0.265, 0.250, 'behind')):
@@ -352,7 +376,10 @@ for (name, s10, wt), (_, s5, fl) in zip(M.DRIVERS, g['drivers']):
 present('valuation driver multiples', f'Nasdaq-100 at {hu(FQ, 1)}× forward vs EM at {hu(FI, 1)}×, a {hu((1 - FI / FQ) * 100, 0)}% discount', P)
 _d = (1 - SPOT / M.VIX_MEAN) * 100
 present('valuation driver VIX vs mean, either side', f'The VIX at {SPOT:.2f} ({day(M.VIX_ASOF)}) sits {hu(abs(_d), 0)}% {"below" if _d >= 0 else "above"} its {M.VIX_MEAN} mean: '
-        f'protection is {"cheap" if SPOT < M.VIX_MEAN else "dear"}', P)
+        f'protection is {"cheap" if _d >= 5 else "dear" if _d <= -5 else "close to its long-run price"}', P)
+for _x, _w in ((M.VIX_MEAN * 0.9, 'cheap'), (M.VIX_MEAN * 0.97, 'close to its long-run price'),
+               (M.VIX_MEAN * 1.03, 'close to its long-run price'), (M.VIX_MEAN * 1.1, 'dear')):
+    ck(f'helper: protection at VIX {_x:.2f} reads "{_w}"', build.vix_price(_x) == _w, build.vix_price(_x), _w)
 present('policy driver range', f'The Fed hiked 12–0 on {day(M.FOMC_DATE)} to {M.FED_RANGE[0]:.2f}–{M.FED_RANGE[1]:.2f}%', P)
 for t in ('SGOV', 'QQQ', 'IEMG', 'BMNR'):
     present(f'transmission row for {t}', f'<div class="tick" style="background:var(--{t.lower()})">{t}</div>', P)
@@ -484,6 +511,15 @@ ck('the rule\'s VIX reading is the five-session average of the closes on file',
 _RULE_BOOK, _rlog = _rule(M.REGIONS, E['gauge']['score5'], _VIX_AVG, M.TREND, M.CORRELATED)
 ck('the one-close book the page quotes is what the rule gives on the last close',
    M.TILT_SPOT == _rule(M.REGIONS, E['gauge']['score5'], M.VIX_SPOT, M.TREND, M.CORRELATED)[0], M.TILT_SPOT)
+# when one close crosses the mean and the average does not, the one-close book must be the
+# rule run on that close, and differ from the rule's book
+ck('the metamorphic copy puts one close across the mean, the average not',
+   (_hi >= M.VIX_MEAN) != (_alt['VIX_AVG'] >= M.VIX_MEAN), _hi, _alt['VIX_AVG'])
+if (_hi >= M.VIX_MEAN) != (_alt['VIX_AVG'] >= M.VIX_MEAN):
+    ck('a close across the mean gives a different one-close book, the rule run on that close',
+       _alt['TILT_SPOT'] != _alt['TILT']['book'] and
+       _alt['TILT_SPOT'] == _rule(M.REGIONS, E['gauge']['score5'], _hi, M.TREND, M.CORRELATED)[0],
+       _alt['TILT_SPOT'], _alt['TILT']['book'])
 ck('the optimized book is what the rule produces', _RULE_BOOK == M.PORTFOLIOS['optimized'], M.PORTFOLIOS['optimized'], _RULE_BOOK)
 ck('the rule log matches the model step by step',
    [s_[2] != 'no move' for s_ in M.TILT['steps']] == _rlog, [s_[2] for s_ in M.TILT['steps']], _rlog)
@@ -532,6 +568,13 @@ for _i, (pillar, rd, mvtxt, after) in enumerate(M.TILT['steps']):
         ck(f'rule step {_i + 1}: no book restated where nothing moved', _sd is not None and 'Book:' not in _sd.group(1), pillar)
     else:
         present(f'rule step {_i + 1} book', f"Book: QQQ {after['QQQ']} / IEMG {after['IEMG']} / SGOV {after['SGOV']} / BMNR {after['BMNR']}.", P)
+# the trend tab's call on BMNR, from ether's signs at 3 and 12 months (typed through Rev. 29)
+_er = M.TREND['Ether']['r']; _es = [_sign(x, M.TREND_DEADBAND) for x in (_er[0], _er[2])]
+_ev = _verdict(_score(_er)); _wd = {1: 'gain', 0: 'flat reading', -1: 'loss'}
+_then = (('but BMNR is already at its 5% floor' if O['BMNR'] - 5 < M.RULE['floor'] else 'so BMNR gives a step to cash') if _ev == 'Downtrend'
+         else f'so BMNR stays at {O["BMNR"]}%' + (', its cap' if O['BMNR'] == M.RULE['bmnr_cap'] else ''))
+present('trend call on BMNR read from ether\'s signs',
+        f'ether is {_ev.lower()} (a 3-month {_wd[_es[0]]} {"against" if _es[0] != _es[1] else "and"} a 12-month {_wd[_es[1]]}), {_then}.', pane('p-trend'))
 _dv = (1 - _VIX_AVG / M.VIX_MEAN) * 100
 present('rule step 3: the average it read, against the mean',
         f'The VIX&#8217;s 5-session average, {_VIX_AVG:.2f}, sits {hu(abs(_dv), 0)}% {"below" if _dv >= 0 else "above"} its {M.VIX_MEAN} mean, so '
@@ -783,6 +826,7 @@ for dom_ in ('www.federalreserve.gov', 'www.bls.gov', 'www.ecb.europa.eu', 'www.
              'www.sec.gov', 'www.ishares.com', 'www.invesco.com', 'www.cboe.com'):
     present(f'source cited: {dom_}', f'href="https://{dom_}/', P)
 present('BMNR release link is the current one', f'{str(H["total_b"]).replace(".", "-")}-billion-', P)
+present('BMNR release labelled with its date', f'>Holdings release, {day(H["released"])} {H["released"][:4]}</a>', P)
 ck('the holdings were released after the date they describe', H['released'] > H['asof'], H['released'], H['asof'])
 _ver = open('VERIFICATION.md').read()
 _prior_rev = M.REVISION - 1
@@ -810,7 +854,8 @@ _used = {'10-year high': lambda v: f'the highest close {v}' in pane('p-macro'),
          'Vanguard EM forecast': lambda v: f'<tr><td>Vanguard, Jun 2026</td><td class="n">5.2%</td><td class="n">{v}</td></tr>' in P,
          # counted here, not by build.pane_words: visible words of the six panes, charts stripped
          'Page text': lambda v: v == f'{_page_words():,} words',
-         'Volatility rule': lambda v: v == '5-session average' and M.TILT['steps'][2][1][0] == _VIX_AVG}
+         'Volatility rule': lambda v: v == '5-session average' and M.TILT['steps'][2][1][0] == _VIX_AVG,
+         'BMNR holdings': lambda v: v == f'{day(H["released"])} release' and f'Price ({day(H["px_asof"])})' in slides['BMNR']}
 for _k, (_a, _b) in _rows_page.items():
     ck(f'revision row {_k}: current side checked', _k in _now or _k in _used, _k)
     if _k in _now:
@@ -821,6 +866,11 @@ for _k, (_a, _b) in _rows_page.items():
         ck('revision row Market data: prior side is the prior entry\'s data date', _a == _prior_day, _a, _prior_day)
     elif _k in ('QQQ net CAGR', 'IEMG net CAGR', 'Optimized net CAGR'):
         ck(f'revision row {_k}: prior side appears in the Rev. {_prior_rev} record', f'**{_a}**' in _prior_text, _a, f'Rev. {_prior_rev}')
+    elif _k == 'BMNR net CAGR':
+        # BMNR moves only with a new pairing, so its prior figure is the last one recorded
+        _older = _ver[_ver.index('## Rev. %d ' % _prior_rev):]
+        ck('revision row BMNR net CAGR: prior side is the last recorded figure',
+           f'**{_a}**' in _older and _a != _b, _a, 'an earlier record')
 
 # ══ 7 · hygiene ═══════════════════════════════════════════════════════════════
 vis = re.sub(r'<style>.*?</style>|<svg.*?</svg>|<script>.*?</script>|<[^>]+>', ' ', html, flags=re.S)

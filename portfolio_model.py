@@ -7,7 +7,7 @@ independently and fails if the published page is not what build.py would write.
 Change an input here, then run build.py -- never edit the page. Run this file
 directly for a readable report.
 
-Market data to the 16 October 2026 close; each fund price carries its own
+Market data to the 19 October 2026 close; each fund price carries its own
 date in PRICES. Sources are linked on the page itself.
 """
 import math, json, copy as _copy
@@ -39,11 +39,11 @@ OBS = {
 # is the standard short-window approximation; for QQQ it is independently
 # confirmed by the trailing multiple moving 28.55x -> 29.85x (+4.55%) against a
 # +4.56% price move.
-# Both funds on 15 Oct, the latest session two sources confirm for both: QQQ $728.00
-# (-$0.95, -0.13%; Yahoo, Google Finance, Investing.com) and IEMG $78.09 (Yahoo and the
-# iShares fund page). Rev. 28's held 14 Oct QQQ close settled at $728.95 (StockAnalysis's
-# prior close, StockInvest). 16 Oct: QQQ $709.80 (Yahoo, Marketscreener) but IEMG's $76.79
-# has one source, so both stay on 15 Oct to price the two blocs on the same day.
+# Both funds on 19 Oct, the latest session two sources confirm for both: QQQ $718.36
+# (+$8.56, +1.21% from 16 Oct's $709.80; Investing.com's table, StockAnalysis,
+# MarketChameleon) and IEMG $77.34 (the iShares fund page, StockAnalysis, StockScan). Rev. 29
+# held 16 Oct because IEMG's $76.79 had one source; Yahoo and StockInvest now agree on it.
+# 20 Oct is quoted as $717.59 and $719.21 for QQQ, so it is not used.
 # Trailing dividends, four quarters for QQQ and two halves for IEMG (StockAnalysis's
 # dated history; Investing.com and Dividend.com agree to the cent):
 #   QQQ  Dec-25 0.79408 + Mar-26 0.73282 + Jun-26 0.81349 + Sep-26 0.75143 = $3.09182.
@@ -56,9 +56,9 @@ OBS = {
 # so the trailing sum was a quarter stale from the 21 Sep ex-date. IEMG's "$0.71" was June
 # 2025's payout in the same way; its $1.80 was right.
 PRICES = {
-    'QQQ':  dict(ttm_div=3.09182, px=728.00, px_asof='2026-10-15',
+    'QQQ':  dict(ttm_div=3.09182, px=718.36, px_asof='2026-10-19',
                  basis_px=714.88, basis_fwd=22.40, basis_asof='2026-09-11'),
-    'IEMG': dict(ttm_div=1.7973, px=78.09,  px_asof='2026-10-15',
+    'IEMG': dict(ttm_div=1.7973, px=77.34,  px_asof='2026-10-19',
                  basis_px=83.33, basis_fwd=11.70, basis_asof='2026-09-11'),
 }
 for _k, _p in PRICES.items():
@@ -73,29 +73,32 @@ SGOV_GROSS = 3.875         # midpoint of FED_RANGE; validate.py asserts it
 # extrapolates the hiking path futures price (about 4.1% by December) nor assumes a
 # return to the 3.25% this file carried, which was below both spot and the curve.
 SGOV_ER    = 0.09
-BMNR = dict(eth=9.00, stake_share=0.842, stake_yield=2.63, mnav=0.98, drag=1.40)
-BMNR_HOLDINGS = dict(held=6_016_414, staked=5_067_309, asof='2026-10-04', released='2026-10-05',
-                     eth_px=2726, crypto_b=16.42, total_b=17.4,        # 5 Oct release
-                     px=26.79, px_asof='2026-10-05', shares_m=603.2)   # close, shares out
+BMNR = dict(eth=9.00, stake_share=0.839, stake_yield=2.58, mnav=0.91, drag=1.40)
+BMNR_HOLDINGS = dict(held=6_041_481, staked=5_067_309, asof='2026-10-18', released='2026-10-19',
+                     eth_px=2365, crypto_b=14.31, total_b=15.1,        # 19 Oct release
+                     px=21.57, px_asof='2026-10-19', shares_m=603.2)   # close, shares out
 # mnav above is the crypto-only premium, derived here rather than typed:
 BMNR_MCAP_B = BMNR_HOLDINGS['px'] * BMNR_HOLDINGS['shares_m'] / 1000
 assert abs(BMNR['mnav'] - round(BMNR_MCAP_B / BMNR_HOLDINGS['crypto_b'], 2)) < 1e-9, \
     'BMNR mnav must equal market cap over crypto holdings'
-# From the 5 Oct 2026 holdings release (8-K): 6,016,414 ETH at $2,726 as of 4 Oct (15,112
-# bought that week; 6,001,302 + 15,112 reconciles exactly), 5,067,309 staked (the same
-# count for the fourth release, so the staked share falls to 84.2%), 7-day yield 2.63%,
-# 214 BTC, $643M of cash and securities, $17.4B in all. crypto_b is 6,016,414 x $2,726 =
-# $16.40B of ETH plus 214 BTC (~$0.02B).
-# Close 5 Oct, the first session after the holdings date: $26.79 (+2.25%; a later quote's
-# -$0.56 to $26.23 implies the same prior close). Market cap $16.16B against $16.42B of
-# crypto = 0.98x: the stock now trades below its ETH, and the "premium" term turns into a
-# discount that closes at +0.20%/yr. A cent either way leaves 0.98x unchanged.
+# From the 19 Oct 2026 holdings release (PR Newswire; 8-K exhibit): 6,041,481 ETH at $2,365
+# (Coinbase, 3 p.m. ET) as of 18 Oct (12,535 bought that week; 6,028,946 + 12,535 reconciles
+# exactly), 5,067,309 staked (the same count for the sixth release, so the staked share
+# falls to 83.9%), 7-day yield 2.58% (the release's $309M staking and $369M full-scale
+# figures both reproduce at 2.58%), 215 BTC, $180M in Beast Industries, $74M in Eightco,
+# $582M of cash and securities, $15.1B in all. crypto_b is 6,041,481 x $2,365 = $14.29B of
+# ETH plus 215 BTC (~$0.02B); mNAV is 0.91x for any bitcoin price from $50k to $120k.
+# Close 19 Oct, the first session after the holdings date: $21.57 (Investing.com, closed at
+# 15:59:59; Yahoo's 20 Oct quote of +$1.04 to $22.61 implies the same prior close).
+# Market cap $13.01B against $14.31B of crypto = 0.91x, down from 0.98x on 5 Oct as the
+# stock fell 19.5% and ETH 13.2%; the discount that closes now adds 0.95%/yr. Rev. 28 and 29
+# held this pairing because the 12 Oct release had no confirmed same-day close.
 # On 7 Oct the chairman said BitMine will stop buying ETH at 5% of supply (a "hard cap",
 # about 90,000 ETH away). That removes the share issuance behind most of the 1.40%/yr
 # dilution drag, but the company has also bought back shares this year and the share
 # count here (603.2M) predates both; the drag is held, and listed as an assumption.
 
-REVISION = 29                          # bump when publishing; validate.py enforces it
+REVISION = 30                          # bump when publishing; validate.py enforces it
 # Daily closes, newest last. VIX_SPOT is taken from here rather than typed, and
 # the assertion below is why: an earlier revision published 16.93 for 15 September
 # from a source whose own stated change (-0.27, -1.57%) implied a prior close of
@@ -121,7 +124,8 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
               ('2026-10-07', 15.08), ('2026-10-08', 15.41),
               ('2026-10-09', 14.84), ('2026-10-12', 15.21),
               ('2026-10-13', 15.27), ('2026-10-14', 16.87),
-              ('2026-10-15', 16.46), ('2026-10-16', 19.99))
+              ('2026-10-15', 16.46), ('2026-10-16', 19.99),
+              ('2026-10-19', 18.44))
 # The 2026 closing low: "fell to 14.13 on Friday, its lowest level of 2026", in a
 # report dated 17 August -- Friday 14 August. Rev. 19 dated it 28 August; a
 # 21-session low of 14.21 on 22 September rules that out.
@@ -146,7 +150,10 @@ VIX_SERIES = (('2026-09-11', 15.84), ('2026-09-14', 17.62),
 # snapshot quote was not the close. 15 Oct 16.46 (-0.41, -2.4%: Yahoo, two market recaps).
 # 16 Oct 19.99 (+3.53, +21.45% as chip stocks fell an eighth day: Investing.com, Yahoo, a
 # weekly recap); a 16.45 "16 Oct" figure is the 15 Oct close misdated, and 22.31 was the
-# intraday high.
+# intraday high. 19 Oct 18.44 (-1.55, -7.75%: Investing.com's table, Yahoo's and Cboe's prior
+# close, and CNN's 20 Oct -6.13% to 17.31, which implies 18.44). An 18.07 "close" timed 4:47
+# p.m. is a snapshot of a different print, and 18.11 an intraday quote. 20 Oct's 17.31 is
+# shown only on live quote pages, so the series stops at 19 Oct.
 VIX_HELD = None
 # The day-on-day changes the sources reported, % to the stated precision. Each close must
 # reproduce its reported change from the close before it, so a wrong snapshot of either
@@ -156,10 +163,11 @@ VIX_REPORTED = {'2026-09-14': 11.24, '2026-09-22': -4.44, '2026-09-23': 6.83, '2
                 '2026-09-25': -5.11, '2026-09-28': 8.07, '2026-09-29': -0.2, '2026-09-30': 1.87,
                 '2026-10-02': -6.59, '2026-10-05': 1.4, '2026-10-06': -3.29,
                 '2026-10-07': 0.47, '2026-10-09': -3.70, '2026-10-12': 2.49, '2026-10-14': 10.48,
-                '2026-10-15': -2.4, '2026-10-16': 21.45}
+                '2026-10-15': -2.4, '2026-10-16': 21.45, '2026-10-19': -7.75}
 VIX_SOURCES = {'2026-10-02': 3, '2026-10-05': 3, '2026-10-06': 3,
                '2026-10-07': 2, '2026-10-08': 3, '2026-10-09': 3,
-               '2026-10-12': 2, '2026-10-13': 3, '2026-10-14': 3, '2026-10-15': 3, '2026-10-16': 3}
+               '2026-10-12': 2, '2026-10-13': 3, '2026-10-14': 3, '2026-10-15': 3, '2026-10-16': 3,
+               '2026-10-19': 4}
 assert all(n >= 2 for n in VIX_SOURCES.values()), 'a close needs two independent sources'
 VIX_2026 = dict(low=14.13, low_date='2026-08-14', high=31.65, high_date='2026-03-27')
 # The 2016-2023 mean of the yearly averages of daily closes (FRED VIXCLS, annual
@@ -193,14 +201,14 @@ assert all(abs(b - a) / a < 0.25 for (_, a), (_, b) in zip(VIX_SERIES, VIX_SERIE
 # change does not reconcile with the close on file fails here -- the rule the VIX
 # series already follows. Rev. 19 carried 4.93% for the 22 September 10-year;
 # the close was 4.96%, and 23 September's +16bp to 5.12% is quoted from 4.96%.
-# 16 Oct: Brent settled $109.86 (+$3.94, +3.7%, its highest since May; Reuters via The
-# Hill, EnergyNow and FinanceFeeds) from $105.92 on 15 Oct, after missile attacks on Saudi
-# Arabia and Ukrainian strikes on Russian refineries. The 10-year carries its own date:
-# 14 Oct settled at 5.19% (Rev. 28 held it between 5.19 and 5.20) and 15 Oct closed at 5.10%
-# (FRED, the Fed's H.15). 16 Oct is not on FRED yet; market data give 5.08% to 5.10%.
-MARKET = dict(asof='2026-10-16',
-              brent=109.86, brent_prev=105.92, brent_chg_pct=3.72,
-              ust10_asof='2026-10-15', ust10=5.10, ust10_prev=5.19, ust10_chg_bp=-9,
+# 19 Oct: Brent settled $109.55 (-$0.31, -0.28%; Fox News's market report, Pomegra, and
+# Reuters' 20 Oct settlement of -$0.76 to $108.79, which implies it) from 16 Oct's $109.86,
+# after a session low more than $3 down on reports of US-Iran mediation. The 10-year carries
+# its own date: 16 Oct closed at 5.09% (the Fed's H.15 release of 19 Oct, FRED), resolving
+# Rev. 29's hold; 19 Oct is quoted from 5.07% to 5.15% and is not yet on H.15.
+MARKET = dict(asof='2026-10-19',
+              brent=109.55, brent_prev=109.86, brent_chg_pct=-0.28,
+              ust10_asof='2026-10-16', ust10=5.09, ust10_prev=5.10, ust10_chg_bp=-1,
               ust10_high=5.31, ust10_high_date='2026-10-05')
 assert abs(MARKET['brent_prev'] * (1 + MARKET['brent_chg_pct'] / 100) - MARKET['brent']) < 0.02, \
     'Brent level does not reconcile with its stated change'
